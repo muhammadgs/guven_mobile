@@ -9,7 +9,7 @@ class SplashScreen extends StatelessWidget {
       body: SafeArea(
         child: Center(
           child: Text(
-            'Güvən Mobile',
+            'Güvən finans',
             style: TextStyle(
               fontSize: 28,
               fontWeight: FontWeight.w700,
