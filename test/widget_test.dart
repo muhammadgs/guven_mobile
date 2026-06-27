@@ -1,30 +1,23 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
+// Smoke test for the pre-login onboarding flow.
 
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:guven_mobile/main.dart';
+import 'package:guven_mobile/src/app/guven_app.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  testWidgets('Onboarding shows the welcome headline', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const GuvenApp());
+    // The headline is in the tree from the first frame (it merely starts at
+    // zero opacity), so a short pump is enough to find it. We must not
+    // pumpAndSettle — the aurora background animates forever.
+    await tester.pump(const Duration(milliseconds: 50));
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
+    expect(find.text('Xoş gəlmişsiniz!'), findsOneWidget);
 
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    // Drain the staggered entrance delays (Future.delayed) so no timer is left
+    // pending when the widget tree is torn down.
+    await tester.pump(const Duration(seconds: 2));
   });
 }
