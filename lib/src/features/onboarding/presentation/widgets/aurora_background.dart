@@ -1,8 +1,15 @@
 import 'dart:math' as math;
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 
-/// Full-screen animated liquid wallpaper.
-/// Dark, rich, and saturated blue/purple tones with a perceptible slow wave.
+/// Full-screen animated liquid-wave backdrop for the onboarding flow.
+///
+/// The design follows the supplied reference image: deep navy negative space,
+/// large royal-blue / violet flowing surfaces and soft lavender light along the
+/// wave edges. It is intentionally built with Flutter's native [CustomPainter]
+/// and one slow [AnimationController], so the four onboarding pages share one
+/// continuous background without adding packages or a WebView.
 class AuroraBackground extends StatefulWidget {
   const AuroraBackground({super.key});
 
@@ -12,8 +19,9 @@ class AuroraBackground extends StatefulWidget {
 
 class _AuroraBackgroundState extends State<AuroraBackground>
     with SingleTickerProviderStateMixin {
-  // Animasyon hızını 48'den 32'ye düşürdük. Yavaş ama daha "bilinir" seviyede bir akış sağlar.
-  static const Duration _loop = Duration(seconds: 32);
+  /// Calm but visible motion. The loop is long enough to feel premium, while the
+  /// wave edges still drift clearly when the user watches the background.
+  static const Duration _loop = Duration(seconds: 24);
 
   late final AnimationController _controller =
       AnimationController(vsync: this, duration: _loop)..repeat();
@@ -28,7 +36,7 @@ class _AuroraBackgroundState extends State<AuroraBackground>
   Widget build(BuildContext context) {
     return RepaintBoundary(
       child: CustomPaint(
-        painter: _AuroraPainter(_controller),
+        painter: _LiquidWavePainter(_controller),
         size: Size.infinite,
         isComplex: true,
         willChange: true,
@@ -37,282 +45,504 @@ class _AuroraBackgroundState extends State<AuroraBackground>
   }
 }
 
-// ---------------------------------------------------------------------------
-// Painter
-// ---------------------------------------------------------------------------
+class _LiquidWavePainter extends CustomPainter {
+  _LiquidWavePainter(this.animation) : super(repaint: animation);
 
-class _AuroraPainter extends CustomPainter {
-  _AuroraPainter(this._animation) : super(repaint: _animation);
+  final Animation<double> animation;
 
-  final Animation<double> _animation;
-
-  static const double _tau = 2 * math.pi;
-
-  // --- Karanlık ve Doygun Renk Paleti (Resimdeki Tonlar) ---
-  static const Color _bgTop = Color(0xFF02040F); // Çok koyu gece mavisi
-  static const Color _bgBottom = Color(0xFF000000); // Saf siyah/lacivert zemin
-
-  static const Color _vividBlue = Color(0xFF2041F5); // Elektrik mavisi
-  static const Color _deepBlue = Color(0xFF0D1B6E); // Derin lacivert
-  static const Color _darkNavy = Color(0xFF050B24); // Gölgeli koyu lacivert
-  static const Color _neonPurple = Color(0xFF6C33E8); // Parlak mor
-  static const Color _richPurple = Color(0xFF2A106B); // Koyu mor
-
-  // Parlama alanları (Beyaz veya pastel yerine kendi renklerinin parlak/transparan halleri)
-  static const Color _bluePool = Color(0x662041F5);
-  static const Color _bluePool0 = Color(0x002041F5);
-  static const Color _violPool = Color(0x556C33E8);
-  static const Color _violPool0 = Color(0x006C33E8);
-  static const Color _centerGlow = Color(0x774F26B8); 
-  static const Color _centerGlow0 = Color(0x004F26B8);
-
-  // Dalga uçlarındaki keskin vuruşlar (Vivid/Doygun)
-  static const Color _purpleRim = Color(0xAA8A52FF);
-  static const Color _blueRim = Color(0x994D70FF);
+  static const Color _navyTop = Color(0xFF030416);
+  static const Color _navyBottom = Color(0xFF050736);
+  static const Color _deepPocket = Color(0xFF01022A);
+  static const Color _royalBlue = Color(0xFF1557FF);
+  static const Color _cobalt = Color(0xFF1735D8);
+  static const Color _electricBlue = Color(0xFF2F73FF);
+  static const Color _violet = Color(0xFF6C36F4);
+  static const Color _lavender = Color(0xFFD5C8FF);
 
   @override
   void paint(Canvas canvas, Size size) {
     final Rect bounds = Offset.zero & size;
-    final double t = _animation.value;
-    final double w = size.width;
-    final double h = size.height;
+    final double t = animation.value;
 
     _paintBase(canvas, bounds);
-
-    // Arkadaki derinlik yaratan renk havuzları
-    _paintGlow(
-      canvas,
-      Offset(w * (0.30 + 0.05 * _sin(t)), h * (0.42 + 0.04 * _cos(t, 0.5))),
-      math.max(w, h) * 0.62,
-      _bluePool,
-      _bluePool0,
-    );
-    _paintGlow(
-      canvas,
-      Offset(w * (0.84 + 0.04 * _cos(t, 1.5)), h * (0.16 + 0.05 * _sin(t, 2.0))),
-      math.max(w, h) * 0.50,
-      _violPool,
-      _violPool0,
-    );
-
-    // 3 Ana Dalga Kütlesi (Soft renkler çıkarıldı, dark/vivid geçişler eklendi)
-    _paintLiquidBand(
-      canvas,
-      bounds,
-      _buildLeftMass(size, t),
-      const <Color>[_vividBlue, _deepBlue, _darkNavy],
-      const Alignment(-0.7, -0.6),
-      const Alignment(0.6, 1.0),
-      25,
-    );
-    _paintLiquidBand(
-      canvas,
-      bounds,
-      _buildUpperRight(size, t),
-      const <Color>[_neonPurple, _richPurple, _darkNavy],
-      const Alignment(0.9, -0.7),
-      const Alignment(-0.2, 0.9),
-      28,
-    );
-    _paintLiquidBand(
-      canvas,
-      bounds,
-      _buildBottomBlob(size, t),
-      const <Color>[_richPurple, _vividBlue, _deepBlue],
-      const Alignment(0.0, 1.0),
-      const Alignment(0.3, -0.2),
-      25,
-    );
-
-    // Dalga kenarlarındaki ince, doygun mor ve mavi parlamalar
-    _paintHighlight(canvas, _buildLeftMass(size, t), _blueRim, 15);
-    _paintHighlight(canvas, _buildBottomBlob(size, t), _purpleRim, 14);
-    _paintHighlight(canvas, _buildUpperRight(size, t), _blueRim, 18);
-
-    // Merkezdeki kesişim noktasındaki koyu mor parlama
-    _paintGlow(
-      canvas,
-      Offset(w * (0.57 + 0.04 * _sin(t, 1.0)), h * (0.50 + 0.05 * _cos(t))),
-      math.max(w, h) * 0.35,
-      _centerGlow,
-      _centerGlow0,
-    );
-
-    _paintVignette(canvas, bounds);
+    _paintTopLiquidSheet(canvas, size, t);
+    _paintLeftLiquidSheet(canvas, size, t);
+    _paintBottomRightSheet(canvas, size, t);
+    _paintCentralLightFold(canvas, size, t);
+    _paintDeepPockets(canvas, size, t);
+    _paintSoftVignette(canvas, bounds);
   }
-
-  // --- Layers ---------------------------------------------------------------
 
   void _paintBase(Canvas canvas, Rect bounds) {
-    canvas.drawRect(
-      bounds,
-      Paint()
-        ..isAntiAlias = true
-        ..shader = const LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: <Color>[_bgTop, _bgBottom],
-        ).createShader(bounds),
+    const LinearGradient gradient = LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: <Color>[_navyTop, _navyBottom],
+    );
+
+    canvas.drawRect(bounds, Paint()..shader = gradient.createShader(bounds));
+  }
+
+  /// Large top wave with the broad blue surface and lavender lower rim.
+  void _paintTopLiquidSheet(Canvas canvas, Size size, double t) {
+    final double w = size.width;
+    final double h = size.height;
+    final double longest = math.max(w, h);
+    final double a = math.sin(math.pi * 2 * t);
+    final double b = math.sin(math.pi * 2 * t + 1.4);
+    final double c = math.sin(math.pi * 4 * t + 0.8);
+
+    final Path sheet = Path()
+      ..moveTo(-0.24 * w, -0.10 * h)
+      ..lineTo(1.16 * w, -0.10 * h)
+      ..cubicTo(
+        1.03 * w + b * 18,
+        0.10 * h,
+        0.91 * w + a * 24,
+        0.34 * h,
+        0.91 * w + b * 18,
+        0.48 * h,
+      )
+      ..cubicTo(
+        0.72 * w + c * 18,
+        0.52 * h,
+        0.55 * w - a * 20,
+        0.45 * h,
+        0.41 * w + b * 16,
+        0.34 * h,
+      )
+      ..cubicTo(
+        0.27 * w + a * 12,
+        0.23 * h,
+        0.15 * w - b * 24,
+        0.31 * h,
+        -0.14 * w,
+        0.20 * h,
+      )
+      ..close();
+
+    final Rect shaderRect = Rect.fromLTWH(0, -0.08 * h, w, 0.58 * h);
+    final Paint fill = Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: <Color>[
+          Color(0xFF060A55),
+          _royalBlue,
+          _cobalt,
+          Color(0xFF090B43),
+        ],
+        stops: <double>[0.0, 0.36, 0.70, 1.0],
+      ).createShader(shaderRect);
+    canvas.drawPath(sheet, fill);
+
+    final Path rim = Path()
+      ..moveTo(-0.05 * w, 0.22 * h)
+      ..cubicTo(
+        0.16 * w - b * 12,
+        0.30 * h,
+        0.27 * w + a * 10,
+        0.22 * h,
+        0.41 * w + b * 16,
+        0.34 * h,
+      )
+      ..cubicTo(
+        0.55 * w - a * 20,
+        0.45 * h,
+        0.72 * w + c * 18,
+        0.52 * h,
+        0.96 * w + b * 8,
+        0.48 * h,
+      );
+
+    _drawGlowStroke(
+      canvas,
+      rim,
+      width: longest * 0.040,
+      blur: longest * 0.020,
+      color: _lavender.withValues(alpha: 0.42),
+    );
+    _drawGlowStroke(
+      canvas,
+      rim,
+      width: longest * 0.014,
+      blur: longest * 0.006,
+      color: _lavender.withValues(alpha: 0.62),
     );
   }
 
-  void _paintGlow(
+  /// Broad lower-left surface from the reference image.
+  void _paintLeftLiquidSheet(Canvas canvas, Size size, double t) {
+    final double w = size.width;
+    final double h = size.height;
+    final double longest = math.max(w, h);
+    final double a = math.sin(math.pi * 2 * t + 2.2);
+    final double b = math.sin(math.pi * 2 * t + 3.7);
+    final double c = math.sin(math.pi * 4 * t + 1.6);
+
+    final Path sheet = Path()
+      ..moveTo(-0.20 * w, 0.24 * h)
+      ..cubicTo(
+        0.06 * w + a * 18,
+        0.29 * h,
+        0.22 * w - b * 18,
+        0.30 * h,
+        0.32 * w + c * 10,
+        0.44 * h,
+      )
+      ..cubicTo(
+        0.43 * w + b * 18,
+        0.59 * h,
+        0.62 * w - a * 24,
+        0.58 * h,
+        0.48 * w + c * 14,
+        0.73 * h,
+      )
+      ..cubicTo(
+        0.37 * w - b * 14,
+        0.85 * h,
+        0.63 * w + a * 20,
+        0.83 * h,
+        0.45 * w,
+        1.10 * h,
+      )
+      ..lineTo(-0.20 * w, 1.10 * h)
+      ..close();
+
+    final Rect shaderRect = Rect.fromLTWH(-0.12 * w, 0.25 * h, 0.72 * w, 0.80 * h);
+    final Paint fill = Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: <Color>[
+          Color(0xFF06104C),
+          _electricBlue,
+          _cobalt,
+          _violet,
+          Color(0xFF040533),
+        ],
+        stops: <double>[0.0, 0.27, 0.56, 0.78, 1.0],
+      ).createShader(shaderRect);
+    canvas.drawPath(sheet, fill);
+
+    final Path leftRim = Path()
+      ..moveTo(-0.08 * w, 0.30 * h)
+      ..cubicTo(
+        0.12 * w + a * 18,
+        0.36 * h,
+        0.23 * w - b * 18,
+        0.31 * h,
+        0.32 * w + c * 10,
+        0.44 * h,
+      )
+      ..cubicTo(
+        0.43 * w + b * 18,
+        0.59 * h,
+        0.62 * w - a * 24,
+        0.58 * h,
+        0.48 * w + c * 14,
+        0.73 * h,
+      );
+
+    _drawGlowStroke(
+      canvas,
+      leftRim,
+      width: longest * 0.050,
+      blur: longest * 0.030,
+      color: _lavender.withValues(alpha: 0.34),
+    );
+  }
+
+  /// Violet-blue sheet flowing through the lower-right corner.
+  void _paintBottomRightSheet(Canvas canvas, Size size, double t) {
+    final double w = size.width;
+    final double h = size.height;
+    final double longest = math.max(w, h);
+    final double a = math.sin(math.pi * 2 * t + 4.1);
+    final double b = math.sin(math.pi * 2 * t + 5.4);
+    final double c = math.sin(math.pi * 4 * t + 2.8);
+
+    final Path sheet = Path()
+      ..moveTo(0.44 * w + b * 10, 0.66 * h)
+      ..cubicTo(
+        0.55 * w + a * 18,
+        0.77 * h,
+        0.62 * w - c * 14,
+        0.70 * h,
+        0.66 * w + b * 12,
+        0.81 * h,
+      )
+      ..cubicTo(
+        0.73 * w + c * 18,
+        0.94 * h,
+        0.90 * w - a * 10,
+        0.86 * h,
+        1.18 * w,
+        0.99 * h,
+      )
+      ..lineTo(1.18 * w, 1.16 * h)
+      ..lineTo(0.36 * w, 1.16 * h)
+      ..cubicTo(
+        0.34 * w - b * 8,
+        0.98 * h,
+        0.52 * w + a * 14,
+        0.94 * h,
+        0.44 * w + b * 10,
+        0.66 * h,
+      )
+      ..close();
+
+    final Rect shaderRect = Rect.fromLTWH(0.34 * w, 0.62 * h, 0.82 * w, 0.52 * h);
+    final Paint fill = Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: <Color>[
+          Color(0xFF061157),
+          _royalBlue,
+          _violet,
+          Color(0xFF4620B8),
+        ],
+        stops: <double>[0.0, 0.38, 0.76, 1.0],
+      ).createShader(shaderRect);
+    canvas.drawPath(sheet, fill);
+
+    final Path rim = Path()
+      ..moveTo(0.43 * w + b * 10, 0.66 * h)
+      ..cubicTo(
+        0.55 * w + a * 18,
+        0.77 * h,
+        0.62 * w - c * 14,
+        0.70 * h,
+        0.66 * w + b * 12,
+        0.81 * h,
+      )
+      ..cubicTo(
+        0.73 * w + c * 18,
+        0.94 * h,
+        0.90 * w - a * 10,
+        0.86 * h,
+        1.08 * w,
+        0.95 * h,
+      );
+
+    _drawGlowStroke(
+      canvas,
+      rim,
+      width: longest * 0.045,
+      blur: longest * 0.026,
+      color: _lavender.withValues(alpha: 0.30),
+    );
+  }
+
+  /// The S-shaped illuminated fold that makes the background look like liquid
+  /// sheets sliding over each other instead of static blobs.
+  void _paintCentralLightFold(Canvas canvas, Size size, double t) {
+    final double w = size.width;
+    final double h = size.height;
+    final double longest = math.max(w, h);
+    final double a = math.sin(math.pi * 2 * t + 0.9);
+    final double b = math.sin(math.pi * 2 * t + 2.6);
+
+    final Path fold = Path()
+      ..moveTo(0.29 * w - a * 10, 0.34 * h)
+      ..cubicTo(
+        0.40 * w + b * 16,
+        0.44 * h,
+        0.56 * w - a * 18,
+        0.44 * h,
+        0.50 * w + b * 12,
+        0.58 * h,
+      )
+      ..cubicTo(
+        0.45 * w - a * 14,
+        0.70 * h,
+        0.62 * w + b * 18,
+        0.68 * h,
+        0.62 * w - a * 12,
+        0.79 * h,
+      )
+      ..cubicTo(
+        0.62 * w - a * 12,
+        0.88 * h,
+        0.76 * w + b * 14,
+        0.83 * h,
+        0.84 * w,
+        1.03 * h,
+      );
+
+    _drawGradientStroke(
+      canvas,
+      fold,
+      width: longest * 0.120,
+      blur: longest * 0.052,
+      colors: <Color>[
+        _lavender.withValues(alpha: 0.00),
+        _lavender.withValues(alpha: 0.30),
+        _royalBlue.withValues(alpha: 0.18),
+        _violet.withValues(alpha: 0.24),
+      ],
+      rect: Offset.zero & size,
+    );
+
+    _drawGradientStroke(
+      canvas,
+      fold,
+      width: longest * 0.036,
+      blur: longest * 0.013,
+      colors: <Color>[
+        _lavender.withValues(alpha: 0.20),
+        _lavender.withValues(alpha: 0.58),
+        _electricBlue.withValues(alpha: 0.22),
+        _violet.withValues(alpha: 0.36),
+      ],
+      rect: Offset.zero & size,
+    );
+  }
+
+  /// Dark curved cavities from the reference image. They make the blue surfaces
+  /// feel layered and give the later blur pass enough contrast to work with.
+  void _paintDeepPockets(Canvas canvas, Size size, double t) {
+    final double w = size.width;
+    final double h = size.height;
+    final double longest = math.max(w, h);
+    final double a = math.sin(math.pi * 2 * t + 1.8);
+    final double b = math.sin(math.pi * 2 * t + 4.8);
+
+    final Paint pocketPaint = Paint()
+      ..color = _deepPocket.withValues(alpha: 0.74)
+      ..maskFilter = ui.MaskFilter.blur(
+        ui.BlurStyle.normal,
+        longest * 0.034,
+      );
+
+    final Path rightPocket = Path()
+      ..moveTo(0.86 * w + a * 14, -0.04 * h)
+      ..cubicTo(
+        0.77 * w + b * 12,
+        0.13 * h,
+        0.77 * w - a * 10,
+        0.30 * h,
+        0.92 * w + b * 16,
+        0.40 * h,
+      )
+      ..lineTo(1.22 * w, 0.42 * h)
+      ..lineTo(1.22 * w, -0.04 * h)
+      ..close();
+    canvas.drawPath(rightPocket, pocketPaint);
+
+    final Path middlePocket = Path()
+      ..moveTo(0.35 * w - b * 10, 0.39 * h)
+      ..cubicTo(
+        0.46 * w + a * 16,
+        0.48 * h,
+        0.55 * w - b * 14,
+        0.46 * h,
+        0.50 * w + a * 12,
+        0.58 * h,
+      )
+      ..cubicTo(
+        0.43 * w - b * 16,
+        0.70 * h,
+        0.62 * w,
+        0.68 * h,
+        0.49 * w,
+        0.79 * h,
+      )
+      ..cubicTo(
+        0.41 * w,
+        0.70 * h,
+        0.25 * w,
+        0.58 * h,
+        0.35 * w - b * 10,
+        0.39 * h,
+      )
+      ..close();
+    canvas.drawPath(middlePocket, pocketPaint);
+
+    final Path bottomPocket = Path()
+      ..moveTo(-0.12 * w, 0.82 * h)
+      ..cubicTo(
+        0.15 * w + a * 10,
+        0.77 * h,
+        0.44 * w - b * 18,
+        0.80 * h,
+        0.48 * w + a * 16,
+        0.90 * h,
+      )
+      ..cubicTo(
+        0.53 * w + b * 14,
+        1.01 * h,
+        0.35 * w,
+        1.08 * h,
+        0.36 * w,
+        1.18 * h,
+      )
+      ..lineTo(-0.12 * w, 1.18 * h)
+      ..close();
+    canvas.drawPath(bottomPocket, pocketPaint);
+  }
+
+  void _paintSoftVignette(Canvas canvas, Rect bounds) {
+    final Paint paint = Paint()
+      ..shader = const RadialGradient(
+        center: Alignment.center,
+        radius: 0.98,
+        colors: <Color>[Color(0x00000000), Color(0x8A01020D)],
+        stops: <double>[0.52, 1.0],
+      ).createShader(bounds);
+    canvas.drawRect(bounds, paint);
+
+    final Paint topShade = Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: <Color>[Color(0x66010116), Color(0x00010116)],
+      ).createShader(bounds);
+    canvas.drawRect(bounds, topShade);
+  }
+
+  void _drawGlowStroke(
     Canvas canvas,
-    Offset center,
-    double radius,
-    Color hot,
-    Color cold,
-  ) {
-    canvas.drawCircle(
-      center,
-      radius,
-      Paint()
-        ..isAntiAlias = true
-        ..blendMode = BlendMode.screen
-        ..shader = RadialGradient(
-          colors: <Color>[hot, cold],
-        ).createShader(Rect.fromCircle(center: center, radius: radius)),
-    );
+    Path path, {
+    required double width,
+    required double blur,
+    required Color color,
+  }) {
+    final Paint paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..strokeWidth = width
+      ..color = color
+      ..blendMode = BlendMode.screen
+      ..maskFilter = ui.MaskFilter.blur(ui.BlurStyle.normal, blur);
+    canvas.drawPath(path, paint);
   }
 
-  void _paintLiquidBand(
+  void _drawGradientStroke(
     Canvas canvas,
-    Rect bounds,
-    Path path,
-    List<Color> colors,
-    Alignment begin,
-    Alignment end,
-    double blur,
-  ) {
-    canvas.drawPath(
-      path,
-      Paint()
-        ..isAntiAlias = true
-        ..maskFilter = MaskFilter.blur(BlurStyle.normal, blur)
-        ..shader = LinearGradient(
-          begin: begin,
-          end: end,
-          colors: colors,
-          stops: const <double>[0.0, 0.5, 1.0],
-        ).createShader(bounds),
-    );
+    Path path, {
+    required double width,
+    required double blur,
+    required List<Color> colors,
+    required Rect rect,
+  }) {
+    final Paint paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..strokeWidth = width
+      ..blendMode = BlendMode.screen
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: colors,
+      ).createShader(rect)
+      ..maskFilter = ui.MaskFilter.blur(ui.BlurStyle.normal, blur);
+    canvas.drawPath(path, paint);
   }
-
-  void _paintHighlight(Canvas canvas, Path path, Color color, double sigma) {
-    canvas.drawPath(
-      path,
-      Paint()
-        ..isAntiAlias = true
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = sigma * 1.5
-        ..strokeCap = StrokeCap.round
-        ..strokeJoin = StrokeJoin.round
-        ..color = color
-        ..maskFilter = MaskFilter.blur(BlurStyle.normal, sigma)
-        ..blendMode = BlendMode.screen,
-    );
-  }
-
-  void _paintVignette(Canvas canvas, Rect bounds) {
-    canvas.drawRect(
-      bounds,
-      Paint()
-        ..isAntiAlias = true
-        ..shader = const RadialGradient(
-          center: Alignment.center,
-          radius: 1.1,
-          colors: <Color>[Color(0x00000000), Color(0xCC000005)],
-          stops: <double>[0.55, 1.0],
-        ).createShader(bounds),
-    );
-  }
-
-  // --- Liquid band paths (Kıvrımlar orijinal haliyle mükemmel olduğu için korundu) ---
-
-  Path _buildLeftMass(Size size, double t) {
-    final double w = size.width, h = size.height;
-    final double a1 = _sin(t), a2 = _sin(t, 1.1, 2);
-    final double b1 = _cos(t, 0.7), b2 = _cos(t, 2.0, 2);
-
-    return Path()
-      ..moveTo(-0.6 * w, -0.4 * h)
-      ..cubicTo(
-        -0.10 * w, -0.34 * h,
-        0.24 * w + 0.03 * w * a2, -0.16 * h,
-        0.46 * w + 0.03 * w * b1, 0.10 * h,
-      )
-      ..cubicTo(
-        0.66 * w + 0.035 * w * a1, 0.30 * h + 0.03 * h * b2,
-        0.70 * w + 0.030 * w * b1, 0.54 * h + 0.03 * h * a2,
-        0.50 * w + 0.030 * w * a2, 0.72 * h + 0.025 * h * b1,
-      )
-      ..cubicTo(
-        0.36 * w + 0.03 * w * b2, 0.86 * h,
-        0.30 * w, 1.12 * h,
-        0.08 * w, 1.40 * h,
-      )
-      ..lineTo(-0.6 * w, 1.40 * h)
-      ..close();
-  }
-
-  Path _buildUpperRight(Size size, double t) {
-    final double w = size.width, h = size.height;
-    final double a1 = _sin(t, 1.8), a2 = _sin(t, 0.5, 2);
-    final double b1 = _cos(t, 2.1), b2 = _cos(t, 0.9, 2);
-
-    return Path()
-      ..moveTo(1.4 * w, -0.4 * h)
-      ..cubicTo(
-        1.00 * w, -0.30 * h,
-        0.78 * w + 0.03 * w * a1, -0.10 * h,
-        0.66 * w + 0.03 * w * b2, 0.18 * h,
-      )
-      ..cubicTo(
-        0.60 * w + 0.03 * w * b1, 0.32 * h,
-        0.66 * w + 0.03 * w * a2, 0.46 * h,
-        0.84 * w + 0.03 * w * a1, 0.52 * h,
-      )
-      ..cubicTo(
-        1.04 * w, 0.58 * h,
-        1.20 * w, 0.28 * h,
-        1.40 * w, 0.0 * h,
-      )
-      ..lineTo(1.4 * w, -0.4 * h)
-      ..close();
-  }
-
-  Path _buildBottomBlob(Size size, double t) {
-    final double w = size.width, h = size.height;
-    final double a1 = _sin(t, 3.9), a2 = _sin(t, 1.3, 2);
-    final double b1 = _cos(t, 1.0), b2 = _cos(t, 2.3, 2);
-
-    return Path()
-      ..moveTo(-0.4 * w, 1.4 * h)
-      ..cubicTo(
-        0.0 * w, 1.06 * h,
-        0.18 * w + 0.03 * w * a1, 0.86 * h,
-        0.40 * w + 0.03 * w * b2, 0.80 * h,
-      )
-      ..cubicTo(
-        0.55 * w + 0.03 * w * a2, 0.74 * h,
-        0.60 * w + 0.03 * w * b1, 0.56 * h,
-        0.78 * w + 0.03 * w * a1, 0.66 * h,
-      )
-      ..cubicTo(
-        0.92 * w, 0.74 * h,
-        1.12 * w, 0.92 * h,
-        1.4 * w, 1.10 * h,
-      )
-      ..lineTo(1.4 * w, 1.4 * h)
-      ..close();
-  }
-
-  double _sin(double t, [double phase = 0, int n = 1]) =>
-      math.sin(_tau * n * t + phase);
-
-  double _cos(double t, [double phase = 0, int n = 1]) =>
-      math.cos(_tau * n * t + phase);
 
   @override
-  bool shouldRepaint(_AuroraPainter oldDelegate) => false;
+  bool shouldRepaint(_LiquidWavePainter oldDelegate) => false;
 }
