@@ -16,10 +16,13 @@ class WelcomeBrandIntro extends StatefulWidget {
 }
 
 class _WelcomeBrandIntroState extends State<WelcomeBrandIntro>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
   static const Duration _introDelay = Duration(seconds: 2);
 
   late final AnimationController _controller;
+
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
@@ -44,6 +47,8 @@ class _WelcomeBrandIntroState extends State<WelcomeBrandIntro>
 
   @override
   Widget build(BuildContext context) {
+    super.build(context);
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final Size screen = MediaQuery.sizeOf(context);
