@@ -1,23 +1,8 @@
 import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 
-/// Full-screen, slowly drifting "liquid aurora" backdrop.
-///
-/// A premium deep-navy field with large, soft blue / indigo / violet / lavender
-/// glow blobs that drift, breathe and gently morph on a seamless loop. The bright
-/// glows are composited with [BlendMode.screen] over the dark base, so where they
-/// overlap they fold into brighter lavender ridges — the calm, Apple-like fluid
-/// wallpaper look — without ever blowing out to harsh neon.
-///
-/// Everything is painted natively with a single [CustomPainter] driven by one
-/// [AnimationController]: no images, video, Lottie, WebView, shaders or extra
-/// packages, and no [BackdropFilter]. That keeps it cheap enough to sit behind
-/// the splash / onboarding content on both Android and iOS.
-///
-/// Drop it at the bottom of a [Stack] (e.g. inside a `Positioned.fill`) and lay
-/// your content on top; a built-in vignette settles the edges and keeps that
-/// content readable.
+/// Full-screen animated liquid wallpaper.
+/// Dark, rich, and saturated blue/purple tones with a perceptible slow wave.
 class AuroraBackground extends StatefulWidget {
   const AuroraBackground({super.key});
 
@@ -27,10 +12,8 @@ class AuroraBackground extends StatefulWidget {
 
 class _AuroraBackgroundState extends State<AuroraBackground>
     with SingleTickerProviderStateMixin {
-  /// One slow master clock. Every motion frequency in [_AuroraPainter] is a
-  /// whole number of cycles per loop, so the whole scene returns exactly to its
-  /// start when the controller wraps — the loop is seamless.
-  static const Duration _loop = Duration(seconds: 48);
+  // Animasyon hızını 48'den 32'ye düşürdük. Yavaş ama daha "bilinir" seviyede bir akış sağlar.
+  static const Duration _loop = Duration(seconds: 32);
 
   late final AnimationController _controller =
       AnimationController(vsync: this, duration: _loop)..repeat();
@@ -43,7 +26,6 @@ class _AuroraBackgroundState extends State<AuroraBackground>
 
   @override
   Widget build(BuildContext context) {
-    // Isolate the forever-animating paint so it never marks siblings dirty.
     return RepaintBoundary(
       child: CustomPaint(
         painter: _AuroraPainter(_controller),
@@ -55,229 +37,281 @@ class _AuroraBackgroundState extends State<AuroraBackground>
   }
 }
 
-/// Immutable description of one glowing blob in the aurora field.
-///
-/// All positions and sizes are fractions of the canvas, so the scene scales to
-/// any phone size. Motion uses whole-number cycle counts to stay loop-safe.
-class _Blob {
-  const _Blob({
-    required this.color,
-    required this.center,
-    required this.radius,
-    required this.drift,
-    required this.driftCycles,
-    required this.phase,
-    required this.breathe,
-    required this.breatheCycles,
-    required this.squash,
-    required this.tilt,
-  });
-
-  /// Glow colour at the core; its alpha sets the glow strength. Fades to fully
-  /// transparent at the rim.
-  final Color color;
-
-  /// Resting centre, in fractions of the canvas (0..1, 0..1).
-  final Offset center;
-
-  /// Core radius, as a fraction of the canvas' longest side.
-  final double radius;
-
-  /// Drift travel along an elliptical path, as a fraction of the canvas.
-  final Offset drift;
-
-  /// Whole-number drift laps per loop (keeps the loop seamless).
-  final double driftCycles;
-
-  /// Phase offset (radians) so blobs never move in lockstep.
-  final double phase;
-
-  /// Radius "breathing" amount, as a fraction of [radius].
-  final double breathe;
-
-  /// Whole-number breaths per loop.
-  final double breatheCycles;
-
-  /// Vertical squash (1 = circle, < 1 = wide ellipse) for an organic shape.
-  final double squash;
-
-  /// Ellipse tilt, in radians.
-  final double tilt;
-}
+// ---------------------------------------------------------------------------
+// Painter
+// ---------------------------------------------------------------------------
 
 class _AuroraPainter extends CustomPainter {
-  _AuroraPainter(this.animation) : super(repaint: animation);
+  _AuroraPainter(this._animation) : super(repaint: _animation);
 
-  /// Loop progress, 0..1.
-  final Animation<double> animation;
+  final Animation<double> _animation;
 
-  // --- Palette -------------------------------------------------------------
-  // Deep, almost-black navy base with a faint violet tint.
-  static const Color _baseTop = Color(0xFF04030C);
-  static const Color _baseBottom = Color(0xFF080A1E);
-  // Glow colours carry their strength in the alpha channel (composited with
-  // BlendMode.screen, so on the dark base the visible brightness ≈ colour×alpha).
-  static const Color _electricBlue = Color(0xC22A66FF);
-  static const Color _royalBlue = Color(0xB81C3AD8);
-  static const Color _indigo = Color(0x9A2422A0);
-  static const Color _violet = Color(0xAA6A34E6);
-  static const Color _lavender = Color(0x8FB8A7FF);
-  static const Color _violetWash = Color(0x55402AB0);
+  static const double _tau = 2 * math.pi;
 
-  /// The drifting glows, painted back-to-front. Roughly echoes the reference:
-  /// electric blue weight upper-left, violet through the centre, deeper blues
-  /// low, lavender highlights riding the folds — dark negative space elsewhere.
-  static const List<_Blob> _blobs = <_Blob>[
-    // Soft wide violet wash for overall cohesion.
-    _Blob(
-      color: _violetWash,
-      center: Offset(0.50, 0.58),
-      radius: 0.72,
-      drift: Offset(0.04, 0.05),
-      driftCycles: 1,
-      phase: 0.6,
-      breathe: 0.10,
-      breatheCycles: 1,
-      squash: 0.9,
-      tilt: -0.35,
-    ),
-    // Electric-blue mass, upper-left.
-    _Blob(
-      color: _electricBlue,
-      center: Offset(0.30, 0.30),
-      radius: 0.58,
-      drift: Offset(0.06, 0.05),
-      driftCycles: 1,
-      phase: 0.0,
-      breathe: 0.13,
-      breatheCycles: 2,
-      squash: 0.82,
-      tilt: -0.5,
-    ),
-    // Royal blue sweeping the lower-left.
-    _Blob(
-      color: _royalBlue,
-      center: Offset(0.26, 0.78),
-      radius: 0.55,
-      drift: Offset(0.05, 0.06),
-      driftCycles: 1,
-      phase: 2.1,
-      breathe: 0.14,
-      breatheCycles: 1,
-      squash: 0.85,
-      tilt: 0.4,
-    ),
-    // Violet body through the centre-right.
-    _Blob(
-      color: _violet,
-      center: Offset(0.70, 0.55),
-      radius: 0.50,
-      drift: Offset(0.06, 0.05),
-      driftCycles: 2,
-      phase: 1.2,
-      breathe: 0.15,
-      breatheCycles: 1,
-      squash: 0.9,
-      tilt: 0.6,
-    ),
-    // Deep indigo settling the lower-right.
-    _Blob(
-      color: _indigo,
-      center: Offset(0.82, 0.84),
-      radius: 0.46,
-      drift: Offset(0.05, 0.05),
-      driftCycles: 1,
-      phase: 3.4,
-      breathe: 0.12,
-      breatheCycles: 2,
-      squash: 0.88,
-      tilt: -0.3,
-    ),
-    // Bright lavender highlight riding the central fold.
-    _Blob(
-      color: _lavender,
-      center: Offset(0.44, 0.50),
-      radius: 0.30,
-      drift: Offset(0.07, 0.06),
-      driftCycles: 2,
-      phase: 1.9,
-      breathe: 0.18,
-      breatheCycles: 3,
-      squash: 0.8,
-      tilt: -0.8,
-    ),
-  ];
+  // --- Karanlık ve Doygun Renk Paleti (Resimdeki Tonlar) ---
+  static const Color _bgTop = Color(0xFF02040F); // Çok koyu gece mavisi
+  static const Color _bgBottom = Color(0xFF000000); // Saf siyah/lacivert zemin
+
+  static const Color _vividBlue = Color(0xFF2041F5); // Elektrik mavisi
+  static const Color _deepBlue = Color(0xFF0D1B6E); // Derin lacivert
+  static const Color _darkNavy = Color(0xFF050B24); // Gölgeli koyu lacivert
+  static const Color _neonPurple = Color(0xFF6C33E8); // Parlak mor
+  static const Color _richPurple = Color(0xFF2A106B); // Koyu mor
+
+  // Parlama alanları (Beyaz veya pastel yerine kendi renklerinin parlak/transparan halleri)
+  static const Color _bluePool = Color(0x662041F5);
+  static const Color _bluePool0 = Color(0x002041F5);
+  static const Color _violPool = Color(0x556C33E8);
+  static const Color _violPool0 = Color(0x006C33E8);
+  static const Color _centerGlow = Color(0x774F26B8); 
+  static const Color _centerGlow0 = Color(0x004F26B8);
+
+  // Dalga uçlarındaki keskin vuruşlar (Vivid/Doygun)
+  static const Color _purpleRim = Color(0xAA8A52FF);
+  static const Color _blueRim = Color(0x994D70FF);
 
   @override
   void paint(Canvas canvas, Size size) {
     final Rect bounds = Offset.zero & size;
+    final double t = _animation.value;
+    final double w = size.width;
+    final double h = size.height;
+
     _paintBase(canvas, bounds);
 
-    final double t = animation.value;
-    final double longest = math.max(size.width, size.height);
-    for (final _Blob blob in _blobs) {
-      _paintBlob(canvas, size, longest, blob, t);
-    }
+    // Arkadaki derinlik yaratan renk havuzları
+    _paintGlow(
+      canvas,
+      Offset(w * (0.30 + 0.05 * _sin(t)), h * (0.42 + 0.04 * _cos(t, 0.5))),
+      math.max(w, h) * 0.62,
+      _bluePool,
+      _bluePool0,
+    );
+    _paintGlow(
+      canvas,
+      Offset(w * (0.84 + 0.04 * _cos(t, 1.5)), h * (0.16 + 0.05 * _sin(t, 2.0))),
+      math.max(w, h) * 0.50,
+      _violPool,
+      _violPool0,
+    );
+
+    // 3 Ana Dalga Kütlesi (Soft renkler çıkarıldı, dark/vivid geçişler eklendi)
+    _paintLiquidBand(
+      canvas,
+      bounds,
+      _buildLeftMass(size, t),
+      const <Color>[_vividBlue, _deepBlue, _darkNavy],
+      const Alignment(-0.7, -0.6),
+      const Alignment(0.6, 1.0),
+      25,
+    );
+    _paintLiquidBand(
+      canvas,
+      bounds,
+      _buildUpperRight(size, t),
+      const <Color>[_neonPurple, _richPurple, _darkNavy],
+      const Alignment(0.9, -0.7),
+      const Alignment(-0.2, 0.9),
+      28,
+    );
+    _paintLiquidBand(
+      canvas,
+      bounds,
+      _buildBottomBlob(size, t),
+      const <Color>[_richPurple, _vividBlue, _deepBlue],
+      const Alignment(0.0, 1.0),
+      const Alignment(0.3, -0.2),
+      25,
+    );
+
+    // Dalga kenarlarındaki ince, doygun mor ve mavi parlamalar
+    _paintHighlight(canvas, _buildLeftMass(size, t), _blueRim, 15);
+    _paintHighlight(canvas, _buildBottomBlob(size, t), _purpleRim, 14);
+    _paintHighlight(canvas, _buildUpperRight(size, t), _blueRim, 18);
+
+    // Merkezdeki kesişim noktasındaki koyu mor parlama
+    _paintGlow(
+      canvas,
+      Offset(w * (0.57 + 0.04 * _sin(t, 1.0)), h * (0.50 + 0.05 * _cos(t))),
+      math.max(w, h) * 0.35,
+      _centerGlow,
+      _centerGlow0,
+    );
 
     _paintVignette(canvas, bounds);
   }
 
-  /// Very dark navy fill so the glows always read against deep negative space.
+  // --- Layers ---------------------------------------------------------------
+
   void _paintBase(Canvas canvas, Rect bounds) {
-    const LinearGradient gradient = LinearGradient(
-      begin: Alignment.topCenter,
-      end: Alignment.bottomCenter,
-      colors: <Color>[_baseTop, _baseBottom],
+    canvas.drawRect(
+      bounds,
+      Paint()
+        ..isAntiAlias = true
+        ..shader = const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: <Color>[_bgTop, _bgBottom],
+        ).createShader(bounds),
     );
-    canvas.drawRect(bounds, Paint()..shader = gradient.createShader(bounds));
   }
 
-  /// Draws one drifting, breathing, squashed glow.
-  void _paintBlob(
+  void _paintGlow(
     Canvas canvas,
-    Size size,
-    double longest,
-    _Blob blob,
-    double t,
+    Offset center,
+    double radius,
+    Color hot,
+    Color cold,
   ) {
-    final double driftAngle = 2 * math.pi * blob.driftCycles * t + blob.phase;
-    final double breath =
-        math.sin(2 * math.pi * blob.breatheCycles * t + blob.phase);
-
-    final double cx =
-        blob.center.dx * size.width + blob.drift.dx * size.width * math.cos(driftAngle);
-    final double cy =
-        blob.center.dy * size.height + blob.drift.dy * size.height * math.sin(driftAngle);
-    final double radius = blob.radius * longest * (1 + blob.breathe * breath);
-
-    final Rect rect = Rect.fromCircle(center: Offset.zero, radius: radius);
-    final Paint paint = Paint()
-      ..blendMode = BlendMode.screen
-      ..shader = RadialGradient(
-        colors: <Color>[blob.color, blob.color.withAlpha(0)],
-        stops: const <double>[0.0, 1.0],
-      ).createShader(rect);
-
-    canvas.save();
-    canvas.translate(cx, cy);
-    canvas.rotate(blob.tilt);
-    canvas.scale(1, blob.squash); // turn the circle into a soft ellipse
-    canvas.drawCircle(Offset.zero, radius, paint);
-    canvas.restore();
+    canvas.drawCircle(
+      center,
+      radius,
+      Paint()
+        ..isAntiAlias = true
+        ..blendMode = BlendMode.screen
+        ..shader = RadialGradient(
+          colors: <Color>[hot, cold],
+        ).createShader(Rect.fromCircle(center: center, radius: radius)),
+    );
   }
 
-  /// Gentle darkening of the corners — settles the edges and keeps foreground
-  /// content readable.
+  void _paintLiquidBand(
+    Canvas canvas,
+    Rect bounds,
+    Path path,
+    List<Color> colors,
+    Alignment begin,
+    Alignment end,
+    double blur,
+  ) {
+    canvas.drawPath(
+      path,
+      Paint()
+        ..isAntiAlias = true
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, blur)
+        ..shader = LinearGradient(
+          begin: begin,
+          end: end,
+          colors: colors,
+          stops: const <double>[0.0, 0.5, 1.0],
+        ).createShader(bounds),
+    );
+  }
+
+  void _paintHighlight(Canvas canvas, Path path, Color color, double sigma) {
+    canvas.drawPath(
+      path,
+      Paint()
+        ..isAntiAlias = true
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = sigma * 1.5
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round
+        ..color = color
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, sigma)
+        ..blendMode = BlendMode.screen,
+    );
+  }
+
   void _paintVignette(Canvas canvas, Rect bounds) {
-    final Paint paint = Paint()
-      ..shader = RadialGradient(
-        center: Alignment.center,
-        radius: 0.95,
-        colors: const <Color>[Color(0x00000000), Color(0x73020208)],
-        stops: const <double>[0.55, 1.0],
-      ).createShader(bounds);
-    canvas.drawRect(bounds, paint);
+    canvas.drawRect(
+      bounds,
+      Paint()
+        ..isAntiAlias = true
+        ..shader = const RadialGradient(
+          center: Alignment.center,
+          radius: 1.1,
+          colors: <Color>[Color(0x00000000), Color(0xCC000005)],
+          stops: <double>[0.55, 1.0],
+        ).createShader(bounds),
+    );
   }
+
+  // --- Liquid band paths (Kıvrımlar orijinal haliyle mükemmel olduğu için korundu) ---
+
+  Path _buildLeftMass(Size size, double t) {
+    final double w = size.width, h = size.height;
+    final double a1 = _sin(t), a2 = _sin(t, 1.1, 2);
+    final double b1 = _cos(t, 0.7), b2 = _cos(t, 2.0, 2);
+
+    return Path()
+      ..moveTo(-0.6 * w, -0.4 * h)
+      ..cubicTo(
+        -0.10 * w, -0.34 * h,
+        0.24 * w + 0.03 * w * a2, -0.16 * h,
+        0.46 * w + 0.03 * w * b1, 0.10 * h,
+      )
+      ..cubicTo(
+        0.66 * w + 0.035 * w * a1, 0.30 * h + 0.03 * h * b2,
+        0.70 * w + 0.030 * w * b1, 0.54 * h + 0.03 * h * a2,
+        0.50 * w + 0.030 * w * a2, 0.72 * h + 0.025 * h * b1,
+      )
+      ..cubicTo(
+        0.36 * w + 0.03 * w * b2, 0.86 * h,
+        0.30 * w, 1.12 * h,
+        0.08 * w, 1.40 * h,
+      )
+      ..lineTo(-0.6 * w, 1.40 * h)
+      ..close();
+  }
+
+  Path _buildUpperRight(Size size, double t) {
+    final double w = size.width, h = size.height;
+    final double a1 = _sin(t, 1.8), a2 = _sin(t, 0.5, 2);
+    final double b1 = _cos(t, 2.1), b2 = _cos(t, 0.9, 2);
+
+    return Path()
+      ..moveTo(1.4 * w, -0.4 * h)
+      ..cubicTo(
+        1.00 * w, -0.30 * h,
+        0.78 * w + 0.03 * w * a1, -0.10 * h,
+        0.66 * w + 0.03 * w * b2, 0.18 * h,
+      )
+      ..cubicTo(
+        0.60 * w + 0.03 * w * b1, 0.32 * h,
+        0.66 * w + 0.03 * w * a2, 0.46 * h,
+        0.84 * w + 0.03 * w * a1, 0.52 * h,
+      )
+      ..cubicTo(
+        1.04 * w, 0.58 * h,
+        1.20 * w, 0.28 * h,
+        1.40 * w, 0.0 * h,
+      )
+      ..lineTo(1.4 * w, -0.4 * h)
+      ..close();
+  }
+
+  Path _buildBottomBlob(Size size, double t) {
+    final double w = size.width, h = size.height;
+    final double a1 = _sin(t, 3.9), a2 = _sin(t, 1.3, 2);
+    final double b1 = _cos(t, 1.0), b2 = _cos(t, 2.3, 2);
+
+    return Path()
+      ..moveTo(-0.4 * w, 1.4 * h)
+      ..cubicTo(
+        0.0 * w, 1.06 * h,
+        0.18 * w + 0.03 * w * a1, 0.86 * h,
+        0.40 * w + 0.03 * w * b2, 0.80 * h,
+      )
+      ..cubicTo(
+        0.55 * w + 0.03 * w * a2, 0.74 * h,
+        0.60 * w + 0.03 * w * b1, 0.56 * h,
+        0.78 * w + 0.03 * w * a1, 0.66 * h,
+      )
+      ..cubicTo(
+        0.92 * w, 0.74 * h,
+        1.12 * w, 0.92 * h,
+        1.4 * w, 1.10 * h,
+      )
+      ..lineTo(1.4 * w, 1.4 * h)
+      ..close();
+  }
+
+  double _sin(double t, [double phase = 0, int n = 1]) =>
+      math.sin(_tau * n * t + phase);
+
+  double _cos(double t, [double phase = 0, int n = 1]) =>
+      math.cos(_tau * n * t + phase);
 
   @override
   bool shouldRepaint(_AuroraPainter oldDelegate) => false;
