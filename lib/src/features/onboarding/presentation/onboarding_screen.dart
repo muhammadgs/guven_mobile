@@ -193,7 +193,7 @@ class _SwipeResponsiveBrandLockupState extends State<_SwipeResponsiveBrandLockup
             final double brandSize = _lerp(startBrandSize, endBrandSize, moveT);
 
             final double startTop =
-                (screen.height * 0.292).clamp(206.0, 272.0).toDouble();
+                (screen.height * 0.305).clamp(218.0, 286.0).toDouble();
             final double endTop = padding.top +
                 (screen.height * 0.07).clamp(48.0, 72.0).toDouble();
             final double top = _lerp(startTop, endTop, moveT);
@@ -215,7 +215,7 @@ class _SwipeResponsiveBrandLockupState extends State<_SwipeResponsiveBrandLockup
                             width: logoWidth,
                             progress: logoIntroProgress,
                           ),
-                          SizedBox(height: _lerp(4, 4, moveT)),
+                          SizedBox(height: _lerp(14, 6, moveT)),
                           Opacity(
                             opacity: Curves.easeOut.transform(
                               brandIntroProgress,
