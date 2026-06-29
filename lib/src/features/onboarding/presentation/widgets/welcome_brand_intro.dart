@@ -145,7 +145,7 @@ class _WelcomeBrandIntroState extends State<WelcomeBrandIntro>
                   SizedBox(height: signatureGap),
                   _BlurRevealText(
                     progress: _interval(0.6, 0.8),
-                    text: 'GF44',
+                    text: 'Xoş Gəlmişsiniz!',
                     style: TextStyle(
                       color: Colors.white,
                       fontFamily: 'CalSans',
