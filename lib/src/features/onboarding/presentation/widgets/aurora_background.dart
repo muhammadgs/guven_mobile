@@ -3,8 +3,8 @@ import 'package:video_player/video_player.dart';
 
 /// Full-screen looping video backdrop used by the onboarding flow.
 ///
-/// Keeps the historical public widget name so callers can continue to place an
-/// [AuroraBackground] behind their Flutter-native onboarding content.
+/// Keeps the public widget name so the onboarding screen can continue using
+/// `AuroraBackground()` as the bottom layer of its Stack.
 class AuroraBackground extends StatefulWidget {
   const AuroraBackground({super.key});
 
@@ -22,20 +22,26 @@ class _AuroraBackgroundState extends State<AuroraBackground> {
   @override
   void initState() {
     super.initState();
-    _controller = VideoPlayerController.asset(_assetPath)
-      ..setLooping(true)
-      ..setVolume(0);
-    _initializeVideo();
+    _controller = VideoPlayerController.asset(
+      _assetPath,
+      videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
+    );
+    _prepareVideo();
   }
 
-  Future<void> _initializeVideo() async {
+  Future<void> _prepareVideo() async {
     try {
       await _controller.initialize();
-      await _controller.play();
+      await _controller.setLooping(true);
+      await _controller.setVolume(0);
+      await _controller.seekTo(Duration.zero);
+
       if (!mounted) return;
       setState(() {
         _isReady = true;
       });
+
+      await _controller.play();
     } on Object {
       if (!mounted) return;
       setState(() {
@@ -52,13 +58,18 @@ class _AuroraBackgroundState extends State<AuroraBackground> {
 
   @override
   Widget build(BuildContext context) {
-    return Stack(
-      fit: StackFit.expand,
-      children: <Widget>[
-        const _FallbackBackground(),
-        if (_isReady && !_hasError) _CoverVideo(controller: _controller),
-        const _ReadabilityOverlay(),
-      ],
+    return IgnorePointer(
+      child: Stack(
+        fit: StackFit.expand,
+        children: <Widget>[
+          const _FallbackBackground(),
+          if (_isReady && !_hasError)
+            Positioned.fill(
+              child: _CoverVideo(controller: _controller),
+            ),
+          const _ReadabilityOverlay(),
+        ],
+      ),
     );
   }
 }
@@ -70,16 +81,18 @@ class _CoverVideo extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Size videoSize = controller.value.size;
+    final VideoPlayerValue value = controller.value;
+    final Size videoSize = value.size;
 
-    if (videoSize.isEmpty) {
-      return const SizedBox.shrink();
+    if (!value.isInitialized || videoSize.width <= 0 || videoSize.height <= 0) {
+      return const SizedBox.expand();
     }
 
     return ClipRect(
-      child: Center(
+      child: SizedBox.expand(
         child: FittedBox(
           fit: BoxFit.cover,
+          alignment: Alignment.center,
           child: SizedBox(
             width: videoSize.width,
             height: videoSize.height,
@@ -124,9 +137,9 @@ class _ReadabilityOverlay extends StatelessWidget {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: <Color>[
+            Color(0x26000000),
+            Color(0x08000000),
             Color(0x33000000),
-            Color(0x14000000),
-            Color(0x3D000000),
           ],
           stops: <double>[0, 0.48, 1],
         ),
