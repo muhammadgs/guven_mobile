@@ -38,6 +38,7 @@ dependencies:
   # Renders the Güvən Finans vector logo (SVG) used by the onboarding build-up
   # animation. Flutter has no native SVG support, so this package is required.
   flutter_svg: ^2.0.10
+  video_player: ^2.10.0
 
 dev_dependencies:
   flutter_test:
@@ -63,6 +64,7 @@ flutter:
 
   assets:
     - assets/images/logos/logo.svg
+    - assets/videos/onboarding_background.mp4
 
   shaders:
     - shaders/aurora.frag
