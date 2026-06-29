@@ -43,7 +43,7 @@ class _Gf44OverviewPageState extends State<Gf44OverviewPage>
       vsync: this,
       duration: const Duration(milliseconds: 2400),
     )
-      ..value = _savedProgress.clamp(0.0, 1.0)
+      ..value = _savedProgress.clamp(0.0, 1.0).toDouble()
       ..addListener(_rememberProgress)
       ..addStatusListener(_rememberCompletion);
 
@@ -118,13 +118,18 @@ class _Gf44OverviewPageState extends State<Gf44OverviewPage>
           final double availableHeight = constraints.maxHeight.isFinite
               ? constraints.maxHeight
               : screen.height;
-          final double logoWidth = (screen.width * 0.33).clamp(116.0, 158.0);
-          final double brandSize = (screen.width * 0.064).clamp(22.0, 30.0);
-          final double headlineSize = (screen.width * 0.13).clamp(42.0, 58.0);
+          final double logoWidth =
+              (screen.width * 0.33).clamp(116.0, 158.0).toDouble();
+          final double brandSize =
+              (screen.width * 0.064).clamp(22.0, 30.0).toDouble();
+          final double headlineSize =
+              (screen.width * 0.13).clamp(42.0, 58.0).toDouble();
           final double descriptionSize =
-              (screen.width * 0.052).clamp(17.0, 22.0);
-          final double topOffset = (availableHeight * 0.018).clamp(8.0, 24.0);
-          final double bottomReserve = 132 + MediaQuery.paddingOf(context).bottom;
+              (screen.width * 0.052).clamp(17.0, 22.0).toDouble();
+          final double topOffset =
+              (availableHeight * 0.018).clamp(8.0, 24.0).toDouble();
+          final double bottomReserve =
+              132 + MediaQuery.paddingOf(context).bottom;
 
           return Padding(
             padding: EdgeInsets.fromLTRB(22, 0, 22, bottomReserve),
@@ -197,7 +202,8 @@ class _Gf44OverviewPageState extends State<Gf44OverviewPage>
 
   double _interval(double start, double end) {
     final double value = ((_controller.value - start) / (end - start))
-        .clamp(0.0, 1.0);
+        .clamp(0.0, 1.0)
+        .toDouble();
     return Curves.easeOutCubic.transform(value);
   }
 }
@@ -215,7 +221,7 @@ class _CompactBrandLockup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final double t = progress.clamp(0.0, 1.0);
+    final double t = progress.clamp(0.0, 1.0).toDouble();
     final double opacity = Curves.easeOut.transform(t);
     final double scale = 1.22 - 0.22 * t;
     final double dy = 58 * (1 - t);
@@ -268,8 +274,10 @@ class _TypewriterBlurText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final double t = progress.clamp(0.0, 1.0);
-    final int visibleCount = (text.length * t).ceil().clamp(0, text.length);
+    final double t = progress.clamp(0.0, 1.0).toDouble();
+    final int visibleCount = ((text.length * t).ceil())
+        .clamp(0, text.length)
+        .toInt();
     final String visibleText = text.substring(0, visibleCount);
 
     return Stack(
@@ -318,7 +326,7 @@ class _BlurRevealText extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final double t = progress.clamp(0.0, 1.0);
+    final double t = progress.clamp(0.0, 1.0).toDouble();
 
     return Opacity(
       opacity: Curves.easeOut.transform(t),
