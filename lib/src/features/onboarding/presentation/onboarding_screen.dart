@@ -1,16 +1,15 @@
 import 'package:flutter/material.dart';
 
 import '../../../shared/effects.dart';
-import 'widgets/animated_logo.dart';
+import 'widgets/welcome_brand_intro.dart';
 import 'widgets/glass_page_indicator.dart';
 import 'widgets/glass_swipe_arrow.dart';
-import 'widgets/welcome_text.dart';
 
 /// Pre-login welcome / intro flow.
 ///
 /// Shown only when the user is not authenticated; once login lands this is
 /// skipped in favour of the dashboards. It is a multi-page swipe experience —
-/// page one is the branded "Xoş gəlmişsiniz!" welcome, the remaining pages are
+/// page one is the branded Güvən Finans intro, the remaining pages are
 /// placeholders whose content will be filled in later. A single continuous
 /// aurora backdrop sits behind every page.
 class OnboardingScreen extends StatefulWidget {
@@ -103,7 +102,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 }
 
-/// First page: the animated logo + blur-in welcome headline, wrapped in a
+/// First page: the sequenced Güvən Finans brand intro, wrapped in a
 /// blur-out "exit" tied to the swipe so the hero dissolves as you leave.
 class _WelcomePage extends StatelessWidget {
   const _WelcomePage({required this.controller, required this.index});
@@ -113,24 +112,16 @@ class _WelcomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final double logoWidth =
-        (MediaQuery.of(context).size.width * 0.44).clamp(140.0, 190.0);
+    final double bottomReserve = 150 + MediaQuery.paddingOf(context).bottom;
 
     return _ExitOnSwipe(
       controller: controller,
       index: index,
       child: SafeArea(
-        child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              AnimatedGuvenLogo(
-                width: logoWidth,
-                delay: const Duration(milliseconds: 250),
-              ),
-              const SizedBox(height: 22),
-              const WelcomeText(text: 'Xoş gəlmişsiniz!'),
-            ],
+        child: Padding(
+          padding: EdgeInsets.only(bottom: bottomReserve),
+          child: const Center(
+            child: WelcomeBrandIntro(),
           ),
         ),
       ),

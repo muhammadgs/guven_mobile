@@ -14,10 +14,15 @@ class AnimatedGuvenLogo extends StatefulWidget {
     super.key,
     required this.width,
     this.delay = Duration.zero,
+    this.progress,
   });
 
   final double width;
   final Duration delay;
+
+  /// Optional externally-owned timeline progress. When provided, this widget
+  /// becomes deterministic and does not run its private controller.
+  final double? progress;
 
   static const String _assetPath = 'assets/images/logos/logo.svg';
 
@@ -57,8 +62,10 @@ class _AnimatedGuvenLogoState extends State<AnimatedGuvenLogo>
           SvgPicture.string(svg, fit: BoxFit.contain),
       ];
     });
-    await Future<void>.delayed(widget.delay);
-    if (mounted) _controller.forward();
+    if (widget.progress == null) {
+      await Future<void>.delayed(widget.delay);
+      if (mounted) _controller.forward();
+    }
   }
 
   @override
@@ -82,10 +89,19 @@ class _AnimatedGuvenLogoState extends State<AnimatedGuvenLogo>
       child: AnimatedBuilder(
         animation: _controller,
         builder: (context, _) {
+          final double progress =
+              (widget.progress ?? _controller.value).clamp(0.0, 1.0);
           return Stack(
             children: <Widget>[
               for (int i = 0; i < pieces.length; i++)
-                Positioned.fill(child: _animatePiece(i, pieces.length, pieces[i])),
+                Positioned.fill(
+                  child: _animatePiece(
+                    i,
+                    pieces.length,
+                    pieces[i],
+                    progress,
+                  ),
+                ),
             ],
           );
         },
@@ -95,19 +111,20 @@ class _AnimatedGuvenLogoState extends State<AnimatedGuvenLogo>
 
   /// Staggers each piece across the timeline and applies the
   /// blur → opacity → settle transform for its current progress.
-  Widget _animatePiece(int index, int count, Widget child) {
-    final double start = count <= 1 ? 0.0 : (index / count) * 0.45;
-    final double end = (start + 0.75).clamp(0.0, 1.0);
-    final double raw =
-        ((_controller.value - start) / (end - start)).clamp(0.0, 1.0);
+  Widget _animatePiece(int index, int count, Widget child, double progress) {
+    final double order = count <= 1 ? 0.0 : index / (count - 1);
+    final double start = order * 0.34;
+    final double end = (start + 0.64).clamp(0.0, 1.0);
+    final double raw = ((progress - start) / (end - start)).clamp(0.0, 1.0);
     final double eased = Curves.easeOutCubic.transform(raw);
 
-    final double sigma = (1 - eased) * 16;
+    final double sigma = (1 - eased) * 18;
     final double opacity = Curves.easeOut.transform(raw);
-    final double scale = 1.14 - 0.14 * eased;
-    // Alternate pieces drift in from opposite sides as they converge.
-    final double dx = (index.isEven ? -1 : 1) * (1 - eased) * 18;
-    final double dy = (1 - eased) * 10;
+    final double scale = 1.08 - 0.08 * eased;
+    final double angle = (order - 0.5) * 1.6;
+    final double radius = (1 - eased) * 22;
+    final double dx = radius * angle;
+    final double dy = (1 - eased) * (10 - order * 16);
 
     return Opacity(
       opacity: opacity,
