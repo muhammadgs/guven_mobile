@@ -17,6 +17,8 @@ class WelcomeBrandIntro extends StatefulWidget {
 
 class _WelcomeBrandIntroState extends State<WelcomeBrandIntro>
     with SingleTickerProviderStateMixin {
+  static const Duration _introDelay = Duration(seconds: 5);
+
   late final AnimationController _controller;
 
   @override
@@ -24,8 +26,14 @@ class _WelcomeBrandIntroState extends State<WelcomeBrandIntro>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 4300),
-    )..forward();
+      duration: const Duration(milliseconds: 6500),
+    );
+    _startAfterBackgroundBreathes();
+  }
+
+  Future<void> _startAfterBackgroundBreathes() async {
+    await Future<void>.delayed(_introDelay);
+    if (mounted) _controller.forward();
   }
 
   @override
@@ -51,7 +59,7 @@ class _WelcomeBrandIntroState extends State<WelcomeBrandIntro>
         return AnimatedBuilder(
           animation: _controller,
           builder: (context, _) {
-            final double logoProgress = _interval(0.10, 0.56);
+            final double logoProgress = _interval(0.00, 0.62);
 
             return Padding(
               padding: const EdgeInsets.symmetric(horizontal: 28),
@@ -64,7 +72,7 @@ class _WelcomeBrandIntroState extends State<WelcomeBrandIntro>
                   ),
                   const SizedBox(height: 14),
                   _BlurRevealText(
-                    progress: _interval(0.59, 0.72),
+                    progress: _interval(0.65, 0.76),
                     text: 'Güvən Finans',
                     style: TextStyle(
                       color: Colors.white,
@@ -82,7 +90,7 @@ class _WelcomeBrandIntroState extends State<WelcomeBrandIntro>
                   ),
                   const SizedBox(height: 8),
                   _BlurRevealText(
-                    progress: _interval(0.75, 0.85),
+                    progress: _interval(0.79, 0.88),
                     text: 'İnnovativ maliyyə həlləri',
                     style: TextStyle(
                       color: const Color(0xEFFFFFFF),
@@ -100,7 +108,7 @@ class _WelcomeBrandIntroState extends State<WelcomeBrandIntro>
                   ),
                   SizedBox(height: signatureGap),
                   _BlurRevealText(
-                    progress: _interval(0.88, 1.00),
+                    progress: _interval(0.91, 1.00),
                     text: 'GF44',
                     style: TextStyle(
                       color: Colors.white,
