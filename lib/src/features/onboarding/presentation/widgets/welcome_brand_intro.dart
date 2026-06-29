@@ -107,7 +107,7 @@ class _WelcomeBrandIntroState extends State<WelcomeBrandIntro>
                 mainAxisSize: MainAxisSize.min,
                 children: <Widget>[
                   SizedBox(height: sharedLockupReserve),
-                  const SizedBox(height: 48),
+                  const SizedBox(height: 95),
                   _BlurRevealText(
                     progress: _interval(0.4, 0.6),
                     text: 'İnnovativ maliyyə həlləri',
