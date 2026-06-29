@@ -17,7 +17,7 @@ class WelcomeBrandIntro extends StatefulWidget {
 
 class _WelcomeBrandIntroState extends State<WelcomeBrandIntro>
     with SingleTickerProviderStateMixin {
-  static const Duration _introDelay = Duration(seconds: 5);
+  static const Duration _introDelay = Duration(seconds: 3);
 
   late final AnimationController _controller;
 
