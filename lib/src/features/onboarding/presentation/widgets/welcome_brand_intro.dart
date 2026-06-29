@@ -17,7 +17,7 @@ class WelcomeBrandIntro extends StatefulWidget {
 
 class _WelcomeBrandIntroState extends State<WelcomeBrandIntro>
     with SingleTickerProviderStateMixin {
-  static const Duration _introDelay = Duration(seconds: 3);
+  static const Duration _introDelay = Duration(seconds: 2);
 
   late final AnimationController _controller;
 
@@ -72,7 +72,7 @@ class _WelcomeBrandIntroState extends State<WelcomeBrandIntro>
                   ),
                   const SizedBox(height: 14),
                   _BlurRevealText(
-                    progress: _interval(0.555, 0.73),
+                    progress: _interval(0.2, 0.4),
                     text: 'Güvən Finans',
                     style: TextStyle(
                       color: Colors.white,
@@ -90,7 +90,7 @@ class _WelcomeBrandIntroState extends State<WelcomeBrandIntro>
                   ),
                   const SizedBox(height: 8),
                   _BlurRevealText(
-                    progress: _interval(0.705, 0.86),
+                    progress: _interval(0.4, 0.6),
                     text: 'İnnovativ maliyyə həlləri',
                     style: TextStyle(
                       color: const Color(0xEFFFFFFF),
@@ -108,7 +108,7 @@ class _WelcomeBrandIntroState extends State<WelcomeBrandIntro>
                   ),
                   SizedBox(height: signatureGap),
                   _BlurRevealText(
-                    progress: _interval(0.835, 1.00),
+                    progress: _interval(0.6, 0.8),
                     text: 'GF44',
                     style: TextStyle(
                       color: Colors.white,
