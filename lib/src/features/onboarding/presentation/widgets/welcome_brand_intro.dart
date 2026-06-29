@@ -24,7 +24,7 @@ class _WelcomeBrandIntroState extends State<WelcomeBrandIntro>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 3400),
+      duration: const Duration(milliseconds: 4300),
     )..forward();
   }
 
@@ -51,7 +51,7 @@ class _WelcomeBrandIntroState extends State<WelcomeBrandIntro>
         return AnimatedBuilder(
           animation: _controller,
           builder: (context, _) {
-            final double logoProgress = _interval(0.00, 0.47);
+            final double logoProgress = _interval(0.10, 0.56);
 
             return Padding(
               padding: const EdgeInsets.symmetric(horizontal: 28),
@@ -64,7 +64,7 @@ class _WelcomeBrandIntroState extends State<WelcomeBrandIntro>
                   ),
                   const SizedBox(height: 14),
                   _BlurRevealText(
-                    progress: _interval(0.50, 0.66),
+                    progress: _interval(0.59, 0.72),
                     text: 'Güvən Finans',
                     style: TextStyle(
                       color: Colors.white,
@@ -82,7 +82,7 @@ class _WelcomeBrandIntroState extends State<WelcomeBrandIntro>
                   ),
                   const SizedBox(height: 8),
                   _BlurRevealText(
-                    progress: _interval(0.68, 0.81),
+                    progress: _interval(0.75, 0.85),
                     text: 'İnnovativ maliyyə həlləri',
                     style: TextStyle(
                       color: const Color(0xEFFFFFFF),
@@ -100,7 +100,7 @@ class _WelcomeBrandIntroState extends State<WelcomeBrandIntro>
                   ),
                   SizedBox(height: signatureGap),
                   _BlurRevealText(
-                    progress: _interval(0.84, 1.00),
+                    progress: _interval(0.88, 1.00),
                     text: 'GF44',
                     style: TextStyle(
                       color: Colors.white,
