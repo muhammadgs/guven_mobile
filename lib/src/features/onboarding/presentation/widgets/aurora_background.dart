@@ -17,7 +17,6 @@ class _AuroraBackgroundState extends State<AuroraBackground> {
 
   late final VideoPlayerController _controller;
   bool _isReady = false;
-  bool _hasError = false;
 
   @override
   void initState() {
@@ -30,24 +29,17 @@ class _AuroraBackgroundState extends State<AuroraBackground> {
   }
 
   Future<void> _prepareVideo() async {
-    try {
-      await _controller.initialize();
-      await _controller.setLooping(true);
-      await _controller.setVolume(0);
-      await _controller.seekTo(Duration.zero);
+    await _controller.initialize();
+    await _controller.setLooping(true);
+    await _controller.setVolume(0);
+    await _controller.seekTo(Duration.zero);
 
-      if (!mounted) return;
-      setState(() {
-        _isReady = true;
-      });
+    if (!mounted) return;
+    setState(() {
+      _isReady = true;
+    });
 
-      await _controller.play();
-    } on Object {
-      if (!mounted) return;
-      setState(() {
-        _hasError = true;
-      });
-    }
+    await _controller.play();
   }
 
   @override
@@ -59,17 +51,9 @@ class _AuroraBackgroundState extends State<AuroraBackground> {
   @override
   Widget build(BuildContext context) {
     return IgnorePointer(
-      child: Stack(
-        fit: StackFit.expand,
-        children: <Widget>[
-          const _FallbackBackground(),
-          if (_isReady && !_hasError)
-            Positioned.fill(
-              child: _CoverVideo(controller: _controller),
-            ),
-          const _ReadabilityOverlay(),
-        ],
-      ),
+      child: _isReady
+          ? _CoverVideo(controller: _controller)
+          : const SizedBox.expand(),
     );
   }
 }
@@ -98,50 +82,6 @@ class _CoverVideo extends StatelessWidget {
             height: videoSize.height,
             child: VideoPlayer(controller),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-class _FallbackBackground extends StatelessWidget {
-  const _FallbackBackground();
-
-  @override
-  Widget build(BuildContext context) {
-    return const DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: <Color>[
-            Color(0xFF030416),
-            Color(0xFF050736),
-            Color(0xFF01021F),
-          ],
-          stops: <double>[0, 0.58, 1],
-        ),
-      ),
-    );
-  }
-}
-
-class _ReadabilityOverlay extends StatelessWidget {
-  const _ReadabilityOverlay();
-
-  @override
-  Widget build(BuildContext context) {
-    return const DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: <Color>[
-            Color(0x26000000),
-            Color(0x08000000),
-            Color(0x33000000),
-          ],
-          stops: <double>[0, 0.48, 1],
         ),
       ),
     );

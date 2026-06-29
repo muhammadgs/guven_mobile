@@ -53,7 +53,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final double bottomInset = MediaQuery.of(context).padding.bottom;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF05030E),
+      backgroundColor: Colors.transparent,
       body: Stack(
         children: <Widget>[
           const Positioned.fill(child: AuroraBackground()),
