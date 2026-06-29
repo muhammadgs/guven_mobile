@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../features/onboarding/presentation/onboarding_screen.dart';
+import '../features/auth/presentation/auth_flow_shell.dart';
 import 'app_theme.dart';
 
 class GuvenApp extends StatelessWidget {
@@ -12,7 +12,7 @@ class GuvenApp extends StatelessWidget {
       title: 'Güvən Mobile',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme(),
-      home: const OnboardingScreen(),
+      home: const AuthFlowShell(),
     );
   }
 }

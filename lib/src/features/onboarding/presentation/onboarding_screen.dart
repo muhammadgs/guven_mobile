@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import '../../../shared/effects.dart';
 import 'widgets/animated_logo.dart';
-import 'widgets/aurora_background.dart';
 import 'widgets/glass_page_indicator.dart';
 import 'widgets/glass_swipe_arrow.dart';
 import 'widgets/welcome_text.dart';
@@ -56,7 +55,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       backgroundColor: Colors.transparent,
       body: Stack(
         children: <Widget>[
-          const Positioned.fill(child: AuroraBackground()),
           Positioned.fill(
             child: PageView(
               controller: _pageController,
