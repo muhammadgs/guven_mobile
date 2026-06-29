@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../shared/effects.dart';
+import 'widgets/gf44_overview_page.dart';
 import 'widgets/welcome_brand_intro.dart';
 import 'widgets/glass_page_indicator.dart';
 import 'widgets/glass_swipe_arrow.dart';
@@ -9,9 +10,8 @@ import 'widgets/glass_swipe_arrow.dart';
 ///
 /// Shown only when the user is not authenticated; once login lands this is
 /// skipped in favour of the dashboards. It is a multi-page swipe experience —
-/// page one is the branded Güvən Finans intro, the remaining pages are
-/// placeholders whose content will be filled in later. A single continuous
-/// aurora backdrop sits behind every page.
+/// page one is the branded Güvən Finans intro, page two introduces GF44, and
+/// the remaining pages are placeholders whose content will be filled in later.
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
 
@@ -60,7 +60,8 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               physics: const BouncingScrollPhysics(),
               children: <Widget>[
                 _WelcomePage(controller: _pageController, index: 0),
-                for (int i = 1; i < OnboardingScreen.pageCount; i++)
+                _Gf44Page(controller: _pageController, index: 1),
+                for (int i = 2; i < OnboardingScreen.pageCount; i++)
                   _PlaceholderPage(
                     controller: _pageController,
                     index: i,
@@ -129,7 +130,27 @@ class _WelcomePage extends StatelessWidget {
   }
 }
 
-/// Placeholder for pages 2-4; content arrives later. Keeps the shared backdrop
+/// Second page: GF44 product intro with compact brand lockup and explanation.
+class _Gf44Page extends StatelessWidget {
+  const _Gf44Page({required this.controller, required this.index});
+
+  final PageController controller;
+  final int index;
+
+  @override
+  Widget build(BuildContext context) {
+    return _ExitOnSwipe(
+      controller: controller,
+      index: index,
+      child: Gf44OverviewPage(
+        pageController: controller,
+        pageIndex: index,
+      ),
+    );
+  }
+}
+
+/// Placeholder for pages 3-4; content arrives later. Keeps the shared backdrop
 /// and the same swipe-exit treatment for continuity.
 class _PlaceholderPage extends StatelessWidget {
   const _PlaceholderPage({required this.controller, required this.index});
