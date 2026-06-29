@@ -64,9 +64,10 @@ class _WelcomeTextState extends State<WelcomeText>
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Colors.white,
+                  fontFamily: 'CalSans',
                   fontSize: 30,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: -1.6 + 1.1 * t,
+                  fontWeight: FontWeight.w400,
+                  letterSpacing: -1.1 + 0.7 * t,
                   height: 1.1,
                   shadows: const <Shadow>[
                     Shadow(
