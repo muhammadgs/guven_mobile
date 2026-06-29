@@ -90,7 +90,7 @@ class _WelcomeBrandIntroState extends State<WelcomeBrandIntro>
         final double sharedBrandSize =
             (screen.width * 0.092).clamp(30.0, 42.0).toDouble();
         final double sharedLockupReserve =
-            sharedLogoWidth / _logoAspect + 14 + sharedBrandSize * 1.05;
+            sharedLogoWidth / _logoAspect + 4 + sharedBrandSize * 1.05;
         final double subtitleSize =
             (screen.width * 0.04).clamp(14.0, 18.0).toDouble();
         final double welcomeSize =
@@ -107,7 +107,7 @@ class _WelcomeBrandIntroState extends State<WelcomeBrandIntro>
                 mainAxisSize: MainAxisSize.min,
                 children: <Widget>[
                   SizedBox(height: sharedLockupReserve),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 30),
                   _BlurRevealText(
                     progress: _interval(0.4, 0.6),
                     text: 'İnnovativ maliyyə həlləri',
