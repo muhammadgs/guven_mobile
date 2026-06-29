@@ -19,6 +19,12 @@ class _WelcomeBrandIntroState extends State<WelcomeBrandIntro>
     with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
   static const Duration _introDelay = Duration(seconds: 2);
 
+  /// PageView may dispose and recreate this widget when the user swipes away.
+  /// Keep the intro timeline in memory for the current app session so returning
+  /// to page one does not replay the logo/text sequence from zero.
+  static double _savedProgress = 0;
+  static bool _hasStartedOnce = false;
+
   late final AnimationController _controller;
 
   @override
@@ -30,18 +36,43 @@ class _WelcomeBrandIntroState extends State<WelcomeBrandIntro>
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 5600),
-    );
-    _startAfterBackgroundBreathes();
+    )
+      ..value = _savedProgress.clamp(0.0, 1.0)
+      ..addListener(_rememberProgress)
+      ..addStatusListener(_rememberCompletion);
+
+    if (_savedProgress >= 1) return;
+
+    if (_hasStartedOnce) {
+      _controller.forward();
+    } else {
+      _hasStartedOnce = true;
+      _startAfterBackgroundBreathes();
+    }
   }
 
   Future<void> _startAfterBackgroundBreathes() async {
     await Future<void>.delayed(_introDelay);
-    if (mounted) _controller.forward();
+    if (mounted && _controller.value < 1) _controller.forward();
+  }
+
+  void _rememberProgress() {
+    _savedProgress = _controller.value;
+  }
+
+  void _rememberCompletion(AnimationStatus status) {
+    if (status == AnimationStatus.completed) {
+      _savedProgress = 1;
+    }
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _savedProgress = _controller.value;
+    _controller
+      ..removeListener(_rememberProgress)
+      ..removeStatusListener(_rememberCompletion)
+      ..dispose();
     super.dispose();
   }
 
