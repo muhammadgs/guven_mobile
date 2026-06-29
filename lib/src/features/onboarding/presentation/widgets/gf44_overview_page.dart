@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../../../shared/effects.dart';
-import 'animated_logo.dart';
 
-/// Second onboarding page introducing GF44 with a compact brand lockup,
-/// typewriter headline, and soft blur-reveal description.
+/// Second onboarding page introducing GF44 with a typewriter headline and soft
+/// blur-reveal description. The shared logo/brand lockup is owned by the parent
+/// onboarding screen so it can move responsively during page swipes.
 class Gf44OverviewPage extends StatefulWidget {
   const Gf44OverviewPage({
     super.key,
@@ -115,19 +115,10 @@ class _Gf44OverviewPageState extends State<Gf44OverviewPage>
       child: LayoutBuilder(
         builder: (context, constraints) {
           final Size screen = MediaQuery.sizeOf(context);
-          final double availableHeight = constraints.maxHeight.isFinite
-              ? constraints.maxHeight
-              : screen.height;
-          final double logoWidth =
-              (screen.width * 0.33).clamp(116.0, 158.0).toDouble();
-          final double brandSize =
-              (screen.width * 0.064).clamp(22.0, 30.0).toDouble();
           final double headlineSize =
               (screen.width * 0.13).clamp(42.0, 58.0).toDouble();
           final double descriptionSize =
               (screen.width * 0.052).clamp(17.0, 22.0).toDouble();
-          final double topOffset =
-              (availableHeight * 0.018).clamp(8.0, 24.0).toDouble();
           final double bottomReserve =
               132 + MediaQuery.paddingOf(context).bottom;
 
@@ -136,61 +127,45 @@ class _Gf44OverviewPageState extends State<Gf44OverviewPage>
             child: AnimatedBuilder(
               animation: _controller,
               builder: (context, _) {
-                final double headerProgress = _interval(0.00, 0.30);
-                final double headlineProgress = _interval(0.26, 0.68);
-                final double descriptionProgress = _interval(0.62, 1.00);
+                final double headlineProgress = _interval(0.16, 0.58);
+                final double descriptionProgress = _interval(0.54, 1.00);
 
-                return Stack(
-                  fit: StackFit.expand,
-                  children: <Widget>[
-                    Positioned(
-                      top: topOffset,
-                      left: 0,
-                      right: 0,
-                      child: _CompactBrandLockup(
-                        progress: headerProgress,
-                        logoWidth: logoWidth,
-                        brandSize: brandSize,
+                return Align(
+                  alignment: const Alignment(0, 0.28),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      _TypewriterBlurText(
+                        progress: headlineProgress,
+                        text: _headline,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontFamily: 'CalSans',
+                          fontSize: headlineSize,
+                          fontWeight: FontWeight.w400,
+                          height: 1,
+                          letterSpacing: 0.8,
+                          shadows: _softShadows,
+                        ),
                       ),
-                    ),
-                    Align(
-                      alignment: const Alignment(0, 0.28),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: <Widget>[
-                          _TypewriterBlurText(
-                            progress: headlineProgress,
-                            text: _headline,
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontFamily: 'CalSans',
-                              fontSize: headlineSize,
-                              fontWeight: FontWeight.w400,
-                              height: 1,
-                              letterSpacing: 0.8,
-                              shadows: _softShadows,
-                            ),
-                          ),
-                          const SizedBox(height: 22),
-                          _BlurRevealText(
-                            progress: descriptionProgress,
-                            text: _description,
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontFamily: 'Poppins',
-                              fontSize: descriptionSize,
-                              fontWeight: FontWeight.w400,
-                              height: 1.24,
-                              letterSpacing: -0.15,
-                              shadows: _softShadows,
-                            ),
-                            beginOffset: 18,
-                            beginBlur: 14,
-                          ),
-                        ],
+                      const SizedBox(height: 22),
+                      _BlurRevealText(
+                        progress: descriptionProgress,
+                        text: _description,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontFamily: 'Poppins',
+                          fontSize: descriptionSize,
+                          fontWeight: FontWeight.w400,
+                          height: 1.24,
+                          letterSpacing: -0.15,
+                          shadows: _softShadows,
+                        ),
+                        beginOffset: 18,
+                        beginBlur: 14,
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 );
               },
             ),
@@ -205,59 +180,6 @@ class _Gf44OverviewPageState extends State<Gf44OverviewPage>
         .clamp(0.0, 1.0)
         .toDouble();
     return Curves.easeOutCubic.transform(value);
-  }
-}
-
-class _CompactBrandLockup extends StatelessWidget {
-  const _CompactBrandLockup({
-    required this.progress,
-    required this.logoWidth,
-    required this.brandSize,
-  });
-
-  final double progress;
-  final double logoWidth;
-  final double brandSize;
-
-  @override
-  Widget build(BuildContext context) {
-    final double t = progress.clamp(0.0, 1.0).toDouble();
-    final double opacity = Curves.easeOut.transform(t);
-    final double scale = 1.22 - 0.22 * t;
-    final double dy = 58 * (1 - t);
-
-    return Opacity(
-      opacity: opacity,
-      child: Transform.translate(
-        offset: Offset(0, dy),
-        child: Transform.scale(
-          scale: scale,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              AnimatedGuvenLogo(
-                width: logoWidth,
-                progress: 1,
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Güvən Finans',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontFamily: 'CalSans',
-                  fontSize: brandSize,
-                  fontWeight: FontWeight.w400,
-                  height: 1,
-                  letterSpacing: -0.45,
-                  shadows: _softShadows,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }
 
