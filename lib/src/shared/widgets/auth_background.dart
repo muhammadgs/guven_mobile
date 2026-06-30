@@ -16,8 +16,8 @@ class AuthBackground extends StatefulWidget {
   const AuthBackground({
     super.key,
     required this.child,
-    this.blurSigma = 18.0,
-    this.scrimOpacity = 0.25,
+    this.blurSigma = 4.0,
+    this.scrimOpacity = 0.0,
   });
 
   final Widget child;
