@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../../shared/effects.dart';
 import 'widgets/animated_logo.dart';
 import 'widgets/gf44_data_hub_page.dart';
-import 'widgets/gf44_overview_page.dart';
 import 'widgets/glass_page_indicator.dart';
 import 'widgets/glass_swipe_arrow.dart';
 import 'widgets/welcome_brand_intro.dart';
@@ -163,7 +162,6 @@ class _SwipeResponsiveBrandLockupState extends State<_SwipeResponsiveBrandLockup
             final double moveT = Curves.easeInOutCubic.transform(pageT);
             final double fadeAfterSecondPage =
                 (1 - (page - 1).clamp(0.0, 1.0)).toDouble();
-
             final double logoIntroProgress = _interval(0.00, 0.56);
             final double brandIntroProgress = _interval(0.20, 0.40);
             final double startLogoWidth =
@@ -332,7 +330,7 @@ class _SwipeResponsiveGf44HeadlineState
             );
             final double size =
                 (screen.width * 0.13).clamp(42.0, 58.0).toDouble();
-            final String text = 'GF44';
+            const String text = 'GF44';
             final int count = (text.length * _textController.value)
                 .ceil()
                 .clamp(0, text.length)
@@ -426,11 +424,88 @@ class _Gf44Page extends StatelessWidget {
     return _ExitOnSwipe(
       controller: controller,
       index: index,
-      child: Gf44OverviewPage(
-        pageController: controller,
-        pageIndex: index,
+      child: _Gf44OverviewBody(controller: controller, index: index),
+    );
+  }
+}
+
+class _Gf44OverviewBody extends StatelessWidget {
+  const _Gf44OverviewBody({required this.controller, required this.index});
+
+  final PageController controller;
+  final int index;
+
+  static const String _description =
+      'GF44 innovativ həlli ilə şirkətinizin bütün idarəetmə prosesi bir '
+      'ekranda toplanır: tapşırıqlar, komanda, sənədlər, partnyorlar və '
+      'hesabatlar — daha sürətli, daha şəffaf, daha peşəkar.';
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: AnimatedBuilder(
+        animation: controller,
+        builder: (context, _) {
+          final double page = _page;
+          final double progress = ((page - 0.74) / 0.26)
+              .clamp(0.0, 1.0)
+              .toDouble();
+          final double t = Curves.easeOutCubic.transform(progress);
+          final Size screen = MediaQuery.sizeOf(context);
+          final double headlineSize =
+              (screen.width * 0.13).clamp(42.0, 58.0).toDouble();
+          final double descriptionSize =
+              (screen.width * 0.052).clamp(17.0, 22.0).toDouble();
+          final double bottomReserve =
+              132 + MediaQuery.paddingOf(context).bottom;
+
+          return Padding(
+            padding: EdgeInsets.fromLTRB(22, 0, 22, bottomReserve),
+            child: Align(
+              alignment: const Alignment(0, 0.28),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  SizedBox(height: headlineSize),
+                  const SizedBox(height: 22),
+                  Opacity(
+                    opacity: Curves.easeOut.transform(t),
+                    child: Transform.translate(
+                      offset: Offset(0, 18 * (1 - t)),
+                      child: blurred(
+                        14 * (1 - t),
+                        Text(
+                          _description,
+                          textAlign: TextAlign.center,
+                          maxLines: 7,
+                          overflow: TextOverflow.fade,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontFamily: 'Poppins',
+                            fontSize: descriptionSize,
+                            fontWeight: FontWeight.w400,
+                            height: 1.24,
+                            letterSpacing: -0.15,
+                            shadows: _softBrandShadows,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
+  }
+
+  double get _page {
+    if (controller.hasClients && controller.position.haveDimensions) {
+      return controller.page ?? controller.initialPage.toDouble();
+    }
+    return controller.initialPage.toDouble();
   }
 }
 
