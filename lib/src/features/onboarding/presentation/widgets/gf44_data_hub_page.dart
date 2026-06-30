@@ -14,10 +14,10 @@ class Gf44DataHubPage extends StatelessWidget {
   final int pageIndex;
 
   static const List<_FeatureIconData> _items = <_FeatureIconData>[
-    _FeatureIconData('assets/videos/page_3_icons/icon_1.mp4', 'Şirkət və Partnyorlar', -1, -1),
-    _FeatureIconData('assets/videos/page_3_icons/icon_2.mp4', 'Əməkdaşlar', 1, -1),
-    _FeatureIconData('assets/videos/page_3_icons/icon_3.mp4', 'Tapşırıqlar', -1, 1),
-    _FeatureIconData('assets/videos/page_3_icons/icon_4.mp4', 'Baza inteqrasiyası', 1, 1),
+    _FeatureIconData('assets/videos/page_3_icons/icon_1.mp4', 'Şirkət və Partnyorlar', -1, -1, Icons.business_rounded),
+    _FeatureIconData('assets/videos/page_3_icons/icon_2.mp4', 'Əməkdaşlar', 1, -1, Icons.groups_rounded),
+    _FeatureIconData('assets/videos/page_3_icons/icon_3.mp4', 'Tapşırıqlar', -1, 1, Icons.checklist_rtl_rounded),
+    _FeatureIconData('assets/videos/page_3_icons/icon_4.mp4', 'Baza inteqrasiyası', 1, 1, Icons.hub_rounded),
   ];
 
   @override
@@ -108,11 +108,12 @@ class Gf44DataHubPage extends StatelessWidget {
 }
 
 class _FeatureIconData {
-  const _FeatureIconData(this.path, this.label, this.xSign, this.ySign);
+  const _FeatureIconData(this.path, this.label, this.xSign, this.ySign, this.fallbackIcon);
   final String path;
   final String label;
   final double xSign;
   final double ySign;
+  final IconData fallbackIcon;
 }
 
 class _FeatureIcon extends StatelessWidget {
@@ -138,7 +139,11 @@ class _FeatureIcon extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
-                SizedBox(width: iconSize, height: iconSize, child: _IconVideo(item.path)),
+                SizedBox(
+                  width: iconSize,
+                  height: iconSize,
+                  child: _IconVideo(path: item.path, fallbackIcon: item.fallbackIcon),
+                ),
                 const SizedBox(height: 12),
                 Text(
                   item.label,
@@ -157,8 +162,9 @@ class _FeatureIcon extends StatelessWidget {
 }
 
 class _IconVideo extends StatefulWidget {
-  const _IconVideo(this.path);
+  const _IconVideo({required this.path, required this.fallbackIcon});
   final String path;
+  final IconData fallbackIcon;
 
   @override
   State<_IconVideo> createState() => _IconVideoState();
@@ -167,6 +173,7 @@ class _IconVideo extends StatefulWidget {
 class _IconVideoState extends State<_IconVideo> {
   late final VideoPlayerController _controller;
   bool _ready = false;
+  bool _failed = false;
 
   @override
   void initState() {
@@ -181,10 +188,17 @@ class _IconVideoState extends State<_IconVideo> {
       await _controller.setLooping(true);
       await _controller.setVolume(0);
       if (!mounted) return;
-      setState(() => _ready = true);
+      setState(() {
+        _ready = true;
+        _failed = false;
+      });
       await _controller.play();
     } on Object {
-      if (mounted) setState(() => _ready = false);
+      if (!mounted) return;
+      setState(() {
+        _ready = false;
+        _failed = true;
+      });
     }
   }
 
@@ -196,10 +210,30 @@ class _IconVideoState extends State<_IconVideo> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_ready) return const SizedBox.expand();
+    if (_failed || !_ready) return _FallbackIcon(icon: widget.fallbackIcon);
     final Size size = _controller.value.size;
-    if (size.width <= 0 || size.height <= 0) return const SizedBox.expand();
+    if (size.width <= 0 || size.height <= 0) {
+      return _FallbackIcon(icon: widget.fallbackIcon);
+    }
     return FittedBox(fit: BoxFit.contain, child: SizedBox(width: size.width, height: size.height, child: VideoPlayer(_controller)));
+  }
+}
+
+class _FallbackIcon extends StatelessWidget {
+  const _FallbackIcon({required this.icon});
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: const Color(0x22000000),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Center(
+        child: Icon(icon, color: Colors.white, size: 38),
+      ),
+    );
   }
 }
 
