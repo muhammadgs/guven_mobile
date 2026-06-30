@@ -65,6 +65,7 @@ flutter:
   assets:
     - assets/images/logos/logo.svg
     - assets/videos/onboarding_background.mp4
+    - assets/videos/page_3_icons/
 
   fonts:
     - family: CalSans
