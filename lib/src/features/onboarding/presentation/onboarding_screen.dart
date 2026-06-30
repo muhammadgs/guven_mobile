@@ -2,17 +2,12 @@ import 'package:flutter/material.dart';
 
 import '../../../shared/effects.dart';
 import 'widgets/animated_logo.dart';
+import 'widgets/gf44_data_hub_page.dart';
 import 'widgets/gf44_overview_page.dart';
 import 'widgets/glass_page_indicator.dart';
 import 'widgets/glass_swipe_arrow.dart';
 import 'widgets/welcome_brand_intro.dart';
 
-/// Pre-login welcome / intro flow.
-///
-/// Shown only when the user is not authenticated; once login lands this is
-/// skipped in favour of the dashboards. It is a multi-page swipe experience —
-/// page one is the branded Güvən Finans intro, page two introduces GF44, and
-/// the remaining pages are placeholders whose content will be filled in later.
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
 
@@ -31,7 +26,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     super.dispose();
   }
 
-  /// Current fractional page, safe before the controller is laid out.
   double get _page {
     if (_pageController.hasClients &&
         _pageController.position.haveDimensions) {
@@ -62,15 +56,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               children: <Widget>[
                 _WelcomePage(controller: _pageController, index: 0),
                 _Gf44Page(controller: _pageController, index: 1),
-                for (int i = 2; i < OnboardingScreen.pageCount; i++)
-                  _PlaceholderPage(
-                    controller: _pageController,
-                    index: i,
-                  ),
+                _Gf44DataPage(controller: _pageController, index: 2),
+                _PlaceholderPage(controller: _pageController, index: 3),
               ],
             ),
           ),
           _SwipeResponsiveBrandLockup(controller: _pageController),
+          _SwipeResponsiveGf44Headline(controller: _pageController),
           Positioned(
             left: 0,
             right: 0,
@@ -105,11 +97,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 }
 
-/// One shared Güvən Finans lockup that responds directly to the current swipe.
-///
-/// It starts in the first-page hero position. As [PageController.page] moves
-/// from 0 to 1, it shrinks and slides to the compact top position used on the
-/// GF44 page. If the swipe is stopped halfway, the lockup remains halfway too.
 class _SwipeResponsiveBrandLockup extends StatefulWidget {
   const _SwipeResponsiveBrandLockup({required this.controller});
 
@@ -179,19 +166,16 @@ class _SwipeResponsiveBrandLockupState extends State<_SwipeResponsiveBrandLockup
 
             final double logoIntroProgress = _interval(0.00, 0.56);
             final double brandIntroProgress = _interval(0.20, 0.40);
-
             final double startLogoWidth =
                 (screen.width * 0.58).clamp(190.0, 270.0).toDouble();
             final double endLogoWidth =
                 (screen.width * 0.33).clamp(116.0, 158.0).toDouble();
             final double logoWidth = _lerp(startLogoWidth, endLogoWidth, moveT);
-
             final double startBrandSize =
                 (screen.width * 0.092).clamp(30.0, 42.0).toDouble();
             final double endBrandSize =
                 (screen.width * 0.064).clamp(22.0, 30.0).toDouble();
             final double brandSize = _lerp(startBrandSize, endBrandSize, moveT);
-
             final double startTop =
                 (screen.height * 0.305).clamp(218.0, 286.0).toDouble();
             final double endTop = padding.top +
@@ -271,9 +255,133 @@ class _SwipeResponsiveBrandLockupState extends State<_SwipeResponsiveBrandLockup
     return Curves.easeOutCubic.transform(value);
   }
 
-  double _lerp(double start, double end, double t) {
-    return start + (end - start) * t;
+  double _lerp(double start, double end, double t) => start + (end - start) * t;
+}
+
+class _SwipeResponsiveGf44Headline extends StatefulWidget {
+  const _SwipeResponsiveGf44Headline({required this.controller});
+
+  final PageController controller;
+
+  @override
+  State<_SwipeResponsiveGf44Headline> createState() =>
+      _SwipeResponsiveGf44HeadlineState();
+}
+
+class _SwipeResponsiveGf44HeadlineState
+    extends State<_SwipeResponsiveGf44Headline>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _textController;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.controller.addListener(_handlePageTick);
+    _textController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1100),
+    );
   }
+
+  @override
+  void didUpdateWidget(covariant _SwipeResponsiveGf44Headline oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.removeListener(_handlePageTick);
+      widget.controller.addListener(_handlePageTick);
+    }
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_handlePageTick);
+    _textController.dispose();
+    super.dispose();
+  }
+
+  void _handlePageTick() {
+    final double page = _currentPage;
+    if (page > 0.72 && _textController.value == 0) {
+      _textController.forward();
+    }
+    if (mounted) setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned.fill(
+      child: IgnorePointer(
+        child: AnimatedBuilder(
+          animation: _textController,
+          builder: (context, _) {
+            final Size screen = MediaQuery.sizeOf(context);
+            final double page = _currentPage;
+            final double enterOpacity = ((page - 0.78) / 0.22)
+                .clamp(0.0, 1.0)
+                .toDouble();
+            final double exitOpacity =
+                (1 - (page - 2).clamp(0.0, 1.0)).toDouble();
+            final double opacity = enterOpacity * exitOpacity;
+            final double moveT = Curves.easeInOutCubic.transform(
+              (page - 1).clamp(0.0, 1.0).toDouble(),
+            );
+            final double top = _lerp(
+              (screen.height * 0.43).clamp(340.0, 408.0).toDouble(),
+              (screen.height * 0.36).clamp(292.0, 352.0).toDouble(),
+              moveT,
+            );
+            final double size =
+                (screen.width * 0.13).clamp(42.0, 58.0).toDouble();
+            final String text = 'GF44';
+            final int count = (text.length * _textController.value)
+                .ceil()
+                .clamp(0, text.length)
+                .toInt();
+
+            return Stack(
+              fit: StackFit.expand,
+              children: <Widget>[
+                Positioned(
+                  top: top,
+                  left: 0,
+                  right: 0,
+                  child: Opacity(
+                    opacity: opacity,
+                    child: blurred(
+                      16 * (1 - _textController.value),
+                      Text(
+                        text.substring(0, count),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontFamily: 'CalSans',
+                          fontSize: size,
+                          fontWeight: FontWeight.w400,
+                          height: 1,
+                          letterSpacing: 0.8,
+                          shadows: _softBrandShadows,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  double get _currentPage {
+    final PageController controller = widget.controller;
+    if (controller.hasClients && controller.position.haveDimensions) {
+      return controller.page ?? controller.initialPage.toDouble();
+    }
+    return controller.initialPage.toDouble();
+  }
+
+  double _lerp(double start, double end, double t) => start + (end - start) * t;
 }
 
 const List<Shadow> _softBrandShadows = <Shadow>[
@@ -284,8 +392,6 @@ const List<Shadow> _softBrandShadows = <Shadow>[
   ),
 ];
 
-/// First page: the sequenced Güvən Finans brand intro, wrapped in a
-/// blur-out "exit" tied to the swipe so the hero dissolves as you leave.
 class _WelcomePage extends StatelessWidget {
   const _WelcomePage({required this.controller, required this.index});
 
@@ -302,16 +408,13 @@ class _WelcomePage extends StatelessWidget {
       child: SafeArea(
         child: Padding(
           padding: EdgeInsets.only(bottom: bottomReserve),
-          child: const Center(
-            child: WelcomeBrandIntro(),
-          ),
+          child: const Center(child: WelcomeBrandIntro()),
         ),
       ),
     );
   }
 }
 
-/// Second page: GF44 product intro with compact brand lockup and explanation.
 class _Gf44Page extends StatelessWidget {
   const _Gf44Page({required this.controller, required this.index});
 
@@ -331,8 +434,25 @@ class _Gf44Page extends StatelessWidget {
   }
 }
 
-/// Placeholder for pages 3-4; content arrives later. Keeps the shared backdrop
-/// and the same swipe-exit treatment for continuity.
+class _Gf44DataPage extends StatelessWidget {
+  const _Gf44DataPage({required this.controller, required this.index});
+
+  final PageController controller;
+  final int index;
+
+  @override
+  Widget build(BuildContext context) {
+    return _ExitOnSwipe(
+      controller: controller,
+      index: index,
+      child: Gf44DataHubPage(
+        pageController: controller,
+        pageIndex: index,
+      ),
+    );
+  }
+}
+
 class _PlaceholderPage extends StatelessWidget {
   const _PlaceholderPage({required this.controller, required this.index});
 
@@ -361,7 +481,6 @@ class _PlaceholderPage extends StatelessWidget {
   }
 }
 
-/// Fades and blurs its [child] out as the page scrolls away from centre.
 class _ExitOnSwipe extends StatelessWidget {
   const _ExitOnSwipe({
     required this.controller,
