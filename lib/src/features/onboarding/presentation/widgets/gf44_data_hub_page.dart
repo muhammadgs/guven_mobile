@@ -17,7 +17,7 @@ class Gf44DataHubPage extends StatelessWidget {
     _FeatureIconData('assets/videos/page_3_icons/icon_1.mp4', 'Şirkət və Partnyorlar', -1, -1, Icons.business_rounded),
     _FeatureIconData('assets/videos/page_3_icons/icon_2.mp4', 'Əməkdaşlar', 1, -1, Icons.groups_rounded),
     _FeatureIconData('assets/videos/page_3_icons/icon_3.mp4', 'Tapşırıqlar', -1, 1, Icons.checklist_rtl_rounded),
-    _FeatureIconData('assets/videos/page_3_icons/icon_4.mp4', 'Baza inteqrasiyası', 1, 1, Icons.hub_rounded),
+    _FeatureIconData('assets/videos/page_3_icons/icon_4.mp4', 'Baza inteqrasiyası', 1, 1, Icons.hub_rounded, forceFallback: true),
   ];
 
   @override
@@ -108,12 +108,13 @@ class Gf44DataHubPage extends StatelessWidget {
 }
 
 class _FeatureIconData {
-  const _FeatureIconData(this.path, this.label, this.xSign, this.ySign, this.fallbackIcon);
+  const _FeatureIconData(this.path, this.label, this.xSign, this.ySign, this.fallbackIcon, {this.forceFallback = false});
   final String path;
   final String label;
   final double xSign;
   final double ySign;
   final IconData fallbackIcon;
+  final bool forceFallback;
 }
 
 class _FeatureIcon extends StatelessWidget {
@@ -142,7 +143,9 @@ class _FeatureIcon extends StatelessWidget {
                 SizedBox(
                   width: iconSize,
                   height: iconSize,
-                  child: _IconVideo(path: item.path, fallbackIcon: item.fallbackIcon),
+                  child: item.forceFallback
+                      ? _FallbackIcon(icon: item.fallbackIcon)
+                      : _IconVideo(path: item.path, fallbackIcon: item.fallbackIcon),
                 ),
                 const SizedBox(height: 12),
                 Text(
