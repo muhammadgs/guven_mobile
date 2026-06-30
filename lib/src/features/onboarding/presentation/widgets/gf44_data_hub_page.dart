@@ -34,15 +34,18 @@ class Gf44DataHubPage extends StatelessWidget {
             builder: (context, constraints) {
               final Size screen = MediaQuery.sizeOf(context);
               final double bottom = 132 + MediaQuery.paddingOf(context).bottom;
+              final double horizontalPadding = (screen.width * 0.055).clamp(18.0, 24.0).toDouble();
+              final double contentWidth = constraints.maxWidth - horizontalPadding * 2;
+              final double gapX = (screen.width * 0.075).clamp(24.0, 38.0).toDouble();
+              final double cellWidth = ((contentWidth - gapX) / 2).clamp(118.0, 160.0).toDouble();
               final double subtitleTop = (screen.height * 0.43).clamp(342.0, 418.0).toDouble();
-              final double subtitleSize = (screen.width * 0.071).clamp(23.0, 32.0).toDouble();
-              final double iconSize = (screen.width * 0.16).clamp(54.0, 72.0).toDouble();
-              final double labelSize = (screen.width * 0.044).clamp(15.0, 20.0).toDouble();
-              final double gapX = (screen.width * 0.17).clamp(58.0, 96.0).toDouble();
-              final double gapY = (screen.height * 0.09).clamp(64.0, 92.0).toDouble();
+              final double subtitleSize = (screen.width * 0.066).clamp(21.0, 29.0).toDouble();
+              final double iconSize = (screen.width * 0.15).clamp(50.0, 66.0).toDouble();
+              final double labelSize = (screen.width * 0.041).clamp(14.0, 18.0).toDouble();
+              final double gapY = (screen.height * 0.085).clamp(58.0, 84.0).toDouble();
 
               return Padding(
-                padding: EdgeInsets.fromLTRB(24, 0, 24, bottom),
+                padding: EdgeInsets.fromLTRB(horizontalPadding, 0, horizontalPadding, bottom),
                 child: Stack(
                   fit: StackFit.expand,
                   children: <Widget>[
@@ -64,18 +67,18 @@ class Gf44DataHubPage extends StatelessWidget {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: <Widget>[
-                              _FeatureIcon(item: _items[0], progress: iconsT, screen: screen, iconSize: iconSize, labelSize: labelSize),
+                              _FeatureIcon(item: _items[0], progress: iconsT, screen: screen, cellWidth: cellWidth, iconSize: iconSize, labelSize: labelSize),
                               SizedBox(width: gapX),
-                              _FeatureIcon(item: _items[1], progress: iconsT, screen: screen, iconSize: iconSize, labelSize: labelSize),
+                              _FeatureIcon(item: _items[1], progress: iconsT, screen: screen, cellWidth: cellWidth, iconSize: iconSize, labelSize: labelSize),
                             ],
                           ),
                           SizedBox(height: gapY),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: <Widget>[
-                              _FeatureIcon(item: _items[2], progress: iconsT, screen: screen, iconSize: iconSize, labelSize: labelSize),
+                              _FeatureIcon(item: _items[2], progress: iconsT, screen: screen, cellWidth: cellWidth, iconSize: iconSize, labelSize: labelSize),
                               SizedBox(width: gapX),
-                              _FeatureIcon(item: _items[3], progress: iconsT, screen: screen, iconSize: iconSize, labelSize: labelSize),
+                              _FeatureIcon(item: _items[3], progress: iconsT, screen: screen, cellWidth: cellWidth, iconSize: iconSize, labelSize: labelSize),
                             ],
                           ),
                         ],
@@ -113,38 +116,39 @@ class _FeatureIconData {
 }
 
 class _FeatureIcon extends StatelessWidget {
-  const _FeatureIcon({required this.item, required this.progress, required this.screen, required this.iconSize, required this.labelSize});
+  const _FeatureIcon({required this.item, required this.progress, required this.screen, required this.cellWidth, required this.iconSize, required this.labelSize});
   final _FeatureIconData item;
   final double progress;
   final Size screen;
+  final double cellWidth;
   final double iconSize;
   final double labelSize;
 
   @override
   Widget build(BuildContext context) {
     final double t = progress.clamp(0.0, 1.0).toDouble();
-    return Opacity(
-      opacity: Curves.easeOut.transform(t),
-      child: Transform.translate(
-        offset: Offset(item.xSign * screen.width * 0.78 * (1 - t), item.ySign * 56 * (1 - t)),
-        child: Transform.scale(
-          scale: 0.92 + 0.08 * t,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              SizedBox(width: iconSize, height: iconSize, child: _IconVideo(item.path)),
-              const SizedBox(height: 14),
-              SizedBox(
-                width: 150,
-                child: Text(
+    return SizedBox(
+      width: cellWidth,
+      child: Opacity(
+        opacity: Curves.easeOut.transform(t),
+        child: Transform.translate(
+          offset: Offset(item.xSign * screen.width * 0.68 * (1 - t), item.ySign * 54 * (1 - t)),
+          child: Transform.scale(
+            scale: 0.92 + 0.08 * t,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                SizedBox(width: iconSize, height: iconSize, child: _IconVideo(item.path)),
+                const SizedBox(height: 12),
+                Text(
                   item.label,
                   textAlign: TextAlign.center,
                   maxLines: 2,
                   overflow: TextOverflow.fade,
                   style: TextStyle(color: Colors.white, fontFamily: 'Poppins', fontSize: labelSize, height: 1.15, letterSpacing: -0.1, shadows: _shadows),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
