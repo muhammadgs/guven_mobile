@@ -37,7 +37,7 @@ class Gf44DataHubPage extends StatelessWidget {
               final double contentWidth = constraints.maxWidth - horizontalPadding * 2;
               final double gapX = (screen.width * 0.075).clamp(24.0, 38.0).toDouble();
               final double cellWidth = ((contentWidth - gapX) / 2).clamp(118.0, 160.0).toDouble();
-              final double subtitleTop = (screen.height * 0.385).clamp(286.0, 350.0).toDouble();
+              final double subtitleTop = (screen.height * 0.365).clamp(266.0, 330.0).toDouble();
               final double subtitleSize = (screen.width * 0.047).clamp(16.0, 21.0).toDouble();
               final double iconSize = (screen.width * 0.15).clamp(50.0, 66.0).toDouble();
               final double labelSize = (screen.width * 0.041).clamp(14.0, 18.0).toDouble();
