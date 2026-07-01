@@ -70,11 +70,9 @@ class _SwipeResponsiveGf44HeadlineState
               (page - 1).clamp(0.0, 1.0).toDouble(),
             );
 
-            // Page 2 position is a little higher; page 3 position moves higher
-            // again while swiping, but remains directly tied to page progress.
             final double top = _lerp(
               (screen.height * 0.395).clamp(310.0, 380.0).toDouble(),
-              (screen.height * 0.285).clamp(220.0, 292.0).toDouble(),
+              (screen.height * 0.315).clamp(246.0, 318.0).toDouble(),
               moveT,
             );
             final double size =
