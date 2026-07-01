@@ -26,8 +26,8 @@ class Gf44DataHubPage extends StatelessWidget {
         animation: pageController,
         builder: (context, _) {
           final double swipe = (_page - (pageIndex - 1)).clamp(0.0, 1.0).toDouble();
-          final double subtitleT = _interval(swipe, 0.24, 0.62);
-          final double iconsT = _interval(swipe, 0.08, 1);
+          final double subtitleT = _interval(swipe, 0.18, 0.50);
+          final double iconsT = _interval(swipe, 0.18, 1);
 
           return LayoutBuilder(
             builder: (context, constraints) {
@@ -37,11 +37,11 @@ class Gf44DataHubPage extends StatelessWidget {
               final double contentWidth = constraints.maxWidth - horizontalPadding * 2;
               final double gapX = (screen.width * 0.075).clamp(24.0, 38.0).toDouble();
               final double cellWidth = ((contentWidth - gapX) / 2).clamp(118.0, 160.0).toDouble();
-              final double subtitleTop = (screen.height * 0.43).clamp(342.0, 418.0).toDouble();
-              final double subtitleSize = (screen.width * 0.066).clamp(21.0, 29.0).toDouble();
+              final double subtitleTop = (screen.height * 0.385).clamp(286.0, 350.0).toDouble();
+              final double subtitleSize = (screen.width * 0.047).clamp(16.0, 21.0).toDouble();
               final double iconSize = (screen.width * 0.15).clamp(50.0, 66.0).toDouble();
               final double labelSize = (screen.width * 0.041).clamp(14.0, 18.0).toDouble();
-              final double gapY = (screen.height * 0.085).clamp(58.0, 84.0).toDouble();
+              final double gapY = (screen.height * 0.078).clamp(54.0, 76.0).toDouble();
 
               return Padding(
                 padding: EdgeInsets.fromLTRB(horizontalPadding, 0, horizontalPadding, bottom),
@@ -59,7 +59,7 @@ class Gf44DataHubPage extends StatelessWidget {
                       ),
                     ),
                     Align(
-                      alignment: const Alignment(0, 0.50),
+                      alignment: const Alignment(0, 0.68),
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: <Widget>[
