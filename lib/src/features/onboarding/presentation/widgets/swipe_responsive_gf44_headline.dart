@@ -72,7 +72,7 @@ class _SwipeResponsiveGf44HeadlineState
 
             final double top = _lerp(
               (screen.height * 0.395).clamp(310.0, 380.0).toDouble(),
-              (screen.height * 0.315).clamp(246.0, 318.0).toDouble(),
+              (screen.height * 0.330).clamp(246.0, 318.0).toDouble(),
               moveT,
             );
             final double size =
