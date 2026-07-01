@@ -228,14 +228,13 @@ class _FallbackIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
+    return Container(
+      alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: const Color(0x22000000),
+        color: const Color(0x33FFFFFF),
         borderRadius: BorderRadius.circular(12),
       ),
-      child: Center(
-        child: Icon(icon, color: Colors.white, size: 38),
-      ),
+      child: Icon(icon, color: Colors.white, size: 38),
     );
   }
 }
