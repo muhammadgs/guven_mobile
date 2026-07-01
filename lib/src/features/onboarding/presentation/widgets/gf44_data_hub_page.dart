@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:video_player/video_player.dart';
 
 import '../../../../shared/effects.dart';
 
@@ -14,10 +13,10 @@ class Gf44DataHubPage extends StatelessWidget {
   final int pageIndex;
 
   static const List<_FeatureIconData> _items = <_FeatureIconData>[
-    _FeatureIconData('assets/videos/page_3_icons/icon_1.mp4', 'Şirkət və Partnyorlar', -1, -1, Icons.business_rounded),
-    _FeatureIconData('assets/videos/page_3_icons/icon_2.mp4', 'Əməkdaşlar', 1, -1, Icons.groups_rounded),
-    _FeatureIconData('assets/videos/page_3_icons/icon_3.mp4', 'Tapşırıqlar', -1, 1, Icons.checklist_rtl_rounded),
-    _FeatureIconData('assets/videos/page_3_icons/icon_4.mp4', 'Baza inteqrasiyası', 1, 1, Icons.hub_rounded, forceFallback: true),
+    _FeatureIconData('assets/videos/page_3_icons/icon_1.webp', 'Şirkət və Partnyorlar', -1, -1, Icons.business_rounded),
+    _FeatureIconData('assets/videos/page_3_icons/icon_2.webp', 'Əməkdaşlar', 1, -1, Icons.groups_rounded),
+    _FeatureIconData('assets/videos/page_3_icons/icon_3.webp', 'Tapşırıqlar', -1, 1, Icons.checklist_rtl_rounded),
+    _FeatureIconData('assets/videos/page_3_icons/icon_4.webp', 'Baza inteqrasiyası', 1, 1, Icons.hub_rounded),
   ];
 
   @override
@@ -108,13 +107,12 @@ class Gf44DataHubPage extends StatelessWidget {
 }
 
 class _FeatureIconData {
-  const _FeatureIconData(this.path, this.label, this.xSign, this.ySign, this.fallbackIcon, {this.forceFallback = false});
-  final String path;
+  const _FeatureIconData(this.imagePath, this.label, this.xSign, this.ySign, this.fallbackIcon);
+  final String imagePath;
   final String label;
   final double xSign;
   final double ySign;
   final IconData fallbackIcon;
-  final bool forceFallback;
 }
 
 class _FeatureIcon extends StatelessWidget {
@@ -143,9 +141,10 @@ class _FeatureIcon extends StatelessWidget {
                 SizedBox(
                   width: iconSize,
                   height: iconSize,
-                  child: item.forceFallback
-                      ? _FallbackIcon(icon: item.fallbackIcon)
-                      : _IconVideo(path: item.path, fallbackIcon: item.fallbackIcon),
+                  child: _AnimatedIconImage(
+                    imagePath: item.imagePath,
+                    fallbackIcon: item.fallbackIcon,
+                  ),
                 ),
                 const SizedBox(height: 12),
                 Text(
@@ -164,61 +163,23 @@ class _FeatureIcon extends StatelessWidget {
   }
 }
 
-class _IconVideo extends StatefulWidget {
-  const _IconVideo({required this.path, required this.fallbackIcon});
-  final String path;
+class _AnimatedIconImage extends StatelessWidget {
+  const _AnimatedIconImage({required this.imagePath, required this.fallbackIcon});
+
+  final String imagePath;
   final IconData fallbackIcon;
 
   @override
-  State<_IconVideo> createState() => _IconVideoState();
-}
-
-class _IconVideoState extends State<_IconVideo> {
-  late final VideoPlayerController _controller;
-  bool _ready = false;
-  bool _failed = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = VideoPlayerController.asset(widget.path, videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true));
-    _init();
-  }
-
-  Future<void> _init() async {
-    try {
-      await _controller.initialize();
-      await _controller.setLooping(true);
-      await _controller.setVolume(0);
-      if (!mounted) return;
-      setState(() {
-        _ready = true;
-        _failed = false;
-      });
-      await _controller.play();
-    } on Object {
-      if (!mounted) return;
-      setState(() {
-        _ready = false;
-        _failed = true;
-      });
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    if (_failed || !_ready) return _FallbackIcon(icon: widget.fallbackIcon);
-    final Size size = _controller.value.size;
-    if (size.width <= 0 || size.height <= 0) {
-      return _FallbackIcon(icon: widget.fallbackIcon);
-    }
-    return FittedBox(fit: BoxFit.contain, child: SizedBox(width: size.width, height: size.height, child: VideoPlayer(_controller)));
+    return Image.asset(
+      imagePath,
+      fit: BoxFit.contain,
+      gaplessPlayback: true,
+      filterQuality: FilterQuality.high,
+      errorBuilder: (context, error, stackTrace) {
+        return _FallbackIcon(icon: fallbackIcon);
+      },
+    );
   }
 }
 
