@@ -40,7 +40,7 @@ class Gf44DataHubPage extends StatelessWidget {
               final double subtitleTop = (screen.height * 0.335).clamp(266.0, 330.0).toDouble();
               final double subtitleSize = (screen.width * 0.047).clamp(16.0, 21.0).toDouble();
               final double iconSize = (screen.width * 0.15).clamp(50.0, 66.0).toDouble();
-              final double labelSize = (screen.width * 0.041).clamp(14.0, 18.0).toDouble();
+              final double labelSize = (screen.width * 0.034).clamp(12.0, 15.0).toDouble();
               final double gapY = (screen.height * 0.078).clamp(54.0, 76.0).toDouble();
 
               return Padding(
@@ -147,12 +147,19 @@ class _FeatureIcon extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 12),
-                Text(
-                  item.label,
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.fade,
-                  style: TextStyle(color: Colors.white, fontFamily: 'Poppins', fontSize: labelSize, height: 1.15, letterSpacing: -0.1, shadows: _shadows),
+                SizedBox(
+                  width: cellWidth,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      item.label,
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.visible,
+                      softWrap: false,
+                      style: TextStyle(color: Colors.white, fontFamily: 'Poppins', fontSize: labelSize, height: 1.15, letterSpacing: -0.1, shadows: _shadows),
+                    ),
+                  ),
                 ),
               ],
             ),
