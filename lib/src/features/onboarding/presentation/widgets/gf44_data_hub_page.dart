@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../../../../shared/effects.dart';
-
 class Gf44DataHubPage extends StatelessWidget {
   const Gf44DataHubPage({
     super.key,
@@ -26,7 +24,6 @@ class Gf44DataHubPage extends StatelessWidget {
         animation: pageController,
         builder: (context, _) {
           final double swipe = (_page - (pageIndex - 1)).clamp(0.0, 1.0).toDouble();
-          final double subtitleT = _interval(swipe, 0.18, 0.50);
           final double iconsT = _interval(swipe, 0.18, 1);
 
           return LayoutBuilder(
@@ -37,53 +34,36 @@ class Gf44DataHubPage extends StatelessWidget {
               final double contentWidth = constraints.maxWidth - horizontalPadding * 2;
               final double gapX = (screen.width * 0.075).clamp(24.0, 38.0).toDouble();
               final double cellWidth = ((contentWidth - gapX) / 2).clamp(118.0, 160.0).toDouble();
-              final double subtitleTop = (screen.height * 0.335).clamp(266.0, 330.0).toDouble();
-              final double subtitleSize = (screen.width * 0.047).clamp(16.0, 21.0).toDouble();
               final double iconSize = (screen.width * 0.15).clamp(50.0, 66.0).toDouble();
               final double labelSize = (screen.width * 0.034).clamp(12.0, 15.0).toDouble();
               final double gapY = (screen.height * 0.078).clamp(54.0, 76.0).toDouble();
 
               return Padding(
                 padding: EdgeInsets.fromLTRB(horizontalPadding, 0, horizontalPadding, bottom),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: <Widget>[
-                    Positioned(
-                      top: subtitleTop,
-                      left: 0,
-                      right: 0,
-                      child: _BlurText(
-                        progress: subtitleT,
-                        text: 'GF44 ilə məlumatlarınızı\nmərkəzləşdirilmiş şəkildə idarə edin.',
-                        fontSize: subtitleSize,
-                      ),
-                    ),
-                    Align(
-                      alignment: const Alignment(0, 0.68),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
+                child: Align(
+                  alignment: const Alignment(0, 0.68),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: <Widget>[
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: <Widget>[
-                              _FeatureIcon(item: _items[0], progress: iconsT, screen: screen, cellWidth: cellWidth, iconSize: iconSize, labelSize: labelSize),
-                              SizedBox(width: gapX),
-                              _FeatureIcon(item: _items[1], progress: iconsT, screen: screen, cellWidth: cellWidth, iconSize: iconSize, labelSize: labelSize),
-                            ],
-                          ),
-                          SizedBox(height: gapY),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: <Widget>[
-                              _FeatureIcon(item: _items[2], progress: iconsT, screen: screen, cellWidth: cellWidth, iconSize: iconSize, labelSize: labelSize),
-                              SizedBox(width: gapX),
-                              _FeatureIcon(item: _items[3], progress: iconsT, screen: screen, cellWidth: cellWidth, iconSize: iconSize, labelSize: labelSize),
-                            ],
-                          ),
+                          _FeatureIcon(item: _items[0], progress: iconsT, screen: screen, cellWidth: cellWidth, iconSize: iconSize, labelSize: labelSize),
+                          SizedBox(width: gapX),
+                          _FeatureIcon(item: _items[1], progress: iconsT, screen: screen, cellWidth: cellWidth, iconSize: iconSize, labelSize: labelSize),
                         ],
                       ),
-                    ),
-                  ],
+                      SizedBox(height: gapY),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: <Widget>[
+                          _FeatureIcon(item: _items[2], progress: iconsT, screen: screen, cellWidth: cellWidth, iconSize: iconSize, labelSize: labelSize),
+                          SizedBox(width: gapX),
+                          _FeatureIcon(item: _items[3], progress: iconsT, screen: screen, cellWidth: cellWidth, iconSize: iconSize, labelSize: labelSize),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               );
             },
@@ -157,6 +137,7 @@ class _FeatureIcon extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.visible,
                       softWrap: false,
+                      textScaler: TextScaler.noScaling,
                       style: TextStyle(color: Colors.white, fontFamily: 'Poppins', fontSize: labelSize, height: 1.15, letterSpacing: -0.1, shadows: _shadows),
                     ),
                   ),
@@ -198,28 +179,6 @@ class _FallbackIcon extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Icon(icon, color: Colors.white, size: 38),
-    );
-  }
-}
-
-class _BlurText extends StatelessWidget {
-  const _BlurText({required this.progress, required this.text, required this.fontSize});
-  final double progress;
-  final String text;
-  final double fontSize;
-
-  @override
-  Widget build(BuildContext context) {
-    final double t = progress.clamp(0.0, 1.0).toDouble();
-    return Opacity(
-      opacity: Curves.easeOut.transform(t),
-      child: Transform.translate(
-        offset: Offset(0, 16 * (1 - t)),
-        child: blurred(
-          14 * (1 - t),
-          Text(text, textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontFamily: 'Poppins', fontSize: fontSize, height: 1.18, letterSpacing: -0.2, shadows: _shadows)),
-        ),
-      ),
     );
   }
 }
