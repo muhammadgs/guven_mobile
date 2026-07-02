@@ -65,32 +65,45 @@ class _SwipeResponsiveBrandLockupState extends State<SwipeResponsiveBrandLockup>
             final Size screen = MediaQuery.sizeOf(context);
             final EdgeInsets padding = MediaQuery.paddingOf(context);
             final double page = _currentPage;
-            final double pageT = page.clamp(0.0, 1.0).toDouble();
-            final double moveT = Curves.easeInOutCubic.transform(pageT);
-
-            // Keep the shared Güvən Finans lockup visible on page 3 as well.
-            final double opacity =
-                (1 - (page - 2).clamp(0.0, 1.0)).toDouble();
+            final double firstMoveT = Curves.easeInOutCubic.transform(
+              page.clamp(0.0, 1.0).toDouble(),
+            );
+            final double finalMoveT = Curves.easeInOutCubic.transform(
+              (page - 2).clamp(0.0, 1.0).toDouble(),
+            );
 
             final double logoIntroProgress = _interval(0.00, 0.56);
             final double brandIntroProgress = _interval(0.20, 0.40);
             final double startLogoWidth =
                 (screen.width * 0.58).clamp(190.0, 270.0).toDouble();
-            final double endLogoWidth =
+            final double compactLogoWidth =
                 (screen.width * 0.33).clamp(116.0, 158.0).toDouble();
-            final double logoWidth = _lerp(startLogoWidth, endLogoWidth, moveT);
+            final double finalLogoWidth =
+                (screen.width * 0.48).clamp(176.0, 232.0).toDouble();
+            final double compactWidth =
+                _lerp(startLogoWidth, compactLogoWidth, firstMoveT);
+            final double logoWidth =
+                _lerp(compactWidth, finalLogoWidth, finalMoveT);
 
             final double startBrandSize =
                 (screen.width * 0.092).clamp(30.0, 42.0).toDouble();
-            final double endBrandSize =
+            final double compactBrandSize =
                 (screen.width * 0.064).clamp(22.0, 30.0).toDouble();
-            final double brandSize = _lerp(startBrandSize, endBrandSize, moveT);
+            final double brandSize =
+                _lerp(startBrandSize, compactBrandSize, firstMoveT);
 
             final double startTop =
                 (screen.height * 0.305).clamp(218.0, 286.0).toDouble();
-            final double endTop = padding.top +
+            final double compactTop = padding.top +
                 (screen.height * 0.07).clamp(48.0, 72.0).toDouble();
-            final double top = _lerp(startTop, endTop, moveT);
+            final double finalTop =
+                (screen.height * 0.355).clamp(300.0, 430.0).toDouble();
+            final double compactOrStartTop = _lerp(startTop, compactTop, firstMoveT);
+            final double top = _lerp(compactOrStartTop, finalTop, finalMoveT);
+
+            final double brandTextOpacity =
+                Curves.easeOut.transform(brandIntroProgress) *
+                    (1 - finalMoveT);
 
             return Stack(
               fit: StackFit.expand,
@@ -99,46 +112,39 @@ class _SwipeResponsiveBrandLockupState extends State<SwipeResponsiveBrandLockup>
                   top: top,
                   left: 0,
                   right: 0,
-                  child: Opacity(
-                    opacity: opacity,
-                    child: Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: <Widget>[
-                          AnimatedGuvenLogo(
-                            width: logoWidth,
-                            progress: logoIntroProgress,
-                          ),
-                          SizedBox(height: _lerp(14, 6, moveT)),
-                          Opacity(
-                            opacity: Curves.easeOut.transform(
-                              brandIntroProgress,
-                            ),
-                            child: Transform.translate(
-                              offset: Offset(
-                                0,
-                                13 * (1 - brandIntroProgress),
-                              ),
-                              child: blurred(
-                                13 * (1 - brandIntroProgress),
-                                Text(
-                                  'Güvən Finans',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontFamily: 'CalSans',
-                                    fontSize: brandSize,
-                                    fontWeight: FontWeight.w400,
-                                    height: 1.05,
-                                    letterSpacing: _lerp(-0.7, -0.45, moveT),
-                                    shadows: _softBrandShadows,
-                                  ),
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        AnimatedGuvenLogo(
+                          width: logoWidth,
+                          progress: logoIntroProgress,
+                        ),
+                        SizedBox(height: _lerp(14, 6, firstMoveT)),
+                        Opacity(
+                          opacity: brandTextOpacity,
+                          child: Transform.translate(
+                            offset: Offset(0, 13 * (1 - brandIntroProgress)),
+                            child: blurred(
+                              13 * (1 - brandIntroProgress),
+                              Text(
+                                'Güvən Finans',
+                                textAlign: TextAlign.center,
+                                textScaler: TextScaler.noScaling,
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontFamily: 'CalSans',
+                                  fontSize: brandSize,
+                                  fontWeight: FontWeight.w400,
+                                  height: 1.05,
+                                  letterSpacing: _lerp(-0.7, -0.45, firstMoveT),
+                                  shadows: _softBrandShadows,
                                 ),
                               ),
                             ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
