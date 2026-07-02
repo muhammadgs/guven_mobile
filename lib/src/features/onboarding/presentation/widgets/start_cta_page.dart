@@ -95,19 +95,14 @@ class _LiquidGlassStartButton extends StatelessWidget {
           ],
         ),
         child: LiquidGlassLayer(
-          settings: const LiquidGlassSettings(
-            // Figma Refraction 100 / Depth 25 approximation.
-            thickness: 28,
-            refractiveIndex: 1.52,
-            // Figma Frost 5 approximation.
-            blur: 5,
-            glassColor: Color(0x22FFFFFF),
-            // Figma light angle 0° with controlled 25%-style intensity.
+          settings: const LiquidGlassSettings.figma(
+            refraction: 100,
+            depth: 25,
+            dispersion: 20,
+            frost: 5,
             lightAngle: 0,
-            lightIntensity: 1.22,
-            ambientStrength: 0.42,
-            outlineIntensity: 0.86,
-            saturation: 1.38,
+            lightIntensity: 25,
+            glassColor: Color(0x22FFFFFF),
           ),
           child: LiquidGlass(
             shape: LiquidRoundedSuperellipse(borderRadius: radius),
