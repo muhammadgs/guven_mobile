@@ -1,6 +1,5 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
+import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
 
 import '../../../../shared/effects.dart';
 
@@ -73,100 +72,132 @@ class _LiquidGlassStartButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final double radius = height / 2;
+
     return GestureDetector(
       onTap: onTap,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(height / 2),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 22, sigmaY: 22),
-          child: Container(
-            width: width,
-            height: height,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(height / 2),
-              gradient: const LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: <Color>[
-                  Color(0x52FFFFFF),
-                  Color(0x1FFFFFFF),
-                  Color(0x26000000),
-                ],
-                stops: <double>[0, 0.44, 1],
-              ),
-              border: Border.all(
-                color: const Color(0x55FFFFFF),
-                width: 1.1,
-              ),
-              boxShadow: const <BoxShadow>[
-                BoxShadow(
-                  color: Color(0x42000000),
-                  blurRadius: 34,
-                  offset: Offset(0, 18),
-                ),
-                BoxShadow(
-                  color: Color(0x22FFFFFF),
-                  blurRadius: 18,
-                  offset: Offset(-10, -9),
-                ),
-              ],
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(radius),
+          boxShadow: const <BoxShadow>[
+            BoxShadow(
+              color: Color(0x4A000000),
+              blurRadius: 36,
+              offset: Offset(0, 18),
             ),
-            child: Stack(
-              fit: StackFit.expand,
-              children: <Widget>[
-                Positioned(
-                  left: 10,
-                  top: 8,
-                  bottom: 8,
-                  child: Opacity(
-                    opacity: 0.42,
-                    child: blurred(
-                      10,
-                      Container(
-                        width: width * 0.34,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(height / 2),
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const Positioned(
-                  left: 0,
-                  right: 0,
-                  top: 0,
-                  height: 1,
-                  child: DecoratedBox(
-                    decoration: BoxDecoration(color: Color(0x66FFFFFF)),
-                  ),
-                ),
-                Center(
-                  child: Text(
-                    'Başlayın',
-                    textAlign: TextAlign.center,
-                    textScaler: TextScaler.noScaling,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontFamily: 'CalSans',
-                      fontSize: fontSize,
-                      fontWeight: FontWeight.w400,
-                      height: 1,
-                      letterSpacing: -0.7,
-                      shadows: const <Shadow>[
-                        Shadow(
-                          color: Color(0x55000000),
-                          blurRadius: 18,
-                          offset: Offset(0, 6),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
+            BoxShadow(
+              color: Color(0x22FFFFFF),
+              blurRadius: 18,
+              offset: Offset(-8, -8),
+            ),
+          ],
+        ),
+        child: LiquidGlassLayer(
+          settings: const LiquidGlassSettings(
+            thickness: 24,
+            blur: 7,
+            glassColor: Color(0x24FFFFFF),
+            lightIntensity: 1.35,
+            outlineIntensity: 0.70,
+            saturation: 1.22,
+          ),
+          child: LiquidGlass(
+            shape: LiquidRoundedSuperellipse(borderRadius: radius),
+            child: SizedBox(
+              width: width,
+              height: height,
+              child: _StartButtonContent(
+                radius: radius,
+                fontSize: fontSize,
+              ),
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _StartButtonContent extends StatelessWidget {
+  const _StartButtonContent({
+    required this.radius,
+    required this.fontSize,
+  });
+
+  final double radius;
+  final double fontSize;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(radius),
+      child: Stack(
+        fit: StackFit.expand,
+        children: <Widget>[
+          const DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: <Color>[
+                  Color(0x36FFFFFF),
+                  Color(0x10FFFFFF),
+                  Color(0x26000000),
+                ],
+                stops: <double>[0, 0.46, 1],
+              ),
+            ),
+          ),
+          Positioned(
+            left: 10,
+            top: 8,
+            bottom: 8,
+            child: Opacity(
+              opacity: 0.38,
+              child: blurred(
+                10,
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(radius),
+                    color: Colors.white,
+                  ),
+                  child: const SizedBox(width: 78),
+                ),
+              ),
+            ),
+          ),
+          const Positioned(
+            left: 0,
+            right: 0,
+            top: 0,
+            height: 1.2,
+            child: DecoratedBox(
+              decoration: BoxDecoration(color: Color(0x70FFFFFF)),
+            ),
+          ),
+          Center(
+            child: Text(
+              'Başlayın',
+              textAlign: TextAlign.center,
+              textScaler: TextScaler.noScaling,
+              style: TextStyle(
+                color: Colors.white,
+                fontFamily: 'CalSans',
+                fontSize: fontSize,
+                fontWeight: FontWeight.w400,
+                height: 1,
+                letterSpacing: -0.7,
+                shadows: const <Shadow>[
+                  Shadow(
+                    color: Color(0x55000000),
+                    blurRadius: 18,
+                    offset: Offset(0, 6),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
