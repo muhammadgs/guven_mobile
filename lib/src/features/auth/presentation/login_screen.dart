@@ -15,7 +15,7 @@ class LoginScreen extends StatelessWidget {
     final double labelSize =
         (screen.width * 0.045).clamp(18.0, 24.0).toDouble();
     final double fieldHeight =
-        (screen.height * 0.074).clamp(58.0, 72.0).toDouble();
+        (screen.height * 0.068).clamp(56.0, 64.0).toDouble();
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -54,7 +54,7 @@ class LoginScreen extends StatelessWidget {
                     ),
                     glassContainsChild: false,
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(34, 30, 34, 34),
+                      padding: const EdgeInsets.fromLTRB(34, 22, 34, 26),
                       child: _LoginCardContent(
                         titleSize: titleSize,
                         labelSize: labelSize,
@@ -109,25 +109,25 @@ class _LoginCardContent extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 56),
+        const SizedBox(height: 38),
         _GlassLoginField(
           label: 'Email və ya nömrə',
           fieldHeight: fieldHeight,
           labelSize: labelSize,
           keyboardType: TextInputType.emailAddress,
         ),
-        const SizedBox(height: 26),
+        const SizedBox(height: 20),
         _GlassLoginField(
           label: 'Şifrə',
           fieldHeight: fieldHeight,
           labelSize: labelSize,
           obscureText: true,
         ),
-        const SizedBox(height: 32),
+        const SizedBox(height: 24),
         Center(
           child: _LoginButton(
             width: 180,
-            height: 54,
+            height: 52,
             onTap: () {},
           ),
         ),
@@ -171,7 +171,7 @@ class _GlassLoginField extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 14),
+        const SizedBox(height: 12),
         SizedBox(
           height: fieldHeight,
           child: TextField(
