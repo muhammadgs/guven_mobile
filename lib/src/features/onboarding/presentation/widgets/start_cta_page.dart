@@ -30,153 +30,38 @@ class StartCtaPage extends StatelessWidget {
       child: Center(
         child: Padding(
           padding: EdgeInsets.only(top: screen.height * 0.13),
-          child: Builder(
-            builder: (buttonContext) {
-              return _LiquidGlassStartButton(
-                width: buttonWidth,
-                height: buttonHeight,
-                fontSize: fontSize,
-                onTap: () => _openLogin(context, buttonContext),
-              );
-            },
+          child: _LiquidGlassStartButton(
+            width: buttonWidth,
+            height: buttonHeight,
+            fontSize: fontSize,
+            onTap: () => _openLogin(context),
           ),
         ),
       ),
     );
   }
 
-  void _openLogin(BuildContext context, BuildContext buttonContext) {
-    final Rect startRect = _buttonRectFrom(buttonContext, context);
-
+  void _openLogin(BuildContext context) {
     Navigator.of(context).push(
       PageRouteBuilder<void>(
-        transitionDuration: const Duration(milliseconds: 760),
+        transitionDuration: const Duration(milliseconds: 520),
         reverseTransitionDuration: const Duration(milliseconds: 360),
         pageBuilder: (context, animation, secondaryAnimation) {
           return const LoginScreen();
         },
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          return _LoginBurstTransition(
-            animation: animation,
-            startRect: startRect,
+          final Animation<double> curvedAnimation = CurvedAnimation(
+            parent: animation,
+            curve: Curves.easeOutCubic,
+            reverseCurve: Curves.easeInCubic,
+          );
+
+          return FadeTransition(
+            opacity: curvedAnimation,
             child: child,
           );
         },
       ),
-    );
-  }
-
-  Rect _buttonRectFrom(BuildContext buttonContext, BuildContext pageContext) {
-    final RenderObject? buttonObject = buttonContext.findRenderObject();
-    final RenderObject? overlayObject =
-        Navigator.of(pageContext).overlay?.context.findRenderObject();
-
-    if (buttonObject is RenderBox &&
-        overlayObject is RenderBox &&
-        buttonObject.hasSize) {
-      final Offset topLeft = buttonObject.localToGlobal(
-        Offset.zero,
-        ancestor: overlayObject,
-      );
-      return topLeft & buttonObject.size;
-    }
-
-    final Size screen = MediaQuery.sizeOf(pageContext);
-    return Rect.fromCenter(
-      center: Offset(screen.width / 2, screen.height * 0.58),
-      width: 240,
-      height: 72,
-    );
-  }
-}
-
-class _LoginBurstTransition extends StatelessWidget {
-  const _LoginBurstTransition({
-    required this.animation,
-    required this.startRect,
-    required this.child,
-  });
-
-  final Animation<double> animation;
-  final Rect startRect;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: animation,
-      builder: (context, _) {
-        final double t = Curves.easeOutCubic.transform(animation.value);
-        final double childOpacity = Curves.easeOut.transform(
-          ((t - 0.34) / 0.66).clamp(0.0, 1.0).toDouble(),
-        );
-        final double burstOpacity =
-            (1 - ((t - 0.76) / 0.24).clamp(0.0, 1.0)).toDouble();
-        final Size screen = MediaQuery.sizeOf(context);
-        final Rect endRect = Rect.fromLTWH(
-          -screen.width * 0.12,
-          -screen.height * 0.12,
-          screen.width * 1.24,
-          screen.height * 1.24,
-        );
-        final Rect burstRect = Rect.lerp(startRect, endRect, t)!;
-        final double radius = (startRect.height / 2) * (1 - t);
-
-        return Stack(
-          fit: StackFit.expand,
-          children: <Widget>[
-            Opacity(
-              opacity: childOpacity,
-              child: child,
-            ),
-            IgnorePointer(
-              child: Opacity(
-                opacity: burstOpacity,
-                child: Stack(
-                  children: <Widget>[
-                    Positioned.fromRect(
-                      rect: burstRect,
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(radius),
-                          border: Border.all(
-                            color: const Color(0x9AFFFFFF),
-                            width: 1.15,
-                          ),
-                          gradient: const RadialGradient(
-                            center: Alignment(-0.35, -0.45),
-                            radius: 1.25,
-                            colors: <Color>[
-                              Color(0x72FFFFFF),
-                              Color(0x507E6BFF),
-                              Color(0x2D15005C),
-                              Color(0x161B60FF),
-                            ],
-                            stops: <double>[0, 0.28, 0.62, 1],
-                          ),
-                          boxShadow: const <BoxShadow>[
-                            BoxShadow(
-                              color: Color(0x5A9B78FF),
-                              blurRadius: 42,
-                              spreadRadius: 4,
-                            ),
-                            BoxShadow(
-                              color: Color(0x33000000),
-                              blurRadius: 34,
-                              spreadRadius: -8,
-                              offset: Offset(0, 18),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        );
-      },
     );
   }
 }
