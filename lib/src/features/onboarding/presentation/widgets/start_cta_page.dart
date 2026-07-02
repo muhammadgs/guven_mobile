@@ -81,33 +81,39 @@ class _LiquidGlassStartButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(radius),
           boxShadow: const <BoxShadow>[
             BoxShadow(
-              color: Color(0x52000000),
-              blurRadius: 42,
-              spreadRadius: -5,
-              offset: Offset(0, 22),
+              color: Color(0x5A000000),
+              blurRadius: 46,
+              spreadRadius: -6,
+              offset: Offset(0, 24),
             ),
             BoxShadow(
-              color: Color(0x28FFFFFF),
-              blurRadius: 22,
-              spreadRadius: -8,
-              offset: Offset(-10, -10),
+              color: Color(0x2AFFFFFF),
+              blurRadius: 24,
+              spreadRadius: -9,
+              offset: Offset(-11, -11),
             ),
           ],
         ),
         child: LiquidGlassLayer(
           settings: const LiquidGlassSettings(
-            thickness: 24,
-            blur: 7,
-            glassColor: Color(0x24FFFFFF),
-            lightIntensity: 1.35,
-            outlineIntensity: 0.70,
-            saturation: 1.22,
+            // Figma Refraction 100 / Depth 25 approximation.
+            thickness: 28,
+            refractiveIndex: 1.52,
+            // Figma Frost 5 approximation.
+            blur: 5,
+            glassColor: Color(0x22FFFFFF),
+            // Figma light angle 0° with controlled 25%-style intensity.
+            lightAngle: 0,
+            lightIntensity: 1.22,
+            ambientStrength: 0.42,
+            outlineIntensity: 0.86,
+            saturation: 1.38,
           ),
           child: LiquidGlass(
             shape: LiquidRoundedSuperellipse(borderRadius: radius),
             child: GlassGlow(
-              glowColor: const Color(0x66FFFFFF),
-              glowRadius: 1.05,
+              glowColor: const Color(0x70FFFFFF),
+              glowRadius: 1.08,
               child: SizedBox(
                 width: width,
                 height: height,
@@ -146,23 +152,24 @@ class _StartButtonContent extends StatelessWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: <Color>[
-                  Color(0x40FFFFFF),
+                  Color(0x4AFFFFFF),
                   Color(0x18FFFFFF),
-                  Color(0x10000000),
-                  Color(0x30000000),
+                  Color(0x08000000),
+                  Color(0x38000000),
                 ],
-                stops: <double>[0, 0.34, 0.62, 1],
+                stops: <double>[0, 0.33, 0.61, 1],
               ),
             ),
           ),
           Positioned(
-            left: 9,
-            top: 7,
-            bottom: 7,
+            left: -8,
+            top: 5,
+            bottom: 5,
+            width: 128,
             child: Opacity(
-              opacity: 0.44,
+              opacity: 0.47,
               child: blurred(
-                12,
+                14,
                 DecoratedBox(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(radius),
@@ -170,26 +177,27 @@ class _StartButtonContent extends StatelessWidget {
                       begin: Alignment.centerLeft,
                       end: Alignment.centerRight,
                       colors: <Color>[
-                        Color(0xF0FFFFFF),
-                        Color(0x66FFFFFF),
+                        Color(0xF5FFFFFF),
+                        Color(0x78FFFFFF),
+                        Color(0x16FFFFFF),
                         Color(0x00FFFFFF),
                       ],
+                      stops: <double>[0, 0.28, 0.66, 1],
                     ),
                   ),
-                  child: const SizedBox(width: 94),
                 ),
               ),
             ),
           ),
           Positioned(
-            left: 30,
-            right: 42,
-            top: 7,
-            height: 18,
+            left: 22,
+            right: 34,
+            top: 5,
+            height: 22,
             child: Opacity(
-              opacity: 0.50,
+              opacity: 0.54,
               child: blurred(
-                8,
+                9,
                 DecoratedBox(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(999),
@@ -198,9 +206,60 @@ class _StartButtonContent extends StatelessWidget {
                       end: Alignment.centerRight,
                       colors: <Color>[
                         Color(0x00FFFFFF),
-                        Color(0xB8FFFFFF),
-                        Color(0x24FFFFFF),
+                        Color(0xCCFFFFFF),
+                        Color(0x38FFFFFF),
                         Color(0x00FFFFFF),
+                      ],
+                      stops: <double>[0, 0.38, 0.68, 1],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            left: -10,
+            top: 0,
+            bottom: 0,
+            width: 28,
+            child: Opacity(
+              opacity: 0.24,
+              child: blurred(
+                7,
+                const DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: <Color>[
+                        Color(0x00B9FFFF),
+                        Color(0x8AB9FFFF),
+                        Color(0x00B9FFFF),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            right: -12,
+            top: 0,
+            bottom: 0,
+            width: 30,
+            child: Opacity(
+              opacity: 0.20,
+              child: blurred(
+                7,
+                const DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: <Color>[
+                        Color(0x00D6B7FF),
+                        Color(0x7AD6B7FF),
+                        Color(0x00D6B7FF),
                       ],
                     ),
                   ),
@@ -210,18 +269,18 @@ class _StartButtonContent extends StatelessWidget {
           ),
           Positioned(
             right: -18,
-            bottom: -22,
-            width: 118,
-            height: 64,
+            bottom: -24,
+            width: 128,
+            height: 70,
             child: Opacity(
-              opacity: 0.28,
+              opacity: 0.32,
               child: blurred(
-                18,
+                20,
                 const DecoratedBox(
                   decoration: BoxDecoration(
                     gradient: RadialGradient(
                       colors: <Color>[
-                        Color(0x88000000),
+                        Color(0x94000000),
                         Color(0x00000000),
                       ],
                     ),
@@ -234,9 +293,9 @@ class _StartButtonContent extends StatelessWidget {
             left: 0,
             right: 0,
             top: 0,
-            height: 1.4,
+            height: 1.5,
             child: DecoratedBox(
-              decoration: BoxDecoration(color: Color(0x88FFFFFF)),
+              decoration: BoxDecoration(color: Color(0x96FFFFFF)),
             ),
           ),
           const Positioned(
@@ -245,7 +304,7 @@ class _StartButtonContent extends StatelessWidget {
             bottom: 0,
             height: 1,
             child: DecoratedBox(
-              decoration: BoxDecoration(color: Color(0x26000000)),
+              decoration: BoxDecoration(color: Color(0x30000000)),
             ),
           ),
           Center(
@@ -262,13 +321,13 @@ class _StartButtonContent extends StatelessWidget {
                 letterSpacing: -0.7,
                 shadows: const <Shadow>[
                   Shadow(
-                    color: Color(0x66000000),
+                    color: Color(0x70000000),
                     blurRadius: 18,
                     offset: Offset(0, 6),
                   ),
                   Shadow(
-                    color: Color(0x33FFFFFF),
-                    blurRadius: 8,
+                    color: Color(0x38FFFFFF),
+                    blurRadius: 9,
                   ),
                 ],
               ),
