@@ -15,45 +15,30 @@ class StartCtaPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: AnimatedBuilder(
-        animation: pageController,
-        builder: (context, _) {
-          final double page = _currentPage;
-          final double raw = (page - (pageIndex - 1)).clamp(0.0, 1.0).toDouble();
-          final double t = Curves.easeOutCubic.transform(raw);
-          final Size screen = MediaQuery.sizeOf(context);
-          final double buttonWidth = (screen.width * 0.52).clamp(210.0, 280.0).toDouble();
-          final double buttonHeight = (screen.height * 0.075).clamp(64.0, 82.0).toDouble();
-          final double fontSize = (screen.width * 0.075).clamp(28.0, 40.0).toDouble();
+    final Size screen = MediaQuery.sizeOf(context);
 
-          return Center(
-            child: Transform.translate(
-              offset: Offset(0, 38 * (1 - t)),
-              child: Opacity(
-                opacity: t,
-                child: Padding(
-                  padding: EdgeInsets.only(top: screen.height * 0.13),
-                  child: _LiquidGlassStartButton(
-                    width: buttonWidth,
-                    height: buttonHeight,
-                    fontSize: fontSize,
-                    onTap: () {},
-                  ),
-                ),
-              ),
-            ),
-          );
-        },
+    final double buttonWidth =
+        (screen.width * 0.52).clamp(210.0, 280.0).toDouble();
+
+    final double buttonHeight =
+        (screen.height * 0.075).clamp(64.0, 82.0).toDouble();
+
+    final double fontSize =
+        (screen.width * 0.075).clamp(28.0, 40.0).toDouble();
+
+    return SafeArea(
+      child: Center(
+        child: Padding(
+          padding: EdgeInsets.only(top: screen.height * 0.13),
+          child: _LiquidGlassStartButton(
+            width: buttonWidth,
+            height: buttonHeight,
+            fontSize: fontSize,
+            onTap: () {},
+          ),
+        ),
       ),
     );
-  }
-
-  double get _currentPage {
-    if (pageController.hasClients && pageController.position.haveDimensions) {
-      return pageController.page ?? pageController.initialPage.toDouble();
-    }
-    return pageController.initialPage.toDouble();
   }
 }
 
@@ -70,7 +55,7 @@ class _LiquidGlassStartButton extends StatelessWidget {
   final double fontSize;
   final VoidCallback onTap;
 
-  @override
+    @override
   Widget build(BuildContext context) {
     final double radius = height / 2;
 
@@ -81,40 +66,50 @@ class _LiquidGlassStartButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(radius),
           boxShadow: const <BoxShadow>[
             BoxShadow(
-              color: Color(0x5A000000),
-              blurRadius: 46,
-              spreadRadius: -6,
-              offset: Offset(0, 24),
-            ),
-            BoxShadow(
-              color: Color(0x2AFFFFFF),
-              blurRadius: 24,
-              spreadRadius: -9,
-              offset: Offset(-11, -11),
+              color: Color(0x36000000),
+              blurRadius: 28,
+              spreadRadius: -8,
+              offset: Offset(0, 16),
             ),
           ],
         ),
-        child: LiquidGlassLayer(
-          settings: LiquidGlassSettings.figma(
-            refraction: 100,
-            depth: 25,
-            dispersion: 20,
-            frost: 5,
-            lightAngle: 0,
-            lightIntensity: 25,
-            glassColor: const Color(0x22FFFFFF),
-          ),
-          child: LiquidGlass(
-            shape: LiquidRoundedSuperellipse(borderRadius: radius),
+        child: LiquidStretch(
+          stretch: 0.35,
+          interactionScale: 1.03,
+          child: LiquidGlass.withOwnLayer(
+            settings: const LiquidGlassSettings(
+              thickness: 55,
+              blur: 0,
+              glassColor: Color.fromARGB(0, 255, 255, 255),
+              refractiveIndex: 1.45,
+              lightIntensity: 1.45,
+              ambientStrength: 0.60,
+              saturation: 1.25,
+            ),
+            shape: LiquidRoundedSuperellipse(
+              borderRadius: radius,
+            ),
+            glassContainsChild: false,
             child: GlassGlow(
-              glowColor: const Color(0x70FFFFFF),
-              glowRadius: 1.08,
+              glowColor: Colors.white38,
+              glowRadius: 1.30,
               child: SizedBox(
                 width: width,
                 height: height,
-                child: _StartButtonContent(
-                  radius: radius,
-                  fontSize: fontSize,
+                child: Center(
+                  child: Text(
+                    'Başlayın',
+                    textAlign: TextAlign.center,
+                    textScaler: TextScaler.noScaling,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontFamily: 'CalSans',
+                      fontSize: fontSize,
+                      fontWeight: FontWeight.w400,
+                      height: 1,
+                      letterSpacing: -0.7,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -122,8 +117,8 @@ class _LiquidGlassStartButton extends StatelessWidget {
         ),
       ),
     );
-  }
-}
+  } 
+}  
 
 class _StartButtonContent extends StatelessWidget {
   const _StartButtonContent({

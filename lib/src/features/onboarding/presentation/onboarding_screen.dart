@@ -242,13 +242,9 @@ class _StartPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _ExitOnSwipe(
-      controller: controller,
-      index: index,
-      child: StartCtaPage(
-        pageController: controller,
-        pageIndex: index,
-      ),
+    return StartCtaPage(
+      pageController: controller,
+      pageIndex: index,
     );
   }
 }
