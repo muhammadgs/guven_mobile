@@ -95,14 +95,14 @@ class _LiquidGlassStartButton extends StatelessWidget {
           ],
         ),
         child: LiquidGlassLayer(
-          settings: const LiquidGlassSettings.figma(
+          settings: LiquidGlassSettings.figma(
             refraction: 100,
             depth: 25,
             dispersion: 20,
             frost: 5,
             lightAngle: 0,
             lightIntensity: 25,
-            glassColor: Color(0x22FFFFFF),
+            glassColor: const Color(0x22FFFFFF),
           ),
           child: LiquidGlass(
             shape: LiquidRoundedSuperellipse(borderRadius: radius),
