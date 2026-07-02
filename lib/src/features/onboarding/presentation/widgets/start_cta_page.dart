@@ -81,14 +81,16 @@ class _LiquidGlassStartButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(radius),
           boxShadow: const <BoxShadow>[
             BoxShadow(
-              color: Color(0x4A000000),
-              blurRadius: 36,
-              offset: Offset(0, 18),
+              color: Color(0x52000000),
+              blurRadius: 42,
+              spreadRadius: -5,
+              offset: Offset(0, 22),
             ),
             BoxShadow(
-              color: Color(0x22FFFFFF),
-              blurRadius: 18,
-              offset: Offset(-8, -8),
+              color: Color(0x28FFFFFF),
+              blurRadius: 22,
+              spreadRadius: -8,
+              offset: Offset(-10, -10),
             ),
           ],
         ),
@@ -103,12 +105,16 @@ class _LiquidGlassStartButton extends StatelessWidget {
           ),
           child: LiquidGlass(
             shape: LiquidRoundedSuperellipse(borderRadius: radius),
-            child: SizedBox(
-              width: width,
-              height: height,
-              child: _StartButtonContent(
-                radius: radius,
-                fontSize: fontSize,
+            child: GlassGlow(
+              glowColor: const Color(0x66FFFFFF),
+              glowRadius: 1.05,
+              child: SizedBox(
+                width: width,
+                height: height,
+                child: _StartButtonContent(
+                  radius: radius,
+                  fontSize: fontSize,
+                ),
               ),
             ),
           ),
@@ -140,28 +146,86 @@ class _StartButtonContent extends StatelessWidget {
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: <Color>[
-                  Color(0x36FFFFFF),
-                  Color(0x10FFFFFF),
-                  Color(0x26000000),
+                  Color(0x40FFFFFF),
+                  Color(0x18FFFFFF),
+                  Color(0x10000000),
+                  Color(0x30000000),
                 ],
-                stops: <double>[0, 0.46, 1],
+                stops: <double>[0, 0.34, 0.62, 1],
               ),
             ),
           ),
           Positioned(
-            left: 10,
-            top: 8,
-            bottom: 8,
+            left: 9,
+            top: 7,
+            bottom: 7,
             child: Opacity(
-              opacity: 0.38,
+              opacity: 0.44,
               child: blurred(
-                10,
+                12,
                 DecoratedBox(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(radius),
-                    color: Colors.white,
+                    gradient: const LinearGradient(
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                      colors: <Color>[
+                        Color(0xF0FFFFFF),
+                        Color(0x66FFFFFF),
+                        Color(0x00FFFFFF),
+                      ],
+                    ),
                   ),
-                  child: const SizedBox(width: 78),
+                  child: const SizedBox(width: 94),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            left: 30,
+            right: 42,
+            top: 7,
+            height: 18,
+            child: Opacity(
+              opacity: 0.50,
+              child: blurred(
+                8,
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(999),
+                    gradient: const LinearGradient(
+                      begin: Alignment.centerLeft,
+                      end: Alignment.centerRight,
+                      colors: <Color>[
+                        Color(0x00FFFFFF),
+                        Color(0xB8FFFFFF),
+                        Color(0x24FFFFFF),
+                        Color(0x00FFFFFF),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Positioned(
+            right: -18,
+            bottom: -22,
+            width: 118,
+            height: 64,
+            child: Opacity(
+              opacity: 0.28,
+              child: blurred(
+                18,
+                const DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: RadialGradient(
+                      colors: <Color>[
+                        Color(0x88000000),
+                        Color(0x00000000),
+                      ],
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -170,9 +234,18 @@ class _StartButtonContent extends StatelessWidget {
             left: 0,
             right: 0,
             top: 0,
-            height: 1.2,
+            height: 1.4,
             child: DecoratedBox(
-              decoration: BoxDecoration(color: Color(0x70FFFFFF)),
+              decoration: BoxDecoration(color: Color(0x88FFFFFF)),
+            ),
+          ),
+          const Positioned(
+            left: 1,
+            right: 1,
+            bottom: 0,
+            height: 1,
+            child: DecoratedBox(
+              decoration: BoxDecoration(color: Color(0x26000000)),
             ),
           ),
           Center(
@@ -189,9 +262,13 @@ class _StartButtonContent extends StatelessWidget {
                 letterSpacing: -0.7,
                 shadows: const <Shadow>[
                   Shadow(
-                    color: Color(0x55000000),
+                    color: Color(0x66000000),
                     blurRadius: 18,
                     offset: Offset(0, 6),
+                  ),
+                  Shadow(
+                    color: Color(0x33FFFFFF),
+                    blurRadius: 8,
                   ),
                 ],
               ),
