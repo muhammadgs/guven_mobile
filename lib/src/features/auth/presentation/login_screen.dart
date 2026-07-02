@@ -8,8 +8,8 @@ class LoginScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final Size screen = MediaQuery.sizeOf(context);
     final double cardWidth = (screen.width - 56).clamp(320.0, 440.0).toDouble();
-    final double cardMinHeight =
-        (screen.height * 0.58).clamp(430.0, 540.0).toDouble();
+    final double cardHeight =
+        (screen.height * 0.48).clamp(460.0, 500.0).toDouble();
     final double titleSize =
         (screen.width * 0.105).clamp(38.0, 56.0).toDouble();
     final double labelSize =
@@ -23,44 +23,42 @@ class LoginScreen extends StatelessWidget {
         child: Center(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(56),
-                boxShadow: const <BoxShadow>[
-                  BoxShadow(
-                    color: Color.fromARGB(82, 0, 0, 0),
-                    blurRadius: 42,
-                    spreadRadius: -12,
-                    offset: Offset(0, 26),
-                  ),
-                ],
-              ),
-              child: LiquidGlassLayer(
-                settings: const LiquidGlassSettings(
-                  thickness: 45,
-                  blur: 0,
-                  glassColor: Color.fromARGB(0, 179, 179, 179),
-                  refractiveIndex: 1.45,
-                  lightIntensity: 1.35,
-                  ambientStrength: 0.55,
-                  saturation: 1.20,
+            child: SizedBox(
+              width: cardWidth,
+              height: cardHeight,
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(56),
+                  boxShadow: const <BoxShadow>[
+                    BoxShadow(
+                      color: Color.fromARGB(82, 0, 0, 0),
+                      blurRadius: 42,
+                      spreadRadius: -12,
+                      offset: Offset(0, 26),
+                    ),
+                  ],
                 ),
-                child: LiquidGlass(
-                  shape: LiquidRoundedSuperellipse(
-                    borderRadius: 56,
+                child: LiquidGlassLayer(
+                  settings: const LiquidGlassSettings(
+                    thickness: 45,
+                    blur: 0,
+                    glassColor: Color.fromARGB(0, 179, 179, 179),
+                    refractiveIndex: 1.45,
+                    lightIntensity: 1.35,
+                    ambientStrength: 0.55,
+                    saturation: 1.20,
                   ),
-                  glassContainsChild: false,
-                  child: SizedBox(
-                    width: cardWidth,
-                    child: ConstrainedBox(
-                      constraints: BoxConstraints(minHeight: cardMinHeight),
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(34, 30, 34, 34),
-                        child: _LoginCardContent(
-                          titleSize: titleSize,
-                          labelSize: labelSize,
-                          fieldHeight: fieldHeight,
-                        ),
+                  child: LiquidGlass(
+                    shape: LiquidRoundedSuperellipse(
+                      borderRadius: 56,
+                    ),
+                    glassContainsChild: false,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(34, 30, 34, 34),
+                      child: _LoginCardContent(
+                        titleSize: titleSize,
+                        labelSize: labelSize,
+                        fieldHeight: fieldHeight,
                       ),
                     ),
                   ),
