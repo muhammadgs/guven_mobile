@@ -4,6 +4,7 @@ import '../../../shared/effects.dart';
 import 'widgets/gf44_data_hub_page.dart';
 import 'widgets/glass_page_indicator.dart';
 import 'widgets/glass_swipe_arrow.dart';
+import 'widgets/start_cta_page.dart';
 import 'widgets/swipe_responsive_brand_lockup.dart';
 import 'widgets/swipe_responsive_gf44_headline.dart';
 import 'widgets/welcome_brand_intro.dart';
@@ -57,7 +58,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 _WelcomePage(controller: _pageController, index: 0),
                 _Gf44Page(controller: _pageController, index: 1),
                 _Gf44DataPage(controller: _pageController, index: 2),
-                _PlaceholderPage(controller: _pageController, index: 3),
+                _StartPage(controller: _pageController, index: 3),
               ],
             ),
           ),
@@ -233,8 +234,8 @@ class _Gf44DataPage extends StatelessWidget {
   }
 }
 
-class _PlaceholderPage extends StatelessWidget {
-  const _PlaceholderPage({required this.controller, required this.index});
+class _StartPage extends StatelessWidget {
+  const _StartPage({required this.controller, required this.index});
 
   final PageController controller;
   final int index;
@@ -244,18 +245,9 @@ class _PlaceholderPage extends StatelessWidget {
     return _ExitOnSwipe(
       controller: controller,
       index: index,
-      child: const SafeArea(
-        child: Center(
-          child: Text(
-            'Tezliklə',
-            style: TextStyle(
-              color: Colors.white38,
-              fontSize: 18,
-              fontWeight: FontWeight.w500,
-              letterSpacing: 0.5,
-            ),
-          ),
-        ),
+      child: StartCtaPage(
+        pageController: controller,
+        pageIndex: index,
       ),
     );
   }
