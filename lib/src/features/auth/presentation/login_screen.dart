@@ -28,7 +28,7 @@ class LoginScreen extends StatelessWidget {
                 borderRadius: BorderRadius.circular(56),
                 boxShadow: const <BoxShadow>[
                   BoxShadow(
-                    color: Color(0x40000000),
+                    color: Color.fromARGB(82, 0, 0, 0),
                     blurRadius: 42,
                     spreadRadius: -12,
                     offset: Offset(0, 26),
@@ -37,9 +37,9 @@ class LoginScreen extends StatelessWidget {
               ),
               child: LiquidGlassLayer(
                 settings: const LiquidGlassSettings(
-                  thickness: 20,
-                  blur: 10,
-                  glassColor: Color(0x33FFFFFF),
+                  thickness: 45,
+                  blur: 0,
+                  glassColor: Color.fromARGB(0, 179, 179, 179),
                   refractiveIndex: 1.45,
                   lightIntensity: 1.35,
                   ambientStrength: 0.55,
