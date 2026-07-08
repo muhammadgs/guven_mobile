@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
 
+import '../../../../shared/effects.dart';
 import '../../../auth/presentation/login_screen.dart';
 
 class StartCtaPage extends StatelessWidget {
@@ -44,21 +45,37 @@ class StartCtaPage extends StatelessWidget {
   void _openLogin(BuildContext context) {
     Navigator.of(context).push(
       PageRouteBuilder<void>(
-        transitionDuration: const Duration(milliseconds: 520),
-        reverseTransitionDuration: const Duration(milliseconds: 360),
+        transitionDuration: const Duration(milliseconds: 720),
+        reverseTransitionDuration: const Duration(milliseconds: 460),
         pageBuilder: (context, animation, secondaryAnimation) {
           return const LoginScreen();
         },
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          final Animation<double> curvedAnimation = CurvedAnimation(
+          // Starts after the onboarding has mostly dissolved (see
+          // AuthFlowShell), so the two never crossfade at full sharpness:
+          // login condenses out of blur and settles with a gentle scale.
+          final CurvedAnimation reveal = CurvedAnimation(
             parent: animation,
-            curve: Curves.easeOutCubic,
-            reverseCurve: Curves.easeInCubic,
+            curve: const Interval(0.35, 1.0, curve: Curves.easeOutCubic),
+            reverseCurve: const Interval(0.45, 1.0, curve: Curves.easeInCubic),
           );
 
-          return FadeTransition(
-            opacity: curvedAnimation,
+          return AnimatedBuilder(
+            animation: reveal,
             child: child,
+            builder: (context, child) {
+              final double t = reveal.value;
+              return Opacity(
+                opacity: t,
+                child: blurred(
+                  14 * (1 - t),
+                  Transform.scale(
+                    scale: 0.96 + 0.04 * t,
+                    child: child,
+                  ),
+                ),
+              );
+            },
           );
         },
       ),
@@ -102,7 +119,7 @@ class _LiquidGlassStartButton extends StatelessWidget {
           interactionScale: 1.03,
           child: LiquidGlass.withOwnLayer(
             settings: const LiquidGlassSettings(
-              thickness: 55,
+              thickness: 30,
               blur: 0,
               glassColor: Color.fromARGB(0, 255, 255, 255),
               refractiveIndex: 1.45,

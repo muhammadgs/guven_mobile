@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../features/onboarding/presentation/onboarding_screen.dart';
+import '../../../shared/effects.dart';
 import '../../../shared/widgets/auth_background.dart';
 
 /// Root widget for the unauthenticated ("pre-login") flow.
@@ -21,9 +22,37 @@ class AuthFlowShell extends StatelessWidget {
     return AuthBackground(
       child: Navigator(
         onGenerateRoute: (RouteSettings settings) {
-          return MaterialPageRoute<void>(
+          return PageRouteBuilder<void>(
             settings: settings,
-            builder: (_) => const OnboardingScreen(),
+            pageBuilder: (_, __, ___) => const OnboardingScreen(),
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
+              // When a screen is pushed on top (login), dissolve the whole
+              // onboarding into blur during the first half of that push, so
+              // nothing lingers under the incoming screen. Runs in reverse
+              // on pop, re-materialising the onboarding.
+              final CurvedAnimation cover = CurvedAnimation(
+                parent: secondaryAnimation,
+                curve: const Interval(0.0, 0.55, curve: Curves.easeInOutCubic),
+              );
+              return AnimatedBuilder(
+                animation: cover,
+                child: child,
+                builder: (context, child) {
+                  final double t = cover.value;
+                  return Opacity(
+                    opacity: 1 - t,
+                    child: blurred(
+                      16 * t,
+                      Transform.scale(
+                        scale: 1 + 0.03 * t,
+                        child: child,
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
           );
         },
       ),
