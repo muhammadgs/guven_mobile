@@ -24,7 +24,7 @@ class AuthFlowShell extends StatelessWidget {
         onGenerateRoute: (RouteSettings settings) {
           return PageRouteBuilder<void>(
             settings: settings,
-            pageBuilder: (_, __, ___) => const OnboardingScreen(),
+            pageBuilder: (_, _, _) => const OnboardingScreen(),
             transitionsBuilder:
                 (context, animation, secondaryAnimation, child) {
               // When a screen is pushed on top (login), dissolve the whole
