@@ -10,5 +10,7 @@ workflows:
       - name: Flutter build ipa
         script: |
           flutter build ipa --release --no-codesign
+          # Əgər bu yenə IPA çıxarmasa, aşağıdakı əmri yoxlayın:
+          xcodebuild -exportArchive -archivePath build/ios/archive/Runner.xcarchive -exportPath build/ios/ipa -exportOptionsPlist ios/ExportOptions.plist
     artifacts:
       - build/ios/ipa/*.ipa
