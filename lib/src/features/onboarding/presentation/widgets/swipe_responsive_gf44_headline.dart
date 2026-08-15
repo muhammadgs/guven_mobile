@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../shared/effects.dart';
+import '../../../../shared/layout.dart';
 
 class SwipeResponsiveGf44Headline extends StatefulWidget {
   const SwipeResponsiveGf44Headline({super.key, required this.controller});
@@ -77,14 +78,14 @@ class _SwipeResponsiveGf44HeadlineState
                     exitOpacity;
 
             final double top = _lerp(
-              (screen.height * 0.395).clamp(310.0, 380.0).toDouble(),
-              (screen.height * 0.330).clamp(246.0, 318.0).toDouble(),
+              (screen.height * 0.395).clamp(310.0, scaled(context, 380)).toDouble(),
+              (screen.height * 0.330).clamp(246.0, scaled(context, 318)).toDouble(),
               moveT,
             );
             final double headlineSize =
-                (screen.width * 0.13).clamp(42.0, 58.0).toDouble();
+                responsive(context, factor: 0.13, min: 42, max: 58);
             final double subtitleSize =
-                (screen.width * 0.047).clamp(16.0, 21.0).toDouble();
+                responsive(context, factor: 0.047, min: 16, max: 21);
             const String text = 'GF44';
             final int count = (text.length * _textController.value)
                 .ceil()
@@ -120,7 +121,7 @@ class _SwipeResponsiveGf44HeadlineState
                             ),
                           ),
                         ),
-                        const SizedBox(height: 10),
+                        SizedBox(height: scaled(context, 10)),
                         Opacity(
                           opacity: pageThreeSubtitleOpacity,
                           child: Transform.translate(

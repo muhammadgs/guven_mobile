@@ -2,6 +2,8 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
+import '../../../../shared/layout.dart';
+
 /// Apple-style "liquid glass" page dots.
 ///
 /// Inactive dots are translucent glass (a real backdrop blur of the aurora
@@ -30,7 +32,9 @@ class GlassPageIndicator extends StatelessWidget {
       children: <Widget>[
         for (int i = 0; i < count; i++)
           Padding(
-            padding: EdgeInsets.symmetric(horizontal: _spacing / 2),
+            padding: EdgeInsets.symmetric(
+              horizontal: scaled(context, _spacing) / 2,
+            ),
             child: _Dot(
               selected: (1 - (page - i).abs()).clamp(0.0, 1.0),
             ),
@@ -48,11 +52,14 @@ class _Dot extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final double size = lerpDouble(
-      GlassPageIndicator._glassSize,
-      GlassPageIndicator._activeSize,
-      selected,
-    )!;
+    final double size = scaled(
+      context,
+      lerpDouble(
+        GlassPageIndicator._glassSize,
+        GlassPageIndicator._activeSize,
+        selected,
+      )!,
+    );
     final double fillAlpha = lerpDouble(0.16, 1.0, selected)!;
     final double borderAlpha = lerpDouble(0.45, 1.0, selected)!;
 

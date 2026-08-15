@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../shared/effects.dart';
+import '../../../../shared/layout.dart';
 
 /// First onboarding hero text that reveals after the shared brand lockup.
 ///
@@ -85,67 +86,76 @@ class _WelcomeBrandIntroState extends State<WelcomeBrandIntro>
         final double availableHeight = constraints.maxHeight.isFinite
             ? constraints.maxHeight
             : screen.height;
+        // Must stay in lockstep with SwipeResponsiveBrandLockup, which owns the
+        // logo this page reserves space for.
         final double sharedLogoWidth =
-            (screen.width * 0.58).clamp(190.0, 270.0).toDouble();
+            responsive(context, factor: 0.58, min: 190, max: 270);
         final double sharedBrandSize =
-            (screen.width * 0.092).clamp(30.0, 42.0).toDouble();
+            responsive(context, factor: 0.092, min: 30, max: 42);
         final double sharedLockupReserve =
             sharedLogoWidth / _logoAspect + 4 + sharedBrandSize * 1.05;
         final double subtitleSize =
-            (screen.width * 0.04).clamp(14.0, 18.0).toDouble();
+            responsive(context, factor: 0.04, min: 14, max: 18);
         final double welcomeSize =
-            (screen.width * 0.105).clamp(34.0, 48.0).toDouble();
+            responsive(context, factor: 0.105, min: 34, max: 48);
         final double signatureGap =
-            (availableHeight * 0.085).clamp(42.0, 70.0).toDouble();
+            (availableHeight * 0.085).clamp(42.0, scaled(context, 70)).toDouble();
 
         return AnimatedBuilder(
           animation: _controller,
           builder: (context, _) {
             return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 28),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  SizedBox(height: sharedLockupReserve),
-                  const SizedBox(height: 95),
-                  _BlurRevealText(
-                    progress: _interval(0.4, 0.6),
-                    text: 'İnnovativ maliyyə həlləri',
-                    style: TextStyle(
-                      color: const Color(0xEFFFFFFF),
-                      fontFamily: 'Poppins',
-                      fontSize: subtitleSize,
-                      fontWeight: FontWeight.w400,
-                      height: 1.25,
-                      letterSpacing: 0.15,
-                      shadows: _softShadows,
+              padding: EdgeInsets.symmetric(horizontal: scaled(context, 28)),
+              // The lockup reserve and hero gap are fixed, so a short viewport
+              // — a tablet in landscape — cannot fit the column's natural
+              // height. scaleDown is a no-op whenever it already fits, which is
+              // every phone, and shrinks it as one piece when it does not.
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    SizedBox(height: sharedLockupReserve),
+                    SizedBox(height: scaled(context, 95)),
+                    _BlurRevealText(
+                      progress: _interval(0.4, 0.6),
+                      text: 'İnnovativ maliyyə həlləri',
+                      style: TextStyle(
+                        color: const Color(0xEFFFFFFF),
+                        fontFamily: 'Poppins',
+                        fontSize: subtitleSize,
+                        fontWeight: FontWeight.w400,
+                        height: 1.25,
+                        letterSpacing: 0.15,
+                        shadows: _softShadows,
+                      ),
+                      beginOffset: 11,
+                      beginBlur: 11,
+                      beginLetterSpacing: 1.0,
+                      endLetterSpacing: 0.15,
                     ),
-                    beginOffset: 11,
-                    beginBlur: 11,
-                    beginLetterSpacing: 1.0,
-                    endLetterSpacing: 0.15,
-                  ),
-                  SizedBox(height: signatureGap),
-                  _BlurRevealText(
-                    progress: _interval(0.6, 0.8),
-                    text: 'Xoş Gəlmişsiniz!',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontFamily: 'CalSans',
-                      fontSize: welcomeSize,
-                      fontWeight: FontWeight.w400,
-                      height: 1,
-                      letterSpacing: 1.0,
-                      shadows: _softShadows,
+                    SizedBox(height: signatureGap),
+                    _BlurRevealText(
+                      progress: _interval(0.6, 0.8),
+                      text: 'Xoş Gəlmişsiniz!',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontFamily: 'CalSans',
+                        fontSize: welcomeSize,
+                        fontWeight: FontWeight.w400,
+                        height: 1,
+                        letterSpacing: 1.0,
+                        shadows: _softShadows,
+                      ),
+                      beginOffset: 16,
+                      beginBlur: 14,
+                      beginScale: 0.94,
+                      endScale: 1,
+                      beginLetterSpacing: 3.2,
+                      endLetterSpacing: 1.0,
                     ),
-                    beginOffset: 16,
-                    beginBlur: 14,
-                    beginScale: 0.94,
-                    endScale: 1,
-                    beginLetterSpacing: 3.2,
-                    endLetterSpacing: 1.0,
-                  ),
-                ],
+                  ],
+                ),
               ),
             );
           },

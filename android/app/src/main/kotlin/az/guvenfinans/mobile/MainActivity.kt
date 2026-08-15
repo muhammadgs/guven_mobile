@@ -1,4 +1,4 @@
-package com.example.guven_mobile
+package az.guvenfinans.mobile
 
 import io.flutter.embedding.android.FlutterActivity
 

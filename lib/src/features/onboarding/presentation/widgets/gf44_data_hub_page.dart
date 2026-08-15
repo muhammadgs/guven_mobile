@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../../../shared/layout.dart';
+
 class Gf44DataHubPage extends StatelessWidget {
   const Gf44DataHubPage({
     super.key,
@@ -29,14 +31,19 @@ class Gf44DataHubPage extends StatelessWidget {
           return LayoutBuilder(
             builder: (context, constraints) {
               final Size screen = MediaQuery.sizeOf(context);
-              final double bottom = 132 + MediaQuery.paddingOf(context).bottom;
-              final double horizontalPadding = (screen.width * 0.055).clamp(18.0, 24.0).toDouble();
+              final double scale = uiScale(context);
+              final double bottom =
+                  scaled(context, 132) + MediaQuery.paddingOf(context).bottom;
+              final double horizontalPadding =
+                  responsive(context, factor: 0.055, min: 18, max: 24);
               final double contentWidth = constraints.maxWidth - horizontalPadding * 2;
-              final double gapX = (screen.width * 0.075).clamp(24.0, 38.0).toDouble();
-              final double cellWidth = ((contentWidth - gapX) / 2).clamp(118.0, 160.0).toDouble();
-              final double iconSize = (screen.width * 0.15).clamp(50.0, 66.0).toDouble();
-              final double labelSize = (screen.width * 0.034).clamp(12.0, 15.0).toDouble();
-              final double gapY = (screen.height * 0.078).clamp(54.0, 76.0).toDouble();
+              final double gapX = responsive(context, factor: 0.075, min: 24, max: 38);
+              final double cellWidth =
+                  ((contentWidth - gapX) / 2).clamp(118.0, 160.0 * scale).toDouble();
+              final double iconSize = responsive(context, factor: 0.15, min: 50, max: 66);
+              final double labelSize = responsive(context, factor: 0.034, min: 12, max: 15);
+              final double gapY =
+                  (screen.height * 0.078).clamp(54.0, 76.0 * scale).toDouble();
 
               return Padding(
                 padding: EdgeInsets.fromLTRB(horizontalPadding, 0, horizontalPadding, bottom),
@@ -126,7 +133,7 @@ class _FeatureIcon extends StatelessWidget {
                     fallbackIcon: item.fallbackIcon,
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: scaled(context, 12)),
                 SizedBox(
                   width: cellWidth,
                   child: FittedBox(

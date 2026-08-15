@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../shared/effects.dart';
+import '../../../shared/layout.dart';
 import 'widgets/gf44_data_hub_page.dart';
 import 'widgets/glass_page_indicator.dart';
 import 'widgets/glass_swipe_arrow.dart';
@@ -67,7 +68,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           Positioned(
             left: 0,
             right: 0,
-            bottom: 36 + bottomInset,
+            bottom: scaled(context, 36) + bottomInset,
             child: AnimatedBuilder(
               animation: _pageController,
               builder: (context, _) {
@@ -79,9 +80,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       page: page,
                       count: OnboardingScreen.pageCount,
                     ),
-                    const SizedBox(height: 26),
+                    SizedBox(height: scaled(context, 26)),
                     SizedBox(
-                      height: 42,
+                      height: scaled(context, 42),
                       child: GlassSwipeArrow(
                         visibility: (1 - page).clamp(0.0, 1.0),
                         onTap: _goNext,
@@ -106,7 +107,8 @@ class _WelcomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final double bottomReserve = 150 + MediaQuery.paddingOf(context).bottom;
+    final double bottomReserve =
+        scaled(context, 150) + MediaQuery.paddingOf(context).bottom;
 
     return _ExitOnSwipe(
       controller: controller,
@@ -157,23 +159,23 @@ class _Gf44OverviewBody extends StatelessWidget {
               .clamp(0.0, 1.0)
               .toDouble();
           final double t = Curves.easeOutCubic.transform(progress);
-          final Size screen = MediaQuery.sizeOf(context);
           final double headlineSize =
-              (screen.width * 0.13).clamp(42.0, 58.0).toDouble();
+              responsive(context, factor: 0.13, min: 42, max: 58);
           final double descriptionSize =
-              (screen.width * 0.052).clamp(17.0, 22.0).toDouble();
+              responsive(context, factor: 0.052, min: 17, max: 22);
           final double bottomReserve =
-              132 + MediaQuery.paddingOf(context).bottom;
+              scaled(context, 132) + MediaQuery.paddingOf(context).bottom;
+          final double horizontal = scaled(context, 22);
 
           return Padding(
-            padding: EdgeInsets.fromLTRB(22, 0, 22, bottomReserve),
+            padding: EdgeInsets.fromLTRB(horizontal, 0, horizontal, bottomReserve),
             child: Align(
               alignment: const Alignment(0, 0.24),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: <Widget>[
                   SizedBox(height: headlineSize),
-                  const SizedBox(height: 20),
+                  SizedBox(height: scaled(context, 20)),
                   Opacity(
                     opacity: Curves.easeOut.transform(t),
                     child: Transform.translate(

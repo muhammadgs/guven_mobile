@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../shared/effects.dart';
+import '../../../../shared/layout.dart';
 import 'animated_logo.dart';
 
 class SwipeResponsiveBrandLockup extends StatefulWidget {
@@ -75,29 +76,31 @@ class _SwipeResponsiveBrandLockupState extends State<SwipeResponsiveBrandLockup>
             final double logoIntroProgress = _interval(0.00, 0.56);
             final double brandIntroProgress = _interval(0.20, 0.40);
             final double startLogoWidth =
-                (screen.width * 0.58).clamp(190.0, 270.0).toDouble();
+                responsive(context, factor: 0.58, min: 190, max: 270);
             final double compactLogoWidth =
-                (screen.width * 0.33).clamp(116.0, 158.0).toDouble();
+                responsive(context, factor: 0.33, min: 116, max: 158);
             final double finalLogoWidth =
-                (screen.width * 0.48).clamp(176.0, 232.0).toDouble();
+                responsive(context, factor: 0.48, min: 176, max: 232);
             final double compactWidth =
                 _lerp(startLogoWidth, compactLogoWidth, firstMoveT);
             final double logoWidth =
                 _lerp(compactWidth, finalLogoWidth, finalMoveT);
 
             final double startBrandSize =
-                (screen.width * 0.092).clamp(30.0, 42.0).toDouble();
+                responsive(context, factor: 0.092, min: 30, max: 42);
             final double compactBrandSize =
-                (screen.width * 0.064).clamp(22.0, 30.0).toDouble();
+                responsive(context, factor: 0.064, min: 22, max: 30);
             final double brandSize =
                 _lerp(startBrandSize, compactBrandSize, firstMoveT);
 
+            // Vertical anchors already track the screen height, so only their
+            // phone-calibrated ceilings need lifting for a tablet.
             final double startTop =
-                (screen.height * 0.305).clamp(218.0, 286.0).toDouble();
+                (screen.height * 0.305).clamp(218.0, scaled(context, 286)).toDouble();
             final double compactTop = padding.top +
-                (screen.height * 0.07).clamp(48.0, 72.0).toDouble();
+                (screen.height * 0.07).clamp(48.0, scaled(context, 72)).toDouble();
             final double finalTop =
-                (screen.height * 0.355).clamp(300.0, 430.0).toDouble();
+                (screen.height * 0.355).clamp(300.0, scaled(context, 430)).toDouble();
             final double compactOrStartTop = _lerp(startTop, compactTop, firstMoveT);
             final double top = _lerp(compactOrStartTop, finalTop, finalMoveT);
 
@@ -120,7 +123,9 @@ class _SwipeResponsiveBrandLockupState extends State<SwipeResponsiveBrandLockup>
                           width: logoWidth,
                           progress: logoIntroProgress,
                         ),
-                        SizedBox(height: _lerp(14, 6, firstMoveT)),
+                        SizedBox(
+                          height: scaled(context, _lerp(14, 6, firstMoveT)),
+                        ),
                         Opacity(
                           opacity: brandTextOpacity,
                           child: Transform.translate(

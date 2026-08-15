@@ -1,34 +1,41 @@
 import 'package:flutter/material.dart';
 import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
 
+import '../../../shared/layout.dart';
+
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     final Size screen = MediaQuery.sizeOf(context);
-    final double cardWidth = (screen.width - 56).clamp(320.0, 440.0).toDouble();
-    final double cardHeight =
-        (screen.height * 0.48).clamp(460.0, 500.0).toDouble();
+    final double cardWidth = (screen.width - scaled(context, 56))
+        .clamp(320.0, scaled(context, 440))
+        .toDouble();
+    final double cardHeight = (screen.height * 0.48)
+        .clamp(scaled(context, 460), scaled(context, 500))
+        .toDouble();
     final double titleSize =
-        (screen.width * 0.105).clamp(38.0, 56.0).toDouble();
+        responsive(context, factor: 0.105, min: 38, max: 56);
     final double labelSize =
-        (screen.width * 0.045).clamp(18.0, 24.0).toDouble();
-    final double fieldHeight =
-        (screen.height * 0.068).clamp(56.0, 64.0).toDouble();
+        responsive(context, factor: 0.045, min: 18, max: 24);
+    final double fieldHeight = (screen.height * 0.068)
+        .clamp(scaled(context, 56), scaled(context, 64))
+        .toDouble();
+    final double cardRadius = scaled(context, 56);
 
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: SafeArea(
         child: Center(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
+            padding: EdgeInsets.symmetric(horizontal: scaled(context, 24)),
             child: SizedBox(
               width: cardWidth,
               height: cardHeight,
               child: DecoratedBox(
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(56),
+                  borderRadius: BorderRadius.circular(cardRadius),
                   boxShadow: const <BoxShadow>[
                     BoxShadow(
                       color: Color.fromARGB(82, 0, 0, 0),
@@ -50,11 +57,16 @@ class LoginScreen extends StatelessWidget {
                   ),
                   child: LiquidGlass(
                     shape: LiquidRoundedSuperellipse(
-                      borderRadius: 56,
+                      borderRadius: cardRadius,
                     ),
                     glassContainsChild: false,
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(34, 22, 34, 26),
+                      padding: EdgeInsets.fromLTRB(
+                        scaled(context, 34),
+                        scaled(context, 22),
+                        scaled(context, 34),
+                        scaled(context, 26),
+                      ),
                       child: _LoginCardContent(
                         titleSize: titleSize,
                         labelSize: labelSize,
@@ -109,25 +121,25 @@ class _LoginCardContent extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 38),
+        SizedBox(height: scaled(context, 38)),
         _GlassLoginField(
           label: 'Email və ya nömrə',
           fieldHeight: fieldHeight,
           labelSize: labelSize,
           keyboardType: TextInputType.emailAddress,
         ),
-        const SizedBox(height: 20),
+        SizedBox(height: scaled(context, 20)),
         _GlassLoginField(
           label: 'Şifrə',
           fieldHeight: fieldHeight,
           labelSize: labelSize,
           obscureText: true,
         ),
-        const SizedBox(height: 24),
+        SizedBox(height: scaled(context, 24)),
         Center(
           child: _LoginButton(
-            width: 180,
-            height: 52,
+            width: scaled(context, 180),
+            height: scaled(context, 52),
             onTap: () {},
           ),
         ),
@@ -157,7 +169,7 @@ class _GlassLoginField extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         Padding(
-          padding: const EdgeInsets.only(left: 26),
+          padding: EdgeInsets.only(left: scaled(context, 26)),
           child: Text(
             label,
             textScaler: TextScaler.noScaling,
@@ -171,7 +183,7 @@ class _GlassLoginField extends StatelessWidget {
             ),
           ),
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: scaled(context, 12)),
         SizedBox(
           height: fieldHeight,
           child: TextField(
@@ -180,18 +192,18 @@ class _GlassLoginField extends StatelessWidget {
             cursorColor: Colors.white,
             textInputAction:
                 obscureText ? TextInputAction.done : TextInputAction.next,
-            style: const TextStyle(
+            style: TextStyle(
               color: Colors.white,
               fontFamily: 'Poppins',
-              fontSize: 20,
+              fontSize: scaled(context, 20),
               fontWeight: FontWeight.w400,
             ),
             decoration: InputDecoration(
               filled: true,
               fillColor: const Color(0x08000000),
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 24,
-                vertical: 16,
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: scaled(context, 24),
+                vertical: scaled(context, 16),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(999),
@@ -253,7 +265,7 @@ class _LoginButton extends StatelessWidget {
         child: SizedBox(
           width: width,
           height: height,
-          child: const Center(
+          child: Center(
             child: Text(
               'Daxil olun',
               textAlign: TextAlign.center,
@@ -261,7 +273,7 @@ class _LoginButton extends StatelessWidget {
               style: TextStyle(
                 color: Colors.white,
                 fontFamily: 'Poppins',
-                fontSize: 20,
+                fontSize: scaled(context, 20),
                 fontWeight: FontWeight.w400,
                 height: 1,
                 letterSpacing: -0.2,

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
 
 import '../../../../shared/effects.dart';
+import '../../../../shared/layout.dart';
 import '../../../auth/presentation/login_screen.dart';
 
 class StartCtaPage extends StatelessWidget {
@@ -19,13 +20,14 @@ class StartCtaPage extends StatelessWidget {
     final Size screen = MediaQuery.sizeOf(context);
 
     final double buttonWidth =
-        (screen.width * 0.52).clamp(210.0, 280.0).toDouble();
+        responsive(context, factor: 0.52, min: 210, max: 280);
 
-    final double buttonHeight =
-        (screen.height * 0.075).clamp(64.0, 82.0).toDouble();
+    final double buttonHeight = (screen.height * 0.075)
+        .clamp(scaled(context, 64), scaled(context, 82))
+        .toDouble();
 
     final double fontSize =
-        (screen.width * 0.075).clamp(28.0, 40.0).toDouble();
+        responsive(context, factor: 0.075, min: 28, max: 40);
 
     return SafeArea(
       child: Center(

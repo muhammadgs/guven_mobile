@@ -2,6 +2,8 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
+import '../../../../shared/layout.dart';
+
 /// Liquid-glass "swipe right" hint shown only beneath the first page.
 ///
 /// [visibility] (1 on page one → 0 by page two) ties the control to the page
@@ -74,10 +76,10 @@ class _GlassSwipeArrowState extends State<GlassSwipeArrow>
                 onTap: widget.onTap,
                 child: Transform.translate(
                   offset: Offset(nudge, 0),
-                  child: const Icon(
+                  child: Icon(
                     Icons.arrow_forward_rounded,
                     color: Colors.white,
-                    size: 24,
+                    size: scaled(context, 24),
                   ),
                 ),
               ),
@@ -97,19 +99,21 @@ class _GlassButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final double radius = scaled(context, 20);
+
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(radius),
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
           child: Container(
-            width: 64,
-            height: 42,
+            width: scaled(context, 64),
+            height: scaled(context, 42),
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(20),
+              borderRadius: BorderRadius.circular(radius),
               color: Colors.white.withValues(alpha: 0.16),
               border: Border.all(
                 color: Colors.white.withValues(alpha: 0.40),
