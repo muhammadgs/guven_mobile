@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 
 import '../../../../shared/effects.dart';
 import '../../../../shared/layout.dart';
+import '../../../../shared/settled_page_controller.dart';
 
 class SwipeResponsiveGf44Headline extends StatefulWidget {
   const SwipeResponsiveGf44Headline({super.key, required this.controller});
 
-  final PageController controller;
+  final SettledPageController controller;
 
   @override
   State<SwipeResponsiveGf44Headline> createState() =>
@@ -157,13 +158,7 @@ class _SwipeResponsiveGf44HeadlineState
     );
   }
 
-  double get _currentPage {
-    if (widget.controller.hasClients &&
-        widget.controller.position.haveDimensions) {
-      return widget.controller.page ?? widget.controller.initialPage.toDouble();
-    }
-    return widget.controller.initialPage.toDouble();
-  }
+  double get _currentPage => widget.controller.settledPage;
 
   double _lerp(double start, double end, double t) => start + (end - start) * t;
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../shared/layout.dart';
+import '../../../../shared/settled_page_controller.dart';
 
 class Gf44DataHubPage extends StatelessWidget {
   const Gf44DataHubPage({
@@ -9,7 +10,7 @@ class Gf44DataHubPage extends StatelessWidget {
     required this.pageIndex,
   });
 
-  final PageController pageController;
+  final SettledPageController pageController;
   final int pageIndex;
 
   static const List<_FeatureIconData> _items = <_FeatureIconData>[
@@ -80,12 +81,7 @@ class Gf44DataHubPage extends StatelessWidget {
     );
   }
 
-  double get _page {
-    if (pageController.hasClients && pageController.position.haveDimensions) {
-      return pageController.page ?? pageController.initialPage.toDouble();
-    }
-    return pageController.initialPage.toDouble();
-  }
+  double get _page => pageController.settledPage;
 
   static double _interval(double value, double start, double end) {
     final double raw = ((value - start) / (end - start)).clamp(0.0, 1.0).toDouble();

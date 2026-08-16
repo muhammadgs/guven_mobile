@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../shared/effects.dart';
 import '../../../shared/layout.dart';
+import '../../../shared/settled_page_controller.dart';
 import 'widgets/gf44_data_hub_page.dart';
 import 'widgets/glass_page_indicator.dart';
 import 'widgets/glass_swipe_arrow.dart';
@@ -20,7 +21,7 @@ class OnboardingScreen extends StatefulWidget {
 }
 
 class _OnboardingScreenState extends State<OnboardingScreen> {
-  final PageController _pageController = PageController();
+  final SettledPageController _pageController = SettledPageController();
 
   @override
   void dispose() {
@@ -28,13 +29,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     super.dispose();
   }
 
-  double get _page {
-    if (_pageController.hasClients &&
-        _pageController.position.haveDimensions) {
-      return _pageController.page ?? 0;
-    }
-    return 0;
-  }
+  double get _page => _pageController.settledPage;
 
   void _goNext() {
     _pageController.nextPage(
@@ -102,7 +97,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 class _WelcomePage extends StatelessWidget {
   const _WelcomePage({required this.controller, required this.index});
 
-  final PageController controller;
+  final SettledPageController controller;
   final int index;
 
   @override
@@ -126,7 +121,7 @@ class _WelcomePage extends StatelessWidget {
 class _Gf44Page extends StatelessWidget {
   const _Gf44Page({required this.controller, required this.index});
 
-  final PageController controller;
+  final SettledPageController controller;
   final int index;
 
   @override
@@ -142,7 +137,7 @@ class _Gf44Page extends StatelessWidget {
 class _Gf44OverviewBody extends StatelessWidget {
   const _Gf44OverviewBody({required this.controller});
 
-  final PageController controller;
+  final SettledPageController controller;
 
   static const String _description =
       'GF44 innovativ həlli ilə şirkətinizin bütün idarəetmə prosesi bir '
@@ -209,18 +204,13 @@ class _Gf44OverviewBody extends StatelessWidget {
     );
   }
 
-  double get _page {
-    if (controller.hasClients && controller.position.haveDimensions) {
-      return controller.page ?? controller.initialPage.toDouble();
-    }
-    return controller.initialPage.toDouble();
-  }
+  double get _page => controller.settledPage;
 }
 
 class _Gf44DataPage extends StatelessWidget {
   const _Gf44DataPage({required this.controller, required this.index});
 
-  final PageController controller;
+  final SettledPageController controller;
   final int index;
 
   @override
@@ -239,7 +229,7 @@ class _Gf44DataPage extends StatelessWidget {
 class _StartPage extends StatelessWidget {
   const _StartPage({required this.controller, required this.index});
 
-  final PageController controller;
+  final SettledPageController controller;
   final int index;
 
   @override
@@ -258,7 +248,7 @@ class _ExitOnSwipe extends StatelessWidget {
     required this.child,
   });
 
-  final PageController controller;
+  final SettledPageController controller;
   final int index;
   final Widget child;
 
@@ -268,10 +258,7 @@ class _ExitOnSwipe extends StatelessWidget {
       animation: controller,
       child: child,
       builder: (context, child) {
-        double page = index.toDouble();
-        if (controller.hasClients && controller.position.haveDimensions) {
-          page = controller.page ?? index.toDouble();
-        }
+        final double page = controller.settledPage;
         final double visibility =
             (1 - (page - index).abs()).clamp(0.0, 1.0).toDouble();
         return Opacity(

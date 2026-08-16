@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
 
-import '../../../../shared/effects.dart';
 import '../../../../shared/layout.dart';
+import '../../../../shared/motion/glass_morph.dart';
+import '../../../../shared/motion/glass_shimmer.dart';
 import '../../../auth/presentation/login_screen.dart';
+import '../../../auth/presentation/widgets/auth_glass.dart';
 
-class StartCtaPage extends StatelessWidget {
+class StartCtaPage extends StatefulWidget {
   const StartCtaPage({
     super.key,
     required this.pageController,
@@ -14,6 +15,17 @@ class StartCtaPage extends StatelessWidget {
 
   final PageController pageController;
   final int pageIndex;
+
+  @override
+  State<StartCtaPage> createState() => _StartCtaPageState();
+}
+
+class _StartCtaPageState extends State<StartCtaPage> {
+  final GlobalKey _buttonKey = GlobalKey();
+
+  /// True from the moment the morph takes over the button's rect until the
+  /// card has shrunk all the way back into it.
+  bool _handedOver = false;
 
   @override
   Widget build(BuildContext context) {
@@ -26,139 +38,55 @@ class StartCtaPage extends StatelessWidget {
         .clamp(scaled(context, 64), scaled(context, 82))
         .toDouble();
 
-    final double fontSize =
-        responsive(context, factor: 0.075, min: 28, max: 40);
-
     return SafeArea(
       child: Center(
         child: Padding(
           padding: EdgeInsets.only(top: screen.height * 0.13),
-          child: _LiquidGlassStartButton(
-            width: buttonWidth,
-            height: buttonHeight,
-            fontSize: fontSize,
-            onTap: () => _openLogin(context),
+          // While the morph holds the surface, the button stops painting —
+          // otherwise two lenses sit on the same rect and refract each other.
+          // `Visibility` and not `Opacity`: an opacity layer over a lens is a
+          // `saveLayer`, and a lens inside one renders black.
+          child: Visibility(
+            visible: !_handedOver,
+            maintainSize: true,
+            maintainAnimation: true,
+            maintainState: true,
+            child: GlassPressButton(
+              key: _buttonKey,
+              width: buttonWidth,
+              height: buttonHeight,
+              cornerRadius: buttonHeight / 2,
+              style: kStartCtaGlass,
+              shadow: kStartCtaShadow,
+              onTap: _openLogin,
+              child: const StartCtaLabel(),
+            ),
           ),
         ),
       ),
     );
   }
 
-  void _openLogin(BuildContext context) {
-    Navigator.of(context).push(
-      PageRouteBuilder<void>(
-        transitionDuration: const Duration(milliseconds: 720),
-        reverseTransitionDuration: const Duration(milliseconds: 460),
-        pageBuilder: (context, animation, secondaryAnimation) {
-          return const LoginScreen();
-        },
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          // Starts after the onboarding has mostly dissolved (see
-          // AuthFlowShell), so the two never crossfade at full sharpness:
-          // login condenses out of blur and settles with a gentle scale.
-          final CurvedAnimation reveal = CurvedAnimation(
-            parent: animation,
-            curve: const Interval(0.35, 1.0, curve: Curves.easeOutCubic),
-            reverseCurve: const Interval(0.45, 1.0, curve: Curves.easeInCubic),
-          );
+  Future<void> _openLogin() async {
+    if (_handedOver) return;
 
-          return AnimatedBuilder(
-            animation: reveal,
-            child: child,
-            builder: (context, child) {
-              final double t = reveal.value;
-              return Opacity(
-                opacity: t,
-                child: blurred(
-                  14 * (1 - t),
-                  Transform.scale(
-                    scale: 0.96 + 0.04 * t,
-                    child: child,
-                  ),
-                ),
-              );
-            },
-          );
-        },
-      ),
+    final RenderBox? box =
+        _buttonKey.currentContext?.findRenderObject() as RenderBox?;
+    if (box == null || !box.hasSize) return;
+
+    final GlassMorphRoute<void> route = GlassMorphRoute<void>(
+      // Global coordinates: the login route fills the screen from (0, 0), so
+      // its own Stack reads these unchanged.
+      sourceRect: box.localToGlobal(Offset.zero) & box.size,
+      sourceRadius: box.size.height / 2,
+      builder: (_) => const LoginScreen(),
     );
-  }
-}
 
-class _LiquidGlassStartButton extends StatelessWidget {
-  const _LiquidGlassStartButton({
-    required this.width,
-    required this.height,
-    required this.fontSize,
-    required this.onTap,
-  });
-
-  final double width;
-  final double height;
-  final double fontSize;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final double radius = height / 2;
-
-    return GestureDetector(
-      onTap: onTap,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(radius),
-          boxShadow: const <BoxShadow>[
-            BoxShadow(
-              color: Color(0x36000000),
-              blurRadius: 28,
-              spreadRadius: -8,
-              offset: Offset(0, 16),
-            ),
-          ],
-        ),
-        child: LiquidStretch(
-          stretch: 0.35,
-          interactionScale: 1.03,
-          child: LiquidGlass.withOwnLayer(
-            settings: const LiquidGlassSettings(
-              thickness: 30,
-              blur: 0,
-              glassColor: Color.fromARGB(0, 255, 255, 255),
-              refractiveIndex: 1.45,
-              lightIntensity: 1.45,
-              ambientStrength: 0.60,
-              saturation: 1.25,
-            ),
-            shape: LiquidRoundedSuperellipse(
-              borderRadius: radius,
-            ),
-            glassContainsChild: false,
-            child: GlassGlow(
-              glowColor: Colors.white38,
-              glowRadius: 1.30,
-              child: SizedBox(
-                width: width,
-                height: height,
-                child: Center(
-                  child: Text(
-                    'Başlayın',
-                    textAlign: TextAlign.center,
-                    textScaler: TextScaler.noScaling,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontFamily: 'CalSans',
-                      fontSize: fontSize,
-                      fontWeight: FontWeight.w400,
-                      height: 1,
-                      letterSpacing: -0.7,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
+    setState(() => _handedOver = true);
+    await Navigator.of(context).push<void>(route);
+    // `push` completes the moment the pop starts; `completed` waits for the
+    // route to actually leave, which is when the card is a pill again.
+    await route.completed;
+    if (mounted) setState(() => _handedOver = false);
   }
 }

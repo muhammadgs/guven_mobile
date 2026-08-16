@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 
 import '../../../../shared/effects.dart';
 import '../../../../shared/layout.dart';
+import '../../../../shared/settled_page_controller.dart';
 import 'animated_logo.dart';
 
 class SwipeResponsiveBrandLockup extends StatefulWidget {
   const SwipeResponsiveBrandLockup({super.key, required this.controller});
 
-  final PageController controller;
+  final SettledPageController controller;
 
   @override
   State<SwipeResponsiveBrandLockup> createState() =>
@@ -161,13 +162,7 @@ class _SwipeResponsiveBrandLockupState extends State<SwipeResponsiveBrandLockup>
     );
   }
 
-  double get _currentPage {
-    if (widget.controller.hasClients &&
-        widget.controller.position.haveDimensions) {
-      return widget.controller.page ?? widget.controller.initialPage.toDouble();
-    }
-    return widget.controller.initialPage.toDouble();
-  }
+  double get _currentPage => widget.controller.settledPage;
 
   double _interval(double start, double end) {
     final double value = ((_introController.value - start) / (end - start))
