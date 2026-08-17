@@ -1,25 +1,11 @@
-/// A press that runs light around the rim of a glass surface.
-///
-/// The lens already answers a finger with a squash ([LiquidGlassTouch]); this
-/// adds the optical half of the same gesture — a specular highlight that
-/// travels once around the perimeter and fades, the way Apple's glass answers
-/// a tap.
-///
-/// It is pure lighting: [LiquidGlassShape.lightDirection] sweeps a full lap,
-/// [LiquidGlassShape.lightIntensity] pulses, and the optical rim's
-/// [OpticalBorder.lightSpread] tightens so the highlight reads as *travelling*
-/// rather than washing over the whole rim at once. Nothing about the geometry,
-/// the tint or the refraction moves, and — importantly — no layer is added
-/// above the lens, so the glass never blacks out.
+/// Touch lighting and deformation for app-owned glass surfaces.
 library;
 
 import 'dart:math' as math;
-import 'dart:ui' show lerpDouble;
 
 import 'package:flutter/material.dart';
-import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 
-import 'glass_morph.dart';
+import '../glass/app_glass.dart';
 
 /// One lap of the highlight.
 const Duration kGlassShimmerDuration = Duration(milliseconds: 520);
@@ -27,58 +13,54 @@ const Duration kGlassShimmerDuration = Duration(milliseconds: 520);
 /// How much brighter the rim gets at the peak of the flash.
 const double _kFlash = 0.85;
 
-/// How tight the travelling highlight pulls in at that peak. The rim's resting
-/// spread is around 0.5 — broad enough that a moving light would not read.
+/// How tight the travelling highlight pulls in at that peak.
 const double _kTightSpread = 0.12;
 
 /// Extra ambient glow carried along with the flash.
 const double _kGlow = 0.45;
 
-/// [style] with the shimmer at [t] applied, where `t` runs 0 → 1 over one lap.
+/// Applies the press shimmer to both the renderer and rollback settings.
 ///
-/// Returns [style] untouched outside that range, and lands back on it exactly
-/// at `t = 1`: the pulse closes on zero and a full 360° sweep is the same
-/// angle it started from.
-LiquidGlassStyle shimmerLiquidGlassStyle(LiquidGlassStyle style, double t) {
+/// [towards] is in degrees so existing pointer-bearing calculations and the
+/// legacy backend agree; renderer settings are converted to radians here.
+AppGlassStyle shimmerAppGlassStyle(
+  AppGlassStyle style,
+  double t, {
+  double? towards,
+}) {
   if (t <= 0 || t >= 1) return style;
 
-  final LiquidGlassShape shape = style.shape ?? const LiquidGlassShape();
-  final double pulse = math.sin(math.pi * t); // 0 → 1 → 0
-  final double sweep = Curves.easeOutCubic.transform(t); // whips, then settles
+  final double pulse = math.sin(math.pi * t);
+  final double sweep = Curves.easeOutCubic.transform(t);
+  final double rendererAngle = towards == null
+      ? style.settings.lightAngle + math.pi * 2 * sweep
+      : towards * math.pi / 180;
 
-  return LiquidGlassStyle(
-    shape: LiquidGlassShape(
-      cornerStyle: shape.cornerStyle,
-      cornerRadius: shape.cornerRadius,
-      clipQuality: shape.clipQuality,
-      borderWidth: shape.borderWidth,
-      borderColor: shape.borderColor,
-      lightIntensity: shape.lightIntensity * (1 + _kFlash * pulse),
-      lightColor: shape.lightColor,
-      lightDirection: shape.lightDirection + 360 * sweep,
-      lightMode: shape.lightMode,
-      borderType: _shimmerBorder(shape.borderType, pulse),
+  return style.copyWith(
+    settings: style.settings.copyWith(
+      lightAngle: rendererAngle,
+      lightIntensity: style.settings.lightIntensity * (1 + _kFlash * pulse),
+      ambientStrength: style.settings.ambientStrength * (1 + _kGlow * pulse),
     ),
-    appearance: style.appearance,
-    refraction: style.refraction,
+    legacy: style.legacy.copyWith(
+      lightDirection: towards ?? style.legacy.lightDirection + 360 * sweep,
+      lightIntensity: style.legacy.lightIntensity * (1 + _kFlash * pulse),
+      ambientIntensity: style.legacy.ambientIntensity * (1 + _kGlow * pulse),
+      lightSpread: _lerp(style.legacy.lightSpread, _kTightSpread, pulse),
+    ),
   );
 }
 
-LiquidGlassBorderType _shimmerBorder(LiquidGlassBorderType border, double pulse) {
-  if (border is! OpticalBorder) return border;
-  return OpticalBorder(
-    borderSaturation: border.borderSaturation,
-    ambientIntensity: border.ambientIntensity * (1 + _kGlow * pulse),
-    borderSolidity: border.borderSolidity,
-    lightSpread: lerpDouble(border.lightSpread, _kTightSpread, pulse)!,
-  );
+double _lerp(double a, double b, double t) => a + (b - a) * t;
+
+/// Bearing from the centre of [size] towards [local], in degrees.
+double lightAngleTowards(Offset local, Size size) {
+  final double dx = local.dx - size.width / 2;
+  final double dy = local.dy - size.height / 2;
+  return math.atan2(-dy, dx) * 180 / math.pi;
 }
 
-/// A glass surface that flashes when pressed.
-///
-/// Squash and shimmer fire together on touch-down, so the surface answers the
-/// finger before it lifts — which matters for the start button, where lifting
-/// pushes a route.
+/// A renderer-backed glass button that deforms and flashes on touch-down.
 class GlassPressButton extends StatefulWidget {
   const GlassPressButton({
     super.key,
@@ -89,24 +71,17 @@ class GlassPressButton extends StatefulWidget {
     required this.onTap,
     required this.child,
     this.shadow = const <BoxShadow>[],
-    this.flex = const LiquidGlassFlex.pronounced(),
+    this.flex = const AppGlassFlex.pronounced(),
   });
 
   final double width;
   final double height;
-
-  /// Drives the lens's corner as geometry rather than taking [style]'s own
-  /// nominal radius — see [glassAtRadius].
   final double cornerRadius;
-
-  final LiquidGlassStyle style;
+  final AppGlassStyle style;
   final VoidCallback onTap;
-
-  /// Rides on top of the glass; it is not refracted.
   final Widget child;
-
   final List<BoxShadow> shadow;
-  final LiquidGlassFlex flex;
+  final AppGlassFlex flex;
 
   @override
   State<GlassPressButton> createState() => _GlassPressButtonState();
@@ -127,8 +102,10 @@ class _GlassPressButtonState extends State<GlassPressButton>
 
   @override
   Widget build(BuildContext context) {
-    final LiquidGlassStyle resting =
-        glassAtRadius(widget.style, widget.cornerRadius);
+    final AppGlassStyle resting = glassAtRadius(
+      widget.style,
+      widget.cornerRadius,
+    );
 
     return GestureDetector(
       onTapDown: (_) => _shimmer.forward(from: 0),
@@ -144,12 +121,11 @@ class _GlassPressButtonState extends State<GlassPressButton>
           child: AnimatedBuilder(
             animation: _shimmer,
             child: widget.child,
-            builder: (context, child) {
-              return LiquidGlassLens(
-                style: shimmerLiquidGlassStyle(resting, _shimmer.value),
-                // The lens squashes under the finger and springs back.
-                // `Listener`-based, so the GestureDetector still wins the tap.
-                touch: LiquidGlassTouch(flex: widget.flex),
+            builder: (BuildContext context, Widget? child) {
+              return AppGlassSurface(
+                style: shimmerAppGlassStyle(resting, _shimmer.value),
+                cornerRadius: widget.cornerRadius,
+                flex: widget.flex,
                 child: Center(child: child),
               );
             },

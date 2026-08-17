@@ -15,7 +15,12 @@ class AppTheme {
         brightness: Brightness.light,
       ),
       scaffoldBackgroundColor: backgroundColor,
-      fontFamily: null,
+      // Poppins is the app's text face; CalSans is reserved for display
+      // moments and is always asked for by name. Setting it here rather than
+      // per-widget catches the text this app does not build itself — the
+      // bottom nav bar's labels come out of the package with a size, a weight
+      // and a colour but no family, so without this they fall back to Roboto.
+      fontFamily: 'Poppins',
       appBarTheme: const AppBarTheme(
         centerTitle: false,
         elevation: 0,

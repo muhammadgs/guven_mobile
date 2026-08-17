@@ -3,7 +3,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:video_player_platform_interface/video_player_platform_interface.dart';
 
@@ -11,7 +10,12 @@ import 'package:guven_mobile/src/app/guven_app.dart';
 import 'package:guven_mobile/src/features/auth/presentation/login_screen.dart';
 import 'package:guven_mobile/src/features/onboarding/presentation/onboarding_screen.dart';
 import 'package:guven_mobile/src/features/onboarding/presentation/widgets/start_cta_page.dart';
+import 'package:guven_mobile/src/shared/glass/app_glass.dart';
 import 'package:guven_mobile/src/shared/motion/glass_morph.dart';
+
+const MethodChannel _secureStorage = MethodChannel(
+  'plugins.it_nomads.com/flutter_secure_storage',
+);
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -21,6 +25,13 @@ void main() {
     // no platform implementation under `flutter test`, so stand in a fake that
     // reports a ready, correctly-sized texture and does nothing else.
     VideoPlayerPlatform.instance = _FakeVideoPlayerPlatform();
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(_secureStorage, (_) async => null);
+  });
+
+  tearDown(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(_secureStorage, null);
   });
 
   testWidgets('Onboarding shows the welcome headline', (
@@ -61,7 +72,7 @@ void main() {
 
     final Finder button = find.ancestor(
       of: find.text('Başlayın'),
-      matching: find.byType(LiquidGlassLens),
+      matching: find.byType(AppGlassSurface),
     );
     expect(button, findsOneWidget);
     final Rect buttonRect = tester.getRect(button);
@@ -77,7 +88,7 @@ void main() {
     // lens too.
     final Finder card = find.ancestor(
       of: find.text('Giriş'),
-      matching: find.byType(LiquidGlassLens),
+      matching: find.byType(AppGlassSurface),
     );
     expect(tester.getRect(card), buttonRect);
 
@@ -99,7 +110,10 @@ void main() {
     await tester.pump(kGlassMorphDuration);
     final Rect landed = tester.getRect(card);
     expect(landed.height, greaterThan(buttonRect.height * 3));
-    expect(landed.center.dx, moreOrLessEquals(buttonRect.center.dx, epsilon: 1));
+    expect(
+      landed.center.dx,
+      moreOrLessEquals(buttonRect.center.dx, epsilon: 1),
+    );
 
     // The glass back button has bloomed in beside the card, and pressing it
     // runs the whole thing backwards.

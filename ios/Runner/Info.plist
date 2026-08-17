@@ -30,6 +30,24 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<!-- The Güvən API is served over plain http on port 8008, which App
+	     Transport Security blocks by default. The exception is scoped to that
+	     one host: everything else the app touches still requires TLS. Delete
+	     this block once the backend has a certificate and lib/src/core/network/
+	     api_config.dart points at https. -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSExceptionDomains</key>
+		<dict>
+			<key>vps.guvenfinans.az</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+				<key>NSIncludesSubdomains</key>
+				<false/>
+			</dict>
+		</dict>
+	</dict>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

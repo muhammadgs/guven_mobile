@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:guven_mobile/src/features/auth/application/session_controller.dart';
 import 'package:guven_mobile/src/features/auth/presentation/login_screen.dart';
 import 'package:guven_mobile/src/features/auth/presentation/widgets/auth_glass.dart';
+import 'package:guven_mobile/src/shared/glass/app_glass.dart';
 import 'package:guven_mobile/src/shared/motion/glass_morph.dart';
-import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 
 /// A phone-sized stand-in for the two ends of the auth morph.
 const Rect _pill = Rect.fromLTWH(70, 470, 250, 70);
@@ -13,7 +14,7 @@ const Rect _card = Rect.fromLTWH(24, 192, 342, 460);
 /// button beside it is a lens as well.
 final Finder _cardLens = find.ancestor(
   of: find.text('Giriş'),
-  matching: find.byType(LiquidGlassLens),
+  matching: find.byType(AppGlassSurface),
 );
 
 GlassMorphFrame _frameAt(double t, {bool back = false}) {
@@ -33,6 +34,12 @@ GlassMorphFrame _frameAt(double t, {bool back = false}) {
     to: _card,
     toRadius: 56,
   );
+}
+
+Widget _withSession(Widget child) {
+  final SessionController controller = SessionController();
+  addTearDown(controller.dispose);
+  return SessionScope(controller: controller, child: child);
 }
 
 void main() {
@@ -132,7 +139,9 @@ void main() {
       asAPhone(tester);
       final GlobalKey<NavigatorState> navigator = GlobalKey<NavigatorState>();
       await tester.pumpWidget(
-        MaterialApp(navigatorKey: navigator, home: const SizedBox.expand()),
+        _withSession(
+          MaterialApp(navigatorKey: navigator, home: const SizedBox.expand()),
+        ),
       );
 
       navigator.currentState!.push(
@@ -163,94 +172,85 @@ void main() {
       expect(midway.height, greaterThan(_pill.height));
 
       await tester.pump(kGlassMorphDuration);
-      expect(
-        tester.getRect(lens),
-        const Rect.fromLTWH(28, 192, 334, 460),
-      );
+      expect(tester.getRect(lens), const Rect.fromLTWH(28, 192, 334, 460));
     });
 
     testWidgets('lands the same way when pushed without a morph', (
       WidgetTester tester,
     ) async {
       asAPhone(tester);
-      await tester.pumpWidget(const MaterialApp(home: LoginScreen()));
+      await tester.pumpWidget(
+        _withSession(const MaterialApp(home: LoginScreen())),
+      );
       await tester.pump();
 
-      expect(
-        tester.getRect(_cardLens),
-        const Rect.fromLTWH(28, 192, 334, 460),
-      );
+      expect(tester.getRect(_cardLens), const Rect.fromLTWH(28, 192, 334, 460));
       expect(find.text('Giriş'), findsOneWidget);
     });
   });
 
   group('style', () {
     test('frame zero is the start button, to the uniform', () {
-      final LiquidGlassStyle button =
-          glassAtRadius(kStartCtaGlass, _pill.height / 2);
-      final LiquidGlassStyle morphed = lerpLiquidGlassStyle(
+      final AppGlassStyle button = glassAtRadius(
+        kStartCtaGlass,
+        _pill.height / 2,
+      );
+      final AppGlassStyle morphed = lerpAppGlassStyle(
         kStartCtaGlass,
         kLoginCardGlass,
         0,
         cornerRadius: _pill.height / 2,
       );
 
-      expect(morphed.shape!.cornerStyle, button.shape!.cornerStyle);
-      expect(morphed.shape!.cornerRadius, button.shape!.cornerRadius);
-      expect(morphed.shape!.lightIntensity, button.shape!.lightIntensity);
-      expect(morphed.appearance.color, button.appearance.color);
-      expect(morphed.appearance.saturation, button.appearance.saturation);
-      // The morph hands the refraction over to an explicit model; the button
-      // leaves it null. What reaches the shader has to match either way.
-      expect(
-        morphed.refraction.effectiveDistortion,
-        button.refraction.effectiveDistortion,
-      );
-      expect(
-        morphed.refraction.effectiveDistortionWidth,
-        button.refraction.effectiveDistortionWidth,
-      );
-      expect(
-        morphed.refraction.effectiveRefractionIndex,
-        button.refraction.effectiveRefractionIndex,
-      );
-      expect(morphed.refraction.magnification, button.refraction.magnification);
+      expect(morphed.cornerRadius, button.cornerRadius);
+      expect(morphed.settings.lightIntensity, button.settings.lightIntensity);
+      expect(morphed.settings.glassColor, button.settings.glassColor);
+      expect(morphed.settings.saturation, button.settings.saturation);
+      expect(morphed.settings.thickness, button.settings.thickness);
+      expect(morphed.settings.refractiveIndex, button.settings.refractiveIndex);
+      expect(morphed.legacy.distortion, button.legacy.distortion);
+      expect(morphed.legacy.distortionWidth, button.legacy.distortionWidth);
     });
 
     test('frame one is the login card', () {
-      final LiquidGlassStyle morphed =
-          lerpLiquidGlassStyle(kStartCtaGlass, kLoginCardGlass, 1);
+      final AppGlassStyle morphed = lerpAppGlassStyle(
+        kStartCtaGlass,
+        kLoginCardGlass,
+        1,
+      );
 
-      expect(morphed.appearance.color, kLoginCardGlass.appearance.color);
+      expect(morphed.settings.glassColor, kLoginCardGlass.settings.glassColor);
       expect(
-        morphed.refraction.effectiveRefractionIndex,
-        kLoginCardGlass.refraction.effectiveRefractionIndex,
+        morphed.settings.refractiveIndex,
+        kLoginCardGlass.settings.refractiveIndex,
       );
+      expect(morphed.legacy.distortion, kLoginCardGlass.legacy.distortion);
       expect(
-        morphed.refraction.effectiveDistortion,
-        kLoginCardGlass.refraction.effectiveDistortion,
-      );
-      expect(
-        (morphed.shape!.borderType as OpticalBorder).ambientIntensity,
-        (kLoginCardGlass.shape!.borderType as OpticalBorder).ambientIntensity,
+        morphed.settings.ambientStrength,
+        kLoginCardGlass.settings.ambientStrength,
       );
     });
 
-    test('the refraction band never jumps across the model handover', () {
+    test('the renderer settings stay continuous through the morph', () {
       double? previous;
       for (double t = 0; t <= 1.0001; t += 0.005) {
-        final LiquidGlassStyle style = lerpLiquidGlassStyle(
+        final AppGlassStyle style = lerpAppGlassStyle(
           kStartCtaGlass,
           kLoginCardGlass,
           t.clamp(0.0, 1.0),
         );
-        final double width = style.refraction.effectiveDistortionWidth;
-        final double strength = style.refraction.effectiveDistortion;
+        final double thickness = style.settings.thickness;
         if (previous != null) {
-          expect((width - previous).abs(), lessThan(0.5), reason: 't=$t');
+          expect((thickness - previous).abs(), lessThan(0.5), reason: 't=$t');
         }
-        previous = width;
-        expect(strength, inInclusiveRange(0.12, 0.17));
+        previous = thickness;
+        expect(
+          style.settings.refractiveIndex,
+          inInclusiveRange(
+            kStartCtaGlass.settings.refractiveIndex,
+            kLoginCardGlass.settings.refractiveIndex,
+          ),
+        );
       }
     });
   });

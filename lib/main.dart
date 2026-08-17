@@ -2,9 +2,9 @@ import 'dart:ui' as ui;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 
 import 'src/app/guven_app.dart';
+import 'src/shared/glass/app_glass.dart';
 import 'src/shared/layout.dart';
 
 Future<void> main() async {
@@ -15,17 +15,18 @@ Future<void> main() async {
   runApp(const GuvenApp());
 }
 
-/// Compiles the liquid-glass fragment programs before the first frame.
+/// Performs any startup work the glass backends require.
 ///
-/// A lens loads them lazily in its own `initState`, which means the very first
-/// build paints the frosted (blur + tint) fallback and only refracts one frame
-/// later — visible as a flash on the start button. Failure is not fatal: the
-/// lens keeps working, it just stays on the fallback.
+/// The renderer loads its shaders through its own widget pipeline.
+/// `liquid_glass_easy` benefits from eager loading, and the nav bar's
+/// travelling indicator uses it on every run, so the adapter warms it whether
+/// or not the app-wide rollback flag is set.
 Future<void> _warmUpGlassShaders() async {
   try {
-    await LiquidGlassShaders.ensureLoaded();
+    await warmUpAppGlassShaders();
   } catch (_) {
-    // Unsupported engine or a broken asset bundle — nothing to do here.
+    // Unsupported engine or a broken asset bundle — both backends can fall
+    // back to frosted glass.
   }
 }
 

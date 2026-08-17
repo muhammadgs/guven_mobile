@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android has refused cleartext traffic by default since API 28, and the Güvən
+  API is served over plain http on port 8008. Rather than switching cleartext
+  back on app-wide with `usesCleartextTraffic`, this permits it for that one
+  host and leaves every other connection TLS-only.
+
+  Delete this file, and the `android:networkSecurityConfig` attribute in the
+  manifest, once the backend has a certificate.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">vps.guvenfinans.az</domain>
+    </domain-config>
+</network-security-config>

@@ -1,13 +1,14 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:liquid_glass_easy/liquid_glass_easy.dart';
 
 import '../../../shared/effects.dart';
+import '../../../shared/glass/app_glass.dart';
 import '../../../shared/layout.dart';
 import '../../../shared/motion/glass_morph.dart';
 import '../../../shared/motion/glass_shimmer.dart';
 import 'widgets/auth_glass.dart';
+import 'widgets/login_form.dart';
 
 class LoginScreen extends StatelessWidget {
   const LoginScreen({super.key});
@@ -55,7 +56,7 @@ class _MorphingLoginCard extends StatelessWidget {
         scaled(context, 34),
         scaled(context, 26),
       ),
-      child: _LoginCardContent(
+      child: LoginForm(
         titleSize: responsive(context, factor: 0.105, min: 38, max: 56),
         labelSize: responsive(context, factor: 0.045, min: 18, max: 24),
         fieldHeight: (screen.height * 0.068)
@@ -156,9 +157,7 @@ class _AuthSurface extends StatelessWidget {
               onTap: () => Navigator.of(context).maybePop(),
               child: Icon(
                 Icons.arrow_back_ios_new_rounded,
-                color: Colors.white.withValues(
-                  alpha: appear.clamp(0.0, 1.0),
-                ),
+                color: Colors.white.withValues(alpha: appear.clamp(0.0, 1.0)),
                 size: scaled(context, 19),
               ),
             ),
@@ -235,9 +234,9 @@ class _GlassCard extends StatelessWidget {
       // surface under a keyboard-bound input reads wrong. The shimmer the
       // finger started on the button does carry through, though — it is
       // lighting, not deformation.
-      child: LiquidGlassLens(
-        style: shimmerLiquidGlassStyle(
-          lerpLiquidGlassStyle(
+      child: AppGlassSurface(
+        style: shimmerAppGlassStyle(
+          lerpAppGlassStyle(
             kStartCtaGlass,
             kLoginCardGlass,
             frame.blend,
@@ -245,6 +244,7 @@ class _GlassCard extends StatelessWidget {
           ),
           frame.shimmer,
         ),
+        cornerRadius: frame.radius,
         child: Stack(
           fit: StackFit.expand,
           children: <Widget>[
@@ -277,208 +277,6 @@ class _GlassCard extends StatelessWidget {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _LoginCardContent extends StatelessWidget {
-  const _LoginCardContent({
-    required this.titleSize,
-    required this.labelSize,
-    required this.fieldHeight,
-  });
-
-  final double titleSize;
-  final double labelSize;
-  final double fieldHeight;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        Text(
-          'Giriş',
-          textAlign: TextAlign.center,
-          textScaler: TextScaler.noScaling,
-          style: TextStyle(
-            color: Colors.white,
-            fontFamily: 'CalSans',
-            fontSize: titleSize,
-            fontWeight: FontWeight.w400,
-            height: 1,
-            letterSpacing: -0.8,
-            shadows: const <Shadow>[
-              Shadow(
-                color: Color(0x33000000),
-                blurRadius: 18,
-                offset: Offset(0, 6),
-              ),
-            ],
-          ),
-        ),
-        SizedBox(height: scaled(context, 38)),
-        _GlassLoginField(
-          label: 'Email və ya nömrə',
-          fieldHeight: fieldHeight,
-          labelSize: labelSize,
-          keyboardType: TextInputType.emailAddress,
-        ),
-        SizedBox(height: scaled(context, 20)),
-        _GlassLoginField(
-          label: 'Şifrə',
-          fieldHeight: fieldHeight,
-          labelSize: labelSize,
-          obscureText: true,
-        ),
-        SizedBox(height: scaled(context, 24)),
-        Center(
-          child: _LoginButton(
-            width: scaled(context, 180),
-            height: scaled(context, 52),
-            onTap: () {},
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _GlassLoginField extends StatelessWidget {
-  const _GlassLoginField({
-    required this.label,
-    required this.fieldHeight,
-    required this.labelSize,
-    this.obscureText = false,
-    this.keyboardType,
-  });
-
-  final String label;
-  final double fieldHeight;
-  final double labelSize;
-  final bool obscureText;
-  final TextInputType? keyboardType;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Padding(
-          padding: EdgeInsets.only(left: scaled(context, 26)),
-          child: Text(
-            label,
-            textScaler: TextScaler.noScaling,
-            style: TextStyle(
-              color: Colors.white,
-              fontFamily: 'Poppins',
-              fontSize: labelSize,
-              fontWeight: FontWeight.w400,
-              height: 1.1,
-              letterSpacing: -0.25,
-            ),
-          ),
-        ),
-        SizedBox(height: scaled(context, 12)),
-        SizedBox(
-          height: fieldHeight,
-          child: TextField(
-            obscureText: obscureText,
-            keyboardType: keyboardType,
-            cursorColor: Colors.white,
-            textInputAction:
-                obscureText ? TextInputAction.done : TextInputAction.next,
-            style: TextStyle(
-              color: Colors.white,
-              fontFamily: 'Poppins',
-              fontSize: scaled(context, 20),
-              fontWeight: FontWeight.w400,
-            ),
-            decoration: InputDecoration(
-              filled: true,
-              fillColor: const Color(0x08000000),
-              contentPadding: EdgeInsets.symmetric(
-                horizontal: scaled(context, 24),
-                vertical: scaled(context, 16),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(999),
-                borderSide: const BorderSide(
-                  color: Colors.white,
-                  width: 2.2,
-                ),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(999),
-                borderSide: const BorderSide(
-                  color: Colors.white,
-                  width: 2.6,
-                ),
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(999),
-                borderSide: const BorderSide(
-                  color: Colors.white,
-                  width: 2.2,
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _LoginButton extends StatelessWidget {
-  const _LoginButton({
-    required this.width,
-    required this.height,
-    required this.onTap,
-  });
-
-  final double width;
-  final double height;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: const Color(0x60FFFFFF),
-          borderRadius: BorderRadius.circular(height / 2),
-          boxShadow: const <BoxShadow>[
-            BoxShadow(
-              color: Color(0x26000000),
-              blurRadius: 20,
-              spreadRadius: -8,
-              offset: Offset(0, 12),
-            ),
-          ],
-        ),
-        child: SizedBox(
-          width: width,
-          height: height,
-          child: Center(
-            child: Text(
-              'Daxil olun',
-              textAlign: TextAlign.center,
-              textScaler: TextScaler.noScaling,
-              style: TextStyle(
-                color: Colors.white,
-                fontFamily: 'Poppins',
-                fontSize: scaled(context, 20),
-                fontWeight: FontWeight.w400,
-                height: 1,
-                letterSpacing: -0.2,
-              ),
-            ),
-          ),
         ),
       ),
     );
