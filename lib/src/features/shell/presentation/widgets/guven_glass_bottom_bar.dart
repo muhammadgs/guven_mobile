@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_liquid_glass_plus/flutter_liquid_glass.dart'
     show IndicatorPhysics;
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:liquid_glass_renderer/liquid_glass_renderer.dart' as renderer;
 
 import '../../../home/presentation/widgets/home_glass.dart';
@@ -37,7 +38,11 @@ class GuvenGlassBottomBar extends StatefulWidget {
        assert(labels.length > 1);
 
   final List<String> labels;
-  final List<IconData> icons;
+
+  /// One SVG asset path per cell, drawn tinted to [kGlassInk] — the artwork's
+  /// own fills are painted over, so a black-filled export and a `currentColor`
+  /// one look the same here.
+  final List<String> icons;
   final int selectedIndex;
   final ValueChanged<int> onSelected;
   final double height;
@@ -296,7 +301,16 @@ class _GuvenGlassBottomBarState extends State<GuvenGlassBottomBar>
       mainAxisAlignment: MainAxisAlignment.center,
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
-        Icon(widget.icons[index], size: widget.iconSize, color: kGlassInk),
+        SvgPicture.asset(
+          widget.icons[index],
+          width: widget.iconSize,
+          height: widget.iconSize,
+          // The exports are not all square — `contain` letterboxes them inside
+          // the square box so every cell's glyph keeps its own proportions and
+          // still sits on one baseline with the others.
+          fit: BoxFit.contain,
+          colorFilter: const ColorFilter.mode(kGlassInk, BlendMode.srcIn),
+        ),
         const SizedBox(height: 3),
         Text(
           widget.labels[index],

@@ -92,10 +92,10 @@ void main() {
                 height: 64,
                 child: GuvenGlassBottomBar(
                   labels: const <String>['A', 'Əməkdaşlar', 'C'],
-                  icons: const <IconData>[
-                    Icons.home_rounded,
-                    Icons.groups_rounded,
-                    Icons.checklist_rounded,
+                  icons: const <String>[
+                    'assets/images/icons/nav_icons/home.svg',
+                    'assets/images/icons/nav_icons/workers.svg',
+                    'assets/images/icons/nav_icons/tasks.svg',
                   ],
                   selectedIndex: selected,
                   onSelected: (int next) {
@@ -286,10 +286,10 @@ Future<void> _pumpBar(
               height: 64,
               child: GuvenGlassBottomBar(
                 labels: const <String>['A', 'B', 'C'],
-                icons: const <IconData>[
-                  Icons.home_rounded,
-                  Icons.groups_rounded,
-                  Icons.checklist_rounded,
+                icons: const <String>[
+                  'assets/images/icons/nav_icons/home.svg',
+                  'assets/images/icons/nav_icons/workers.svg',
+                  'assets/images/icons/nav_icons/tasks.svg',
                 ],
                 selectedIndex: selected,
                 onSelected: (int next) {

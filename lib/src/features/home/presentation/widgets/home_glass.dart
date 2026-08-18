@@ -206,7 +206,7 @@ const AppGlassStyle kNavIndicatorGlass = AppGlassStyle(
   legacy: AppGlassLegacyTuning(
     distortion: 0.01,
     distortionWidth: 15,
-    magnification: 1.2,
+    magnification: 1.3,
     chromaticAberration: 0.002,
     lightIntensity: 1.3,
     ambientIntensity: 1,

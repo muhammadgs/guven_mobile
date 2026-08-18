@@ -32,12 +32,13 @@ class _MainShellState extends State<MainShell> {
     'Tapşırıqlar',
   ];
 
-  static const List<IconData> _icons = <IconData>[
-    Icons.apartment_rounded,
-    Icons.groups_rounded,
-    Icons.grid_view_rounded,
-    Icons.home_rounded,
-    Icons.checklist_rounded,
+  /// The design's own glyphs, in cell order beside [_titles].
+  static const List<String> _icons = <String>[
+    'assets/images/icons/nav_icons/company.svg',
+    'assets/images/icons/nav_icons/workers.svg',
+    'assets/images/icons/nav_icons/menu.svg',
+    'assets/images/icons/nav_icons/home.svg',
+    'assets/images/icons/nav_icons/tasks.svg',
   ];
 
   /// Distance from the screen edge to the bar capsule.

@@ -73,6 +73,7 @@ flutter:
   assets:
     - assets/images/logos/logo.svg
     - assets/images/background/home_aurora.svg
+    - assets/images/icons/nav_icons/
     - assets/videos/onboarding_background.mp4
     - assets/videos/page_3_icons/
 
