@@ -1,12 +1,20 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../../../shared/effects.dart';
 import '../../../../shared/layout.dart';
+import '../onboarding_metrics.dart';
+import 'swipe_responsive_brand_lockup.dart' show kOnboardingTextShadows;
 
-/// First onboarding hero text that reveals after the shared brand lockup.
+/// First onboarding hero text, revealed after the shared brand lockup.
 ///
-/// The actual Güvən Finans logo/brand lockup is owned by the onboarding screen
-/// so it can move responsively between pages while the user swipes.
+/// The lockup itself belongs to the onboarding screen, which floats it above
+/// the `PageView` so it can travel between pages. This body used to reserve a
+/// hand-computed stand-in for the lockup's height and then centre the result,
+/// which meant its idea of where the logo ended and the logo's actual position
+/// drifted apart on any screen unlike the design canvas. It now anchors to
+/// [BrandLockupGeometry.bottom] — the real edge — so the two cannot collide.
 class WelcomeBrandIntro extends StatefulWidget {
   const WelcomeBrandIntro({super.key});
 
@@ -17,7 +25,6 @@ class WelcomeBrandIntro extends StatefulWidget {
 class _WelcomeBrandIntroState extends State<WelcomeBrandIntro>
     with SingleTickerProviderStateMixin, AutomaticKeepAliveClientMixin {
   static const Duration _introDelay = Duration(seconds: 2);
-  static const double _logoAspect = 177 / 98;
 
   /// PageView may dispose and recreate this widget when the user swipes away.
   /// Keep the intro timeline in memory for the current app session so returning
@@ -80,87 +87,88 @@ class _WelcomeBrandIntroState extends State<WelcomeBrandIntro>
   Widget build(BuildContext context) {
     super.build(context);
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final Size screen = MediaQuery.sizeOf(context);
-        final double availableHeight = constraints.maxHeight.isFinite
-            ? constraints.maxHeight
-            : screen.height;
-        // Must stay in lockstep with SwipeResponsiveBrandLockup, which owns the
-        // logo this page reserves space for.
-        final double sharedLogoWidth =
-            responsive(context, factor: 0.58, min: 190, max: 270);
-        final double sharedBrandSize =
-            responsive(context, factor: 0.092, min: 30, max: 42);
-        final double sharedLockupReserve =
-            sharedLogoWidth / _logoAspect + 4 + sharedBrandSize * 1.05;
-        final double subtitleSize =
-            responsive(context, factor: 0.04, min: 14, max: 18);
-        final double welcomeSize =
-            responsive(context, factor: 0.105, min: 34, max: 48);
-        final double signatureGap =
-            (availableHeight * 0.085).clamp(42.0, scaled(context, 70)).toDouble();
+    final OnboardingMetrics metrics = OnboardingMetrics.of(context);
+    final double top = metrics.welcomeBodyTop;
+    final double subtitleSize =
+        responsive(context, factor: 0.04, min: 14, max: 18);
+    final double welcomeSize =
+        responsive(context, factor: 0.105, min: 34, max: 48);
 
-        return AnimatedBuilder(
-          animation: _controller,
-          builder: (context, _) {
-            return Padding(
-              padding: EdgeInsets.symmetric(horizontal: scaled(context, 28)),
-              // The lockup reserve and hero gap are fixed, so a short viewport
-              // — a tablet in landscape — cannot fit the column's natural
-              // height. scaleDown is a no-op whenever it already fits, which is
-              // every phone, and shrinks it as one piece when it does not.
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    SizedBox(height: sharedLockupReserve),
-                    SizedBox(height: scaled(context, 95)),
-                    _BlurRevealText(
-                      progress: _interval(0.4, 0.6),
-                      text: 'İnnovativ maliyyə həlləri',
-                      style: TextStyle(
-                        color: const Color(0xEFFFFFFF),
-                        fontFamily: 'Poppins',
-                        fontSize: subtitleSize,
-                        fontWeight: FontWeight.w400,
-                        height: 1.25,
-                        letterSpacing: 0.15,
-                        shadows: _softShadows,
+    // Whatever room is left between the wordmark and the page indicator, up to
+    // the gap the design asks for. On a short screen it closes rather than
+    // pushing the hero line down into the dots.
+    final double slack = metrics.floor -
+        top -
+        metrics.lineHeight(subtitleSize, 1.25) -
+        metrics.lineHeight(welcomeSize, 1);
+    final double signatureGap = math.min(metrics.px(50), math.max(slack, 0));
+
+    return Stack(
+      children: <Widget>[
+        Positioned(
+          top: top,
+          left: metrics.px(28),
+          right: metrics.px(28),
+          child: ConstrainedBox(
+            // The last line of defence: a viewport too short even for the
+            // closed-up gap shrinks the pair as one piece instead of
+            // overflowing. A no-op on every phone.
+            constraints: BoxConstraints(
+              maxHeight: math.max(0, metrics.floor - top),
+            ),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: AnimatedBuilder(
+                animation: _controller,
+                builder: (context, _) {
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      _BlurRevealText(
+                        progress: _interval(0.4, 0.6),
+                        text: 'İnnovativ maliyyə həlləri',
+                        style: TextStyle(
+                          color: const Color(0xEFFFFFFF),
+                          fontFamily: 'Poppins',
+                          fontSize: subtitleSize,
+                          fontWeight: FontWeight.w400,
+                          height: 1.25,
+                          letterSpacing: 0.15,
+                          shadows: kOnboardingTextShadows,
+                        ),
+                        beginOffset: 11,
+                        beginBlur: 11,
+                        beginLetterSpacing: 1.0,
+                        endLetterSpacing: 0.15,
                       ),
-                      beginOffset: 11,
-                      beginBlur: 11,
-                      beginLetterSpacing: 1.0,
-                      endLetterSpacing: 0.15,
-                    ),
-                    SizedBox(height: signatureGap),
-                    _BlurRevealText(
-                      progress: _interval(0.6, 0.8),
-                      text: 'Xoş Gəlmişsiniz!',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontFamily: 'CalSans',
-                        fontSize: welcomeSize,
-                        fontWeight: FontWeight.w400,
-                        height: 1,
-                        letterSpacing: 1.0,
-                        shadows: _softShadows,
+                      SizedBox(height: signatureGap),
+                      _BlurRevealText(
+                        progress: _interval(0.6, 0.8),
+                        text: 'Xoş Gəlmişsiniz!',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontFamily: 'CalSans',
+                          fontSize: welcomeSize,
+                          fontWeight: FontWeight.w400,
+                          height: 1,
+                          letterSpacing: 1.0,
+                          shadows: kOnboardingTextShadows,
+                        ),
+                        beginOffset: 16,
+                        beginBlur: 14,
+                        beginScale: 0.94,
+                        endScale: 1,
+                        beginLetterSpacing: 3.2,
+                        endLetterSpacing: 1.0,
                       ),
-                      beginOffset: 16,
-                      beginBlur: 14,
-                      beginScale: 0.94,
-                      endScale: 1,
-                      beginLetterSpacing: 3.2,
-                      endLetterSpacing: 1.0,
-                    ),
-                  ],
-                ),
+                    ],
+                  );
+                },
               ),
-            );
-          },
-        );
-      },
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -171,14 +179,6 @@ class _WelcomeBrandIntroState extends State<WelcomeBrandIntro>
     return Curves.easeOutCubic.transform(value);
   }
 }
-
-const List<Shadow> _softShadows = <Shadow>[
-  Shadow(
-    color: Color(0x33000000),
-    blurRadius: 18,
-    offset: Offset(0, 6),
-  ),
-];
 
 class _BlurRevealText extends StatelessWidget {
   const _BlurRevealText({

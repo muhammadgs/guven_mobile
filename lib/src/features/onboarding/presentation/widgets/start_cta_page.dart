@@ -5,7 +5,13 @@ import '../../../../shared/motion/glass_morph.dart';
 import '../../../../shared/motion/glass_shimmer.dart';
 import '../../../auth/presentation/login_screen.dart';
 import '../../../auth/presentation/widgets/auth_glass.dart';
+import '../onboarding_metrics.dart';
 
+/// The final page: one glass pill that morphs into the login card.
+///
+/// The pill hangs off [BrandLockupGeometry.bottom] so it clears the wordmark
+/// on every screen. It used to be centred with a fixed top pad, which on a
+/// short phone centred it straight onto the logo.
 class StartCtaPage extends StatefulWidget {
   const StartCtaPage({
     super.key,
@@ -29,41 +35,45 @@ class _StartCtaPageState extends State<StartCtaPage> {
 
   @override
   Widget build(BuildContext context) {
-    final Size screen = MediaQuery.sizeOf(context);
+    final OnboardingMetrics metrics = OnboardingMetrics.of(context);
 
     final double buttonWidth =
         responsive(context, factor: 0.52, min: 210, max: 280);
-
-    final double buttonHeight = (screen.height * 0.075)
-        .clamp(scaled(context, 64), scaled(context, 82))
+    final double buttonHeight = (metrics.band * 0.10)
+        .clamp(metrics.px(64), metrics.px(82))
         .toDouble();
+    final double top = metrics.startCtaTop;
 
-    return SafeArea(
-      child: Center(
-        child: Padding(
-          padding: EdgeInsets.only(top: screen.height * 0.13),
-          // While the morph holds the surface, the button stops painting —
-          // otherwise two lenses sit on the same rect and refract each other.
-          // `Visibility` and not `Opacity`: an opacity layer over a lens is a
-          // `saveLayer`, and a lens inside one renders black.
-          child: Visibility(
-            visible: !_handedOver,
-            maintainSize: true,
-            maintainAnimation: true,
-            maintainState: true,
-            child: GlassPressButton(
-              key: _buttonKey,
-              width: buttonWidth,
-              height: buttonHeight,
-              cornerRadius: buttonHeight / 2,
-              style: kStartCtaGlass,
-              shadow: kStartCtaShadow,
-              onTap: _openLogin,
-              child: const StartCtaLabel(),
+    return Stack(
+      children: <Widget>[
+        Positioned(
+          top: top,
+          left: 0,
+          right: 0,
+          child: Center(
+            // While the morph holds the surface, the button stops painting —
+            // otherwise two lenses sit on the same rect and refract each other.
+            // `Visibility` and not `Opacity`: an opacity layer over a lens is a
+            // `saveLayer`, and a lens inside one renders black.
+            child: Visibility(
+              visible: !_handedOver,
+              maintainSize: true,
+              maintainAnimation: true,
+              maintainState: true,
+              child: GlassPressButton(
+                key: _buttonKey,
+                width: buttonWidth,
+                height: buttonHeight,
+                cornerRadius: buttonHeight / 2,
+                style: kStartCtaGlass,
+                shadow: kStartCtaShadow,
+                onTap: _openLogin,
+                child: const StartCtaLabel(),
+              ),
             ),
           ),
         ),
-      ),
+      ],
     );
   }
 

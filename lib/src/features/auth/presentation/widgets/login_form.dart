@@ -73,7 +73,6 @@ class _LoginFormState extends State<LoginForm> {
         Text(
           'Giriş',
           textAlign: TextAlign.center,
-          textScaler: TextScaler.noScaling,
           style: TextStyle(
             color: Colors.white,
             fontFamily: 'CalSans',
@@ -124,7 +123,6 @@ class _LoginFormState extends State<LoginForm> {
                 textAlign: TextAlign.center,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                textScaler: TextScaler.noScaling,
                 style: TextStyle(
                   color: const Color(0xFFFFD9D6),
                   fontFamily: 'Poppins',
@@ -183,7 +181,6 @@ class _GlassLoginField extends StatelessWidget {
           padding: EdgeInsets.only(left: scaled(context, 26)),
           child: Text(
             label,
-            textScaler: TextScaler.noScaling,
             style: TextStyle(
               color: Colors.white,
               fontFamily: 'Poppins',
@@ -286,7 +283,6 @@ class _LoginButton extends StatelessWidget {
                 : Text(
                     'Daxil olun',
                     textAlign: TextAlign.center,
-                    textScaler: TextScaler.noScaling,
                     style: TextStyle(
                       color: Colors.white,
                       fontFamily: 'Poppins',

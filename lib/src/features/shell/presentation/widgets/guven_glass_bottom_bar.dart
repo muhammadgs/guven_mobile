@@ -312,13 +312,21 @@ class _GuvenGlassBottomBarState extends State<GuvenGlassBottomBar>
           colorFilter: const ColorFilter.mode(kGlassInk, BlendMode.srcIn),
         ),
         const SizedBox(height: 3),
-        Text(
-          widget.labels[index],
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
-          textScaler: TextScaler.noScaling,
-          style: widget.textStyle.copyWith(color: kGlassInk),
+        // Five cells share the bar's width, so on a 360pt phone each one is
+        // barely wider than the longest Azerbaijani label. An ellipsis there
+        // truncates a word — `Əməkdaşl…` — for the sake of two or three
+        // pixels; scaling the label down by those same pixels keeps it whole
+        // and is invisible next to its neighbours.
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            widget.labels[index],
+            maxLines: 1,
+            softWrap: false,
+            overflow: TextOverflow.visible,
+            textAlign: TextAlign.center,
+            style: widget.textStyle.copyWith(color: kGlassInk),
+          ),
         ),
       ],
     );
@@ -333,10 +341,16 @@ class _GuvenGlassBottomBarState extends State<GuvenGlassBottomBar>
     final TextPainter painter = TextPainter(
       text: TextSpan(text: label, style: widget.textStyle),
       textDirection: Directionality.of(context),
-      textScaler: TextScaler.noScaling,
+      // Measured at the same scale it is drawn at, now that the app bounds the
+      // system font scale centrally instead of pinning this label to 1.
+      textScaler: MediaQuery.textScalerOf(context),
       maxLines: 1,
     )..layout();
-    final double contentWidth = math.max(painter.width, widget.iconSize);
+    // The label is drawn inside a `FittedBox`, so however large the font
+    // scale it is never wider than its cell. The lens hugs what is actually
+    // drawn rather than the width the text would have wanted.
+    final double drawnWidth = math.min(painter.width, slotWidth);
+    final double contentWidth = math.max(drawnWidth, widget.iconSize);
     final double minimum = widget.iconSize + 20;
     final double maximum = math.min(slotWidth * 1.48, barWidth - 6);
     return (contentWidth + 20).clamp(minimum, maximum);

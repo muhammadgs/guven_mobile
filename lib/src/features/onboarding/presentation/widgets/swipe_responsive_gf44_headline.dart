@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
 
 import '../../../../shared/effects.dart';
-import '../../../../shared/layout.dart';
 import '../../../../shared/settled_page_controller.dart';
+import '../onboarding_metrics.dart';
+import 'swipe_responsive_brand_lockup.dart' show kOnboardingTextShadows;
 
+/// The "GF44" headline and its subtitle, floating above pages two and three.
+///
+/// Like the brand lockup, it reads its position from [OnboardingMetrics] so
+/// the paragraph and the icon grid underneath can anchor to its measured
+/// bottom edge instead of guessing at it.
 class SwipeResponsiveGf44Headline extends StatefulWidget {
   const SwipeResponsiveGf44Headline({super.key, required this.controller});
 
@@ -63,30 +69,18 @@ class _SwipeResponsiveGf44HeadlineState
         child: AnimatedBuilder(
           animation: _textController,
           builder: (context, _) {
-            final Size screen = MediaQuery.sizeOf(context);
             final double page = _currentPage;
-            final double enterOpacity = ((page - 0.78) / 0.22)
-                .clamp(0.0, 1.0)
-                .toDouble();
+            final Gf44HeadlineGeometry geometry =
+                OnboardingMetrics.of(context).headlineAt(page);
+
+            final double enterOpacity =
+                ((page - 0.78) / 0.22).clamp(0.0, 1.0).toDouble();
             final double exitOpacity =
                 (1 - (page - 2).clamp(0.0, 1.0)).toDouble();
             final double opacity = enterOpacity * exitOpacity;
-            final double moveT = Curves.easeInOutCubic.transform(
-              (page - 1).clamp(0.0, 1.0).toDouble(),
-            );
-            final double pageThreeSubtitleOpacity =
-                ((page - 1.62) / 0.38).clamp(0.0, 1.0).toDouble() *
-                    exitOpacity;
+            final double subtitleOpacity =
+                ((page - 1.62) / 0.38).clamp(0.0, 1.0).toDouble() * exitOpacity;
 
-            final double top = _lerp(
-              (screen.height * 0.395).clamp(310.0, scaled(context, 380)).toDouble(),
-              (screen.height * 0.330).clamp(246.0, scaled(context, 318)).toDouble(),
-              moveT,
-            );
-            final double headlineSize =
-                responsive(context, factor: 0.13, min: 42, max: 58);
-            final double subtitleSize =
-                responsive(context, factor: 0.047, min: 16, max: 21);
             const String text = 'GF44';
             final int count = (text.length * _textController.value)
                 .ceil()
@@ -97,7 +91,7 @@ class _SwipeResponsiveGf44HeadlineState
               fit: StackFit.expand,
               children: <Widget>[
                 Positioned(
-                  top: top,
+                  top: geometry.top,
                   left: 0,
                   right: 0,
                   child: Opacity(
@@ -110,37 +104,35 @@ class _SwipeResponsiveGf44HeadlineState
                           Text(
                             text.substring(0, count),
                             textAlign: TextAlign.center,
-                            textScaler: TextScaler.noScaling,
                             style: TextStyle(
                               color: Colors.white,
                               fontFamily: 'CalSans',
-                              fontSize: headlineSize,
+                              fontSize: geometry.headlineSize,
                               fontWeight: FontWeight.w400,
                               height: 1,
                               letterSpacing: 0.8,
-                              shadows: _softBrandShadows,
+                              shadows: kOnboardingTextShadows,
                             ),
                           ),
                         ),
-                        SizedBox(height: scaled(context, 10)),
+                        SizedBox(height: geometry.gap),
                         Opacity(
-                          opacity: pageThreeSubtitleOpacity,
+                          opacity: subtitleOpacity,
                           child: Transform.translate(
-                            offset: Offset(0, 10 * (1 - pageThreeSubtitleOpacity)),
+                            offset: Offset(0, 10 * (1 - subtitleOpacity)),
                             child: blurred(
-                              10 * (1 - pageThreeSubtitleOpacity),
+                              10 * (1 - subtitleOpacity),
                               Text(
                                 _pageThreeSubtitle,
                                 textAlign: TextAlign.center,
-                                textScaler: TextScaler.noScaling,
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontFamily: 'Poppins',
-                                  fontSize: subtitleSize,
+                                  fontSize: geometry.subtitleSize,
                                   fontWeight: FontWeight.w400,
                                   height: 1.18,
                                   letterSpacing: -0.2,
-                                  shadows: _softBrandShadows,
+                                  shadows: kOnboardingTextShadows,
                                 ),
                               ),
                             ),
@@ -159,14 +151,4 @@ class _SwipeResponsiveGf44HeadlineState
   }
 
   double get _currentPage => widget.controller.settledPage;
-
-  double _lerp(double start, double end, double t) => start + (end - start) * t;
 }
-
-const List<Shadow> _softBrandShadows = <Shadow>[
-  Shadow(
-    color: Color(0x33000000),
-    blurRadius: 18,
-    offset: Offset(0, 6),
-  ),
-];

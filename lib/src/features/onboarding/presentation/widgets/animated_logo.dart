@@ -27,7 +27,12 @@ class AnimatedGuvenLogo extends StatefulWidget {
   static const String _assetPath = 'assets/images/logos/logo.svg';
 
   // Intrinsic aspect ratio of the source artwork (viewBox 177 x 98).
-  static const double _aspect = 177 / 98;
+  /// Intrinsic aspect ratio of the source artwork (viewBox 177 x 98).
+  ///
+  /// Public because `OnboardingMetrics` derives the lockup's height from the
+  /// same number the logo actually draws at — a second copy of it is exactly
+  /// the kind of drift this layout was rebuilt to remove.
+  static const double aspectRatio = 177 / 98;
 
   @override
   State<AnimatedGuvenLogo> createState() => _AnimatedGuvenLogoState();
@@ -76,7 +81,7 @@ class _AnimatedGuvenLogoState extends State<AnimatedGuvenLogo>
 
   @override
   Widget build(BuildContext context) {
-    final double height = widget.width / AnimatedGuvenLogo._aspect;
+    final double height = widget.width / AnimatedGuvenLogo.aspectRatio;
     final List<Widget>? pieces = _pieces;
 
     if (pieces == null) {

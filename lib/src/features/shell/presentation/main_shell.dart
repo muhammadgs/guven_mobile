@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../../shared/layout.dart';
@@ -47,19 +49,29 @@ class _MainShellState extends State<MainShell> {
   /// Gap between the capsule and the bottom safe area.
   static const double _barBottomGap = 10;
 
+  /// Smallest distance the capsule keeps from the physical screen edge when
+  /// there is no system inset to sit above — which is every Android phone now
+  /// that `MainActivity` hides the navigation bar.
+  static const double _barMinBottomMargin = 16;
+
   static const double _barHeight = 64;
 
   @override
   Widget build(BuildContext context) {
     final double barHeight = scaled(context, _barHeight);
     final double barGap = scaled(context, _barBottomGap);
+    // `MainActivity` hides Android's navigation bar, so on those phones the
+    // bottom inset is now zero and the capsule would sit ten points off the
+    // physical edge. A floor keeps it floating rather than resting on the rim,
+    // and never shortens the gesture-navigation inset it used to follow.
+    final double barFloor = math.max(
+      MediaQuery.paddingOf(context).bottom,
+      scaled(context, _barMinBottomMargin),
+    );
     // What the page has to keep clear at the bottom. The bar floats over the
     // content, so nothing in the layout knows about it unless it is told.
     final double reserve =
-        MediaQuery.paddingOf(context).bottom +
-        barGap +
-        barHeight +
-        scaled(context, 12);
+        barFloor + barGap + barHeight + scaled(context, 12);
 
     return AppBackground(
       // The tabs are not Scaffolds — the background and the nav bar are shared
@@ -77,12 +89,10 @@ class _MainShellState extends State<MainShell> {
             Align(
               alignment: Alignment.bottomCenter,
               // The bar sizes to its content rather than filling the stack, so
-              // it is anchored here and the safe-area inset is added by hand —
-              // it knows nothing about the home indicator underneath it.
+              // it is anchored here and the floor is added by hand — it knows
+              // nothing about the home indicator underneath it.
               child: Padding(
-                padding: EdgeInsets.only(
-                  bottom: MediaQuery.paddingOf(context).bottom,
-                ),
+                padding: EdgeInsets.only(bottom: barFloor),
                 child: _navBar(barHeight, barGap),
               ),
             ),

@@ -145,7 +145,6 @@ class StartCtaLabel extends StatelessWidget {
     return Text(
       'Başlayın',
       textAlign: TextAlign.center,
-      textScaler: TextScaler.noScaling,
       style: TextStyle(
         color: Colors.white,
         fontFamily: 'CalSans',

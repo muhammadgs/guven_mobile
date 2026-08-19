@@ -52,7 +52,6 @@ class ComingSoonTab extends StatelessWidget {
                   Text(
                     title,
                     textAlign: TextAlign.center,
-                    textScaler: TextScaler.noScaling,
                     style: TextStyle(
                       color: kGlassInk,
                       fontFamily: 'Poppins',
@@ -71,7 +70,6 @@ class ComingSoonTab extends StatelessWidget {
                   Text(
                     'Bu bölmə hazırlanır.',
                     textAlign: TextAlign.center,
-                    textScaler: TextScaler.noScaling,
                     style: TextStyle(
                       color: kGlassInkMuted,
                       fontFamily: 'Poppins',

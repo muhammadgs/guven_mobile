@@ -1,8 +1,11 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../../shared/effects.dart';
 import '../../../shared/layout.dart';
 import '../../../shared/settled_page_controller.dart';
+import 'onboarding_metrics.dart';
 import 'widgets/gf44_data_hub_page.dart';
 import 'widgets/glass_page_indicator.dart';
 import 'widgets/glass_swipe_arrow.dart';
@@ -11,6 +14,13 @@ import 'widgets/swipe_responsive_brand_lockup.dart';
 import 'widgets/swipe_responsive_gf44_headline.dart';
 import 'widgets/welcome_brand_intro.dart';
 
+/// The four-page intro.
+///
+/// The brand lockup and the "GF44" headline are siblings of the `PageView`
+/// rather than children of it, because they travel between pages while the
+/// pages slide past underneath. Everything on this screen — floating layer and
+/// page bodies alike — takes its position from [OnboardingMetrics], so the two
+/// can no longer drift into each other on a device unlike the design canvas.
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
 
@@ -102,18 +112,14 @@ class _WelcomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final double bottomReserve =
-        scaled(context, 150) + MediaQuery.paddingOf(context).bottom;
-
+    // No `SafeArea` here, and no bottom reserve: the body positions itself in
+    // screen coordinates off the lockup's measured edge, and `OnboardingMetrics`
+    // already folds both insets into that band. Wrapping it would shift the
+    // origin out from under the very anchors it shares with the floating layer.
     return _ExitOnSwipe(
       controller: controller,
       index: index,
-      child: SafeArea(
-        child: Padding(
-          padding: EdgeInsets.only(bottom: bottomReserve),
-          child: const Center(child: WelcomeBrandIntro()),
-        ),
-      ),
+      child: const WelcomeBrandIntro(),
     );
   }
 }
@@ -146,61 +152,61 @@ class _Gf44OverviewBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: AnimatedBuilder(
-        animation: controller,
-        builder: (context, _) {
-          final double progress = ((_page - 0.74) / 0.26)
-              .clamp(0.0, 1.0)
-              .toDouble();
-          final double t = Curves.easeOutCubic.transform(progress);
-          final double headlineSize =
-              responsive(context, factor: 0.13, min: 42, max: 58);
-          final double descriptionSize =
-              responsive(context, factor: 0.052, min: 17, max: 22);
-          final double bottomReserve =
-              scaled(context, 132) + MediaQuery.paddingOf(context).bottom;
-          final double horizontal = scaled(context, 22);
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, _) {
+        final OnboardingMetrics metrics = OnboardingMetrics.of(context);
+        final double progress =
+            ((_page - 0.74) / 0.26).clamp(0.0, 1.0).toDouble();
+        final double t = Curves.easeOutCubic.transform(progress);
 
-          return Padding(
-            padding: EdgeInsets.fromLTRB(horizontal, 0, horizontal, bottomReserve),
-            child: Align(
-              alignment: const Alignment(0, 0.24),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  SizedBox(height: headlineSize),
-                  SizedBox(height: scaled(context, 20)),
-                  Opacity(
-                    opacity: Curves.easeOut.transform(t),
-                    child: Transform.translate(
-                      offset: Offset(0, 18 * (1 - t)),
-                      child: blurred(
-                        14 * (1 - t),
-                        Text(
-                          _description,
-                          textAlign: TextAlign.center,
-                          maxLines: 7,
-                          overflow: TextOverflow.fade,
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontFamily: 'Poppins',
-                            fontSize: descriptionSize,
-                            fontWeight: FontWeight.w400,
-                            height: 1.24,
-                            letterSpacing: -0.15,
-                            shadows: _softTextShadows,
-                          ),
-                        ),
+        // Directly under the headline's real bottom edge. This used to be an
+        // `Align` inside the leftover space with a `SizedBox` standing in for
+        // the headline's height, which is what let "GF44" land on the text.
+        final double top = metrics.overviewBodyTop;
+        final double descriptionSize =
+            responsive(context, factor: 0.052, min: 17, max: 22);
+        final double lineHeight = metrics.lineHeight(descriptionSize, 1.24);
+        // As many lines as actually fit above the page indicator, so a large
+        // system font scale costs a line rather than overrunning the dots.
+        final int maxLines =
+            math.max(3, ((metrics.floor - top) / lineHeight).floor());
+        final double horizontal = metrics.px(22);
+
+        return Stack(
+          children: <Widget>[
+            Positioned(
+              top: top,
+              left: horizontal,
+              right: horizontal,
+              child: Opacity(
+                opacity: Curves.easeOut.transform(t),
+                child: Transform.translate(
+                  offset: Offset(0, 18 * (1 - t)),
+                  child: blurred(
+                    14 * (1 - t),
+                    Text(
+                      _description,
+                      textAlign: TextAlign.center,
+                      maxLines: maxLines,
+                      overflow: TextOverflow.fade,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontFamily: 'Poppins',
+                        fontSize: descriptionSize,
+                        fontWeight: FontWeight.w400,
+                        height: 1.24,
+                        letterSpacing: -0.15,
+                        shadows: kOnboardingTextShadows,
                       ),
                     ),
                   ),
-                ],
+                ),
               ),
             ),
-          );
-        },
-      ),
+          ],
+        );
+      },
     );
   }
 
@@ -269,11 +275,3 @@ class _ExitOnSwipe extends StatelessWidget {
     );
   }
 }
-
-const List<Shadow> _softTextShadows = <Shadow>[
-  Shadow(
-    color: Color(0x33000000),
-    blurRadius: 18,
-    offset: Offset(0, 6),
-  ),
-];

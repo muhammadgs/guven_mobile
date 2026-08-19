@@ -31,10 +31,40 @@ class _GuvenAppState extends State<GuvenApp> {
         title: 'Güvən Mobile',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme(),
+        builder: _clampTextScale,
         home: const _RootFlow(),
       ),
     );
   }
+}
+
+/// Bounds the system font scale for the whole app.
+///
+/// Every surface here is a fixed-height glass shape sized against a phone
+/// canvas: a pill, a lens, a bar. Left unbounded, a phone set to 200% type —
+/// which Android 14 and One UI both reach, and which One UI applies
+/// non-linearly, so the same setting is a different multiplier per device —
+/// pushes text straight out of those shapes.
+///
+/// This one clamp replaces the `TextScaler.noScaling` that used to be written
+/// on individual `Text` widgets. Pinning them one at a time meant a screen was
+/// only ever as robust as its least-recently-edited label: the two that were
+/// missed — the GF44 paragraph and the welcome headline — grew while the
+/// widgets around them stayed put, which is what drove them into each other.
+/// Bounding it once, here, cannot be forgotten on the next label added, and it
+/// keeps 20% of real accessibility headroom instead of refusing the setting
+/// outright.
+Widget _clampTextScale(BuildContext context, Widget? child) {
+  final MediaQueryData query = MediaQuery.of(context);
+  return MediaQuery(
+    data: query.copyWith(
+      textScaler: query.textScaler.clamp(
+        minScaleFactor: 1,
+        maxScaleFactor: 1.2,
+      ),
+    ),
+    child: child ?? const SizedBox.shrink(),
+  );
 }
 
 /// Swaps the pre-login flow for the signed-in shell.

@@ -1,8 +1,17 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../../../shared/layout.dart';
 import '../../../../shared/settled_page_controller.dart';
+import '../onboarding_metrics.dart';
+import 'swipe_responsive_brand_lockup.dart' show kOnboardingTextShadows;
 
+/// The 2×2 feature grid on the third page.
+///
+/// Anchored to [Gf44HeadlineGeometry.bottom] — the real underside of the
+/// floating "GF44" block, subtitle included — rather than aligned inside the
+/// leftover space, which is what used to drop the headline onto the icons.
 class Gf44DataHubPage extends StatelessWidget {
   const Gf44DataHubPage({
     super.key,
@@ -14,83 +23,132 @@ class Gf44DataHubPage extends StatelessWidget {
   final int pageIndex;
 
   static const List<_FeatureIconData> _items = <_FeatureIconData>[
-    _FeatureIconData('assets/videos/page_3_icons/icon_1.webp', 'Şirkət və Partnyorlar', -1, -1, Icons.business_rounded),
-    _FeatureIconData('assets/videos/page_3_icons/icon_2.webp', 'Əməkdaşlar', 1, -1, Icons.groups_rounded),
-    _FeatureIconData('assets/videos/page_3_icons/icon_3.webp', 'Tapşırıqlar', -1, 1, Icons.checklist_rtl_rounded),
-    _FeatureIconData('assets/videos/page_3_icons/icon_4.webp', 'Baza inteqrasiyası', 1, 1, Icons.hub_rounded),
+    _FeatureIconData('assets/videos/page_3_icons/icon_1.webp',
+        'Şirkət və Partnyorlar', -1, -1, Icons.business_rounded),
+    _FeatureIconData('assets/videos/page_3_icons/icon_2.webp', 'Əməkdaşlar', 1,
+        -1, Icons.groups_rounded),
+    _FeatureIconData('assets/videos/page_3_icons/icon_3.webp', 'Tapşırıqlar',
+        -1, 1, Icons.checklist_rtl_rounded),
+    _FeatureIconData('assets/videos/page_3_icons/icon_4.webp',
+        'Baza inteqrasiyası', 1, 1, Icons.hub_rounded),
   ];
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: AnimatedBuilder(
-        animation: pageController,
-        builder: (context, _) {
-          final double swipe = (_page - (pageIndex - 1)).clamp(0.0, 1.0).toDouble();
-          final double iconsT = _interval(swipe, 0.18, 1);
+    return AnimatedBuilder(
+      animation: pageController,
+      builder: (context, _) {
+        final double swipe =
+            (_page - (pageIndex - 1)).clamp(0.0, 1.0).toDouble();
+        final double iconsT = _interval(swipe, 0.18, 1);
 
-          return LayoutBuilder(
-            builder: (context, constraints) {
-              final Size screen = MediaQuery.sizeOf(context);
-              final double scale = uiScale(context);
-              final double bottom =
-                  scaled(context, 132) + MediaQuery.paddingOf(context).bottom;
-              final double horizontalPadding =
-                  responsive(context, factor: 0.055, min: 18, max: 24);
-              final double contentWidth = constraints.maxWidth - horizontalPadding * 2;
-              final double gapX = responsive(context, factor: 0.075, min: 24, max: 38);
-              final double cellWidth =
-                  ((contentWidth - gapX) / 2).clamp(118.0, 160.0 * scale).toDouble();
-              final double iconSize = responsive(context, factor: 0.15, min: 50, max: 66);
-              final double labelSize = responsive(context, factor: 0.034, min: 12, max: 15);
-              final double gapY =
-                  (screen.height * 0.078).clamp(54.0, 76.0 * scale).toDouble();
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final Size screen = MediaQuery.sizeOf(context);
+            final OnboardingMetrics metrics = OnboardingMetrics.of(context);
 
-              return Padding(
-                padding: EdgeInsets.fromLTRB(horizontalPadding, 0, horizontalPadding, bottom),
-                child: Align(
-                  alignment: const Alignment(0, 0.68),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: <Widget>[
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
+            final double horizontalPadding =
+                responsive(context, factor: 0.055, min: 18, max: 24);
+            final double contentWidth =
+                constraints.maxWidth - horizontalPadding * 2;
+            final double gapX =
+                responsive(context, factor: 0.075, min: 24, max: 38);
+            final double cellWidth = ((contentWidth - gapX) / 2)
+                .clamp(metrics.px(118), metrics.px(160))
+                .toDouble();
+            final double iconSize =
+                responsive(context, factor: 0.15, min: 50, max: 66);
+            final double labelSize =
+                responsive(context, factor: 0.034, min: 12, max: 15);
+
+            final double top = metrics.dataHubBodyTop;
+            final double rowHeight = iconSize +
+                metrics.px(12) +
+                metrics.lineHeight(labelSize, 1.15);
+            // The rows sit as far apart as the room below the subtitle allows,
+            // up to the gap the design asks for.
+            final double slack = metrics.floor - top - rowHeight * 2;
+            final double gapY =
+                math.min(metrics.px(66), math.max(slack, metrics.px(16)));
+
+            return Stack(
+              children: <Widget>[
+                Positioned(
+                  top: top,
+                  left: horizontalPadding,
+                  right: horizontalPadding,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxHeight: math.max(0, metrics.floor - top),
+                    ),
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
                         children: <Widget>[
-                          _FeatureIcon(item: _items[0], progress: iconsT, screen: screen, cellWidth: cellWidth, iconSize: iconSize, labelSize: labelSize),
-                          SizedBox(width: gapX),
-                          _FeatureIcon(item: _items[1], progress: iconsT, screen: screen, cellWidth: cellWidth, iconSize: iconSize, labelSize: labelSize),
+                          _row(0, 1, iconsT, screen, cellWidth, iconSize,
+                              labelSize, gapX),
+                          SizedBox(height: gapY),
+                          _row(2, 3, iconsT, screen, cellWidth, iconSize,
+                              labelSize, gapX),
                         ],
                       ),
-                      SizedBox(height: gapY),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: <Widget>[
-                          _FeatureIcon(item: _items[2], progress: iconsT, screen: screen, cellWidth: cellWidth, iconSize: iconSize, labelSize: labelSize),
-                          SizedBox(width: gapX),
-                          _FeatureIcon(item: _items[3], progress: iconsT, screen: screen, cellWidth: cellWidth, iconSize: iconSize, labelSize: labelSize),
-                        ],
-                      ),
-                    ],
+                    ),
                   ),
                 ),
-              );
-            },
-          );
-        },
-      ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _row(
+    int left,
+    int right,
+    double progress,
+    Size screen,
+    double cellWidth,
+    double iconSize,
+    double labelSize,
+    double gapX,
+  ) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: <Widget>[
+        _FeatureIcon(
+            item: _items[left],
+            progress: progress,
+            screen: screen,
+            cellWidth: cellWidth,
+            iconSize: iconSize,
+            labelSize: labelSize),
+        SizedBox(width: gapX),
+        _FeatureIcon(
+            item: _items[right],
+            progress: progress,
+            screen: screen,
+            cellWidth: cellWidth,
+            iconSize: iconSize,
+            labelSize: labelSize),
+      ],
     );
   }
 
   double get _page => pageController.settledPage;
 
   static double _interval(double value, double start, double end) {
-    final double raw = ((value - start) / (end - start)).clamp(0.0, 1.0).toDouble();
+    final double raw =
+        ((value - start) / (end - start)).clamp(0.0, 1.0).toDouble();
     return Curves.easeOutCubic.transform(raw);
   }
 }
 
 class _FeatureIconData {
-  const _FeatureIconData(this.imagePath, this.label, this.xSign, this.ySign, this.fallbackIcon);
+  const _FeatureIconData(
+      this.imagePath, this.label, this.xSign, this.ySign, this.fallbackIcon);
   final String imagePath;
   final String label;
   final double xSign;
@@ -99,7 +157,13 @@ class _FeatureIconData {
 }
 
 class _FeatureIcon extends StatelessWidget {
-  const _FeatureIcon({required this.item, required this.progress, required this.screen, required this.cellWidth, required this.iconSize, required this.labelSize});
+  const _FeatureIcon(
+      {required this.item,
+      required this.progress,
+      required this.screen,
+      required this.cellWidth,
+      required this.iconSize,
+      required this.labelSize});
   final _FeatureIconData item;
   final double progress;
   final Size screen;
@@ -115,7 +179,8 @@ class _FeatureIcon extends StatelessWidget {
       child: Opacity(
         opacity: Curves.easeOut.transform(t),
         child: Transform.translate(
-          offset: Offset(item.xSign * screen.width * 0.68 * (1 - t), item.ySign * 54 * (1 - t)),
+          offset: Offset(item.xSign * screen.width * 0.68 * (1 - t),
+              item.ySign * 54 * (1 - t)),
           child: Transform.scale(
             scale: 0.92 + 0.08 * t,
             child: Column(
@@ -140,8 +205,13 @@ class _FeatureIcon extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.visible,
                       softWrap: false,
-                      textScaler: TextScaler.noScaling,
-                      style: TextStyle(color: Colors.white, fontFamily: 'Poppins', fontSize: labelSize, height: 1.15, letterSpacing: -0.1, shadows: _shadows),
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontFamily: 'Poppins',
+                          fontSize: labelSize,
+                          height: 1.15,
+                          letterSpacing: -0.1,
+                          shadows: kOnboardingTextShadows),
                     ),
                   ),
                 ),
@@ -155,7 +225,8 @@ class _FeatureIcon extends StatelessWidget {
 }
 
 class _AnimatedIconImage extends StatelessWidget {
-  const _AnimatedIconImage({required this.imagePath, required this.fallbackIcon});
+  const _AnimatedIconImage(
+      {required this.imagePath, required this.fallbackIcon});
 
   final String imagePath;
   final IconData fallbackIcon;
@@ -185,7 +256,3 @@ class _FallbackIcon extends StatelessWidget {
     );
   }
 }
-
-const List<Shadow> _shadows = <Shadow>[
-  Shadow(color: Color(0x30000000), blurRadius: 18, offset: Offset(0, 6)),
-];

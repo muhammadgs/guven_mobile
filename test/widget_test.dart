@@ -90,7 +90,12 @@ void main() {
       of: find.text('Giriş'),
       matching: find.byType(AppGlassSurface),
     );
-    expect(tester.getRect(card), buttonRect);
+    // Not exact equality: the morph rebuilds each frame's rect from a centre
+    // and a pair of scalar-lerped extents (so the height curve can overshoot),
+    // and `top = (top + height / 2) - height / 2` only round-trips bit-exactly
+    // when the height happens to be a tidy binary fraction. It did while the
+    // button was 64pt tall; it no longer is. A ULP is not a mispositioned card.
+    expect(tester.getRect(card), rectMoreOrLessEquals(buttonRect, epsilon: 0.01));
 
     // …and the button itself has stopped painting, so only one pane of glass
     // is on that rect.

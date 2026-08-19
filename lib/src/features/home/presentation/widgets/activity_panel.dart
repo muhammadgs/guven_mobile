@@ -182,7 +182,6 @@ class _ActivityRow extends StatelessWidget {
                 activity.title,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                textScaler: TextScaler.noScaling,
                 style: TextStyle(
                   color: kGlassInk,
                   fontFamily: 'Poppins',
@@ -208,7 +207,6 @@ class _ActivityRow extends StatelessWidget {
                   activity.subtitle!,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  textScaler: TextScaler.noScaling,
                   style: TextStyle(
                     color: kGlassInkMuted,
                     fontFamily: 'Poppins',
@@ -270,7 +268,6 @@ class _TrayMessage extends StatelessWidget {
             Text(
               text,
               textAlign: TextAlign.center,
-              textScaler: TextScaler.noScaling,
               style: TextStyle(
                 color: kGlassInkMuted,
                 fontFamily: 'Poppins',

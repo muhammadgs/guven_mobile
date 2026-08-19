@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
 
 import '../../../../shared/effects.dart';
-import '../../../../shared/layout.dart';
 import '../../../../shared/settled_page_controller.dart';
+import '../onboarding_metrics.dart';
 import 'animated_logo.dart';
 
+/// The logo and wordmark, floating above the pages and travelling between
+/// them as the user swipes.
+///
+/// It no longer computes where it sits — [OnboardingMetrics.lockupAt] does,
+/// and the page bodies read the very same geometry to place themselves
+/// underneath it. This widget owns only the intro animation.
 class SwipeResponsiveBrandLockup extends StatefulWidget {
   const SwipeResponsiveBrandLockup({super.key, required this.controller});
 
@@ -64,56 +70,19 @@ class _SwipeResponsiveBrandLockupState extends State<SwipeResponsiveBrandLockup>
         child: AnimatedBuilder(
           animation: _introController,
           builder: (context, _) {
-            final Size screen = MediaQuery.sizeOf(context);
-            final EdgeInsets padding = MediaQuery.paddingOf(context);
-            final double page = _currentPage;
-            final double firstMoveT = Curves.easeInOutCubic.transform(
-              page.clamp(0.0, 1.0).toDouble(),
-            );
-            final double finalMoveT = Curves.easeInOutCubic.transform(
-              (page - 2).clamp(0.0, 1.0).toDouble(),
-            );
-
+            final BrandLockupGeometry geometry =
+                OnboardingMetrics.of(context).lockupAt(_currentPage);
             final double logoIntroProgress = _interval(0.00, 0.56);
             final double brandIntroProgress = _interval(0.20, 0.40);
-            final double startLogoWidth =
-                responsive(context, factor: 0.58, min: 190, max: 270);
-            final double compactLogoWidth =
-                responsive(context, factor: 0.33, min: 116, max: 158);
-            final double finalLogoWidth =
-                responsive(context, factor: 0.48, min: 176, max: 232);
-            final double compactWidth =
-                _lerp(startLogoWidth, compactLogoWidth, firstMoveT);
-            final double logoWidth =
-                _lerp(compactWidth, finalLogoWidth, finalMoveT);
-
-            final double startBrandSize =
-                responsive(context, factor: 0.092, min: 30, max: 42);
-            final double compactBrandSize =
-                responsive(context, factor: 0.064, min: 22, max: 30);
-            final double brandSize =
-                _lerp(startBrandSize, compactBrandSize, firstMoveT);
-
-            // Vertical anchors already track the screen height, so only their
-            // phone-calibrated ceilings need lifting for a tablet.
-            final double startTop =
-                (screen.height * 0.305).clamp(218.0, scaled(context, 286)).toDouble();
-            final double compactTop = padding.top +
-                (screen.height * 0.07).clamp(48.0, scaled(context, 72)).toDouble();
-            final double finalTop =
-                (screen.height * 0.355).clamp(300.0, scaled(context, 430)).toDouble();
-            final double compactOrStartTop = _lerp(startTop, compactTop, firstMoveT);
-            final double top = _lerp(compactOrStartTop, finalTop, finalMoveT);
-
             final double brandTextOpacity =
                 Curves.easeOut.transform(brandIntroProgress) *
-                    (1 - finalMoveT);
+                    geometry.brandSlot;
 
             return Stack(
               fit: StackFit.expand,
               children: <Widget>[
                 Positioned(
-                  top: top,
+                  top: geometry.top,
                   left: 0,
                   right: 0,
                   child: Center(
@@ -121,12 +90,10 @@ class _SwipeResponsiveBrandLockupState extends State<SwipeResponsiveBrandLockup>
                       mainAxisSize: MainAxisSize.min,
                       children: <Widget>[
                         AnimatedGuvenLogo(
-                          width: logoWidth,
+                          width: geometry.logoWidth,
                           progress: logoIntroProgress,
                         ),
-                        SizedBox(
-                          height: scaled(context, _lerp(14, 6, firstMoveT)),
-                        ),
+                        SizedBox(height: geometry.gap),
                         Opacity(
                           opacity: brandTextOpacity,
                           child: Transform.translate(
@@ -136,15 +103,14 @@ class _SwipeResponsiveBrandLockupState extends State<SwipeResponsiveBrandLockup>
                               Text(
                                 'Güvən Finans',
                                 textAlign: TextAlign.center,
-                                textScaler: TextScaler.noScaling,
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontFamily: 'CalSans',
-                                  fontSize: brandSize,
+                                  fontSize: geometry.brandSize,
                                   fontWeight: FontWeight.w400,
                                   height: 1.05,
-                                  letterSpacing: _lerp(-0.7, -0.45, firstMoveT),
-                                  shadows: _softBrandShadows,
+                                  letterSpacing: geometry.brandLetterSpacing,
+                                  shadows: kOnboardingTextShadows,
                                 ),
                               ),
                             ),
@@ -170,11 +136,10 @@ class _SwipeResponsiveBrandLockupState extends State<SwipeResponsiveBrandLockup>
         .toDouble();
     return Curves.easeOutCubic.transform(value);
   }
-
-  double _lerp(double start, double end, double t) => start + (end - start) * t;
 }
 
-const List<Shadow> _softBrandShadows = <Shadow>[
+/// The soft lift every piece of onboarding type carries over the aurora.
+const List<Shadow> kOnboardingTextShadows = <Shadow>[
   Shadow(
     color: Color(0x33000000),
     blurRadius: 18,

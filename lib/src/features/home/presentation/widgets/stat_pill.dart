@@ -49,7 +49,6 @@ class StatPill extends StatelessWidget {
                     label,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    textScaler: TextScaler.noScaling,
                     style: TextStyle(
                       color: kGlassInk,
                       fontFamily: 'Poppins',
@@ -71,7 +70,6 @@ class StatPill extends StatelessWidget {
                 // half-faded digit is exactly that.
                 Text(
                   pending ? '—' : '$value',
-                  textScaler: TextScaler.noScaling,
                   style: TextStyle(
                     color: pending ? kGlassInkMuted : kGlassInk,
                     fontFamily: 'Poppins',

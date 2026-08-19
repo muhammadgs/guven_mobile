@@ -119,7 +119,6 @@ class _Greeting extends StatelessWidget {
         textAlign: TextAlign.center,
         maxLines: 1,
         softWrap: false,
-        textScaler: TextScaler.noScaling,
         style: TextStyle(
           color: kGlassInk,
           // The one CalSans left in the signed-in app. Everything else is
