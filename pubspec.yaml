@@ -74,6 +74,7 @@ flutter:
     - assets/images/logos/logo.svg
     - assets/images/background/home_aurora.svg
     - assets/images/icons/nav_icons/
+    - assets/images/icons/task_list_selection_icons/
     - assets/videos/onboarding_background.mp4
     - assets/videos/page_3_icons/
 
@@ -86,6 +87,12 @@ flutter:
       fonts:
         - asset: assets/fonts/Poppins-Regular.ttf
           weight: 400
+        # The task cards set their timestamps and deadlines in italics, the way
+        # the design does. Without a real italic face the engine slants the
+        # upright one, which shears the diacritics off `ə` and `ş`.
+        - asset: assets/fonts/Poppins-Italic.ttf
+          weight: 400
+          style: italic
         - asset: assets/fonts/Poppins-Medium.ttf
           weight: 500
         # Not used by any screen directly — the bottom nav bar's own item style
@@ -93,6 +100,10 @@ flutter:
         # the engine fakes one by smearing the regular.
         - asset: assets/fonts/Poppins-SemiBold.ttf
           weight: 600
+        # The executor's name on a task card is bold when it is the signed-in
+        # user's own — that is the whole signal that the task is theirs.
+        - asset: assets/fonts/Poppins-Bold.ttf
+          weight: 700
 
   shaders:
     - shaders/aurora.frag

@@ -7,6 +7,8 @@ import 'package:flutter_liquid_glass_plus/flutter_liquid_glass.dart'
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:liquid_glass_renderer/liquid_glass_renderer.dart' as renderer;
 
+import '../../../../shared/motion/lens_rim.dart';
+import '../../../../shared/motion/spring.dart';
 import '../../../home/presentation/widgets/home_glass.dart';
 
 /// Güvən's compact bottom bar with a restrained, refractive moving lens.
@@ -104,38 +106,37 @@ const double _kGrabReach = 0.6;
 /// Cells of overdrag allowed past either end of the bar.
 const double _kOverdrag = 0.35;
 
-/// Springs are integrated in steps no longer than this, so a dropped frame
-/// cannot blow one up.
-const double _kMaxSubStep = 0.004;
-
 class _GuvenGlassBottomBarState extends State<GuvenGlassBottomBar>
     with SingleTickerProviderStateMixin {
   /// Where the lens is, in cells.
-  late final _Spring _travel = _Spring(
+  late final Spring _travel = Spring(
     stiffness: _kTravelStiffness,
     damping: _kTravelDamping,
     value: widget.selectedIndex.toDouble(),
   );
 
   /// How far the lens is stretched along the bar, in cells.
-  final _Spring _squash = _Spring(
+  final Spring _squash = Spring(
     stiffness: _kSquashStiffness,
     damping: _kSquashDamping,
   );
 
   /// How far a finger has dragged it off its rail, in pixels.
-  final _Spring _pull = _Spring(
+  final Spring _pull = Spring(
     stiffness: _kPullReturnStiffness,
     damping: _kPullReturnDamping,
   );
 
   /// 0 flat marker, 1 full lens. Held up only while a finger is on the bar.
-  final _Spring _lens = _Spring(
+  final Spring _lens = Spring(
     stiffness: _kLensStiffness,
     damping: _kLensDamping,
   );
 
-  late final Ticker _ticker = createTicker(_onTick);
+  /// Created eagerly rather than on first use: a bar that is disposed without
+  /// ever having been touched would otherwise build its ticker from inside
+  /// `dispose`, which reaches for an ancestor that is already gone.
+  late final Ticker _ticker;
 
   /// Bumped whenever the lens needs redrawing. Only the indicator listens, so
   /// the labels are built once and handed down as a cached child.
@@ -149,6 +150,12 @@ class _GuvenGlassBottomBarState extends State<GuvenGlassBottomBar>
 
   /// Whether a finger is on the bar. The only thing that makes glass.
   bool get _active => _pressed || _grabbed;
+
+  @override
+  void initState() {
+    super.initState();
+    _ticker = createTicker(_onTick);
+  }
 
   @override
   void didUpdateWidget(covariant GuvenGlassBottomBar oldWidget) {
@@ -237,7 +244,7 @@ class _GuvenGlassBottomBarState extends State<GuvenGlassBottomBar>
                     // offset, and the renderer turns it into volume-preserving
                     // squash and stretch.
                     final Offset stretch = Offset(
-                      _soften(_squash.value * slotWidth, _kSquashLimit),
+                      soften(_squash.value * slotWidth, _kSquashLimit),
                       _pull.value,
                     );
 
@@ -414,7 +421,7 @@ class _GuvenGlassBottomBarState extends State<GuvenGlassBottomBar>
     // that recovery and it stays stretched for as long as the finger moves.
     _squash.value += details.delta.dx / slotWidth * _kGrabSquash;
     _pullRaw += details.delta.dy;
-    _pull.hold(_soften(_pullRaw, _kPullLimit));
+    _pull.hold(soften(_pullRaw, _kPullLimit));
     _wake();
   }
 
@@ -521,54 +528,6 @@ class _GuvenGlassBottomBarState extends State<GuvenGlassBottomBar>
   }
 }
 
-/// One spring, integrated by hand so its velocity is readable.
-///
-/// Flutter's `SpringSimulation` would do the maths, but it has to be rebuilt
-/// every time the target moves — which is every frame of a drag.
-class _Spring {
-  _Spring({
-    required this.stiffness,
-    required this.damping,
-    this.value = 0,
-  }) : target = value;
-
-  final double stiffness;
-  final double damping;
-  double value;
-  double target;
-  double velocity = 0;
-
-  bool isAtRest(double epsilon) =>
-      (value - target).abs() < epsilon && velocity.abs() < epsilon * 10;
-
-  /// Drives the spring from outside, for as long as something else — a finger
-  /// — is deciding where it should be.
-  void hold(double position) {
-    value = position;
-    target = position;
-    velocity = 0;
-  }
-
-  void snap() {
-    value = target;
-    velocity = 0;
-  }
-
-  void advance(double dt) {
-    final int steps = math.max(1, (dt / _kMaxSubStep).ceil());
-    final double h = dt / steps;
-    for (int step = 0; step < steps; step++) {
-      velocity += (-stiffness * (value - target) - damping * velocity) * h;
-      value += velocity * h;
-    }
-  }
-}
-
-/// Holds [value] back the further it runs, approaching but never passing
-/// [limit] — the renderer's own `withResistance`, in one dimension.
-double _soften(double value, double limit) =>
-    value * limit / (limit + value.abs());
-
 /// The selected cell while nothing is being touched: a plain fill, no shader.
 class _RestingPill extends StatelessWidget {
   const _RestingPill({
@@ -667,7 +626,7 @@ class _MovingLens extends StatelessWidget {
             ),
             IgnorePointer(
               child: CustomPaint(
-                painter: _LensRimPainter(radius: radius, lens: lens),
+                painter: LensRimPainter(radius: radius, lens: lens),
               ),
             ),
           ],
@@ -675,106 +634,4 @@ class _MovingLens extends StatelessWidget {
       ),
     );
   }
-}
-
-/// How much of the painted bevel below is drawn.
-///
-/// It was built at full strength for a capsule whose shader contributed no
-/// visible border at all. `liquid_glass_easy`'s optical border now draws a rim
-/// of its own inside the same edge, so the paint is held back to a supporting
-/// role: it carries the shaded band on the underside, which no shader here
-/// draws, without restating the highlight the rim already has. This is the
-/// knob if the two read as one thick edge, or as none.
-const double _kRimStrength = 0.55;
-
-/// The bevel, painted over the lens.
-///
-/// A lens on light ground has very little contrast to make an edge out of, so
-/// the border here is built the way a real bevel reads on white: a shaded band
-/// just inside the edge carrying most of the definition, and a specular
-/// highlight on top of it catching the light from above. Both follow the
-/// superellipse's own continuous curve, and the spill is allowed either side
-/// of the edge rather than stopping at it.
-class _LensRimPainter extends CustomPainter {
-  const _LensRimPainter({required this.radius, required this.lens});
-
-  final double radius;
-
-  /// Fades the whole bevel in with the swell, and widens the spill as it goes.
-  final double lens;
-
-  /// The bevel's own opacity is folded into every colour rather than into a
-  /// `saveLayer` — a layer opened above a lens is what turns it black.
-  Color _white(double alpha) =>
-      Color.fromRGBO(255, 255, 255, alpha * lens * _kRimStrength);
-
-  Color _shade(double alpha) =>
-      Color.fromRGBO(18, 26, 38, alpha * lens * _kRimStrength);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    if (size.isEmpty || lens <= 0) return;
-
-    final Rect rect = Offset.zero & size;
-    final BorderRadius corner = BorderRadius.circular(radius);
-    final Path rim = RoundedSuperellipseBorder(
-      borderRadius: corner,
-    ).getOuterPath(rect.deflate(0.55));
-
-    // The wide spill first — light leaving the edge and landing on the bar.
-    canvas.drawPath(
-      rim,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1
-        ..color = _white(0.20)
-        ..maskFilter = MaskFilter.blur(BlurStyle.outer, 9 + 5 * lens),
-    );
-
-    // The shaded band, inside the edge and heaviest along the bottom, where a
-    // dome this shape stops catching the light. This is what actually gives
-    // the capsule an outline against a white background.
-    canvas.drawPath(
-      RoundedSuperellipseBorder(
-        borderRadius: corner,
-      ).getOuterPath(rect.deflate(1.9)),
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.6
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.6)
-        ..shader =
-            LinearGradient(
-              begin: const Alignment(-0.3, -1),
-              end: const Alignment(0.3, 1),
-              colors: <Color>[_shade(0), _shade(0.08), _shade(0.22)],
-              stops: const <double>[0, 0.5, 1],
-            ).createShader(rect),
-    );
-
-    // The specular on top of it: brightest where the light lands, a second
-    // softer arc opposite, and dim flanks between the two.
-    canvas.drawPath(
-      rim,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.2
-        ..shader =
-            LinearGradient(
-              begin: const Alignment(-0.35, -1),
-              end: const Alignment(0.35, 1),
-              colors: <Color>[
-                _white(0.95),
-                _white(0.40),
-                _white(0.10),
-                _white(0.30),
-                _white(0.60),
-              ],
-              stops: const <double>[0, 0.24, 0.52, 0.78, 1],
-            ).createShader(rect),
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _LensRimPainter oldDelegate) =>
-      oldDelegate.radius != radius || oldDelegate.lens != lens;
 }

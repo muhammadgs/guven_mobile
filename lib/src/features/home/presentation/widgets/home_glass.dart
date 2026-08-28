@@ -152,7 +152,7 @@ const AppGlassStyle kNavBarGlass = AppGlassStyle(
     ambientStrength: 0.55,
     refractiveIndex: 1.40,
     saturation: 1.14,
-    glassColor: Color(0x0F000000),
+    glassColor: Color(0x80FFFFFF),
   ),
   legacy: AppGlassLegacyTuning(
     distortion: 0.09,
@@ -221,7 +221,7 @@ const AppGlassStyle kNavIndicatorGlass = AppGlassStyle(
 /// A plain fill, painted *under* the glyphs so they stay black on white, and
 /// deliberately not glass: the effect is off until a finger asks for it. Fades
 /// out as [kNavIndicatorGlass] swells in over the top.
-const Color kNavIndicatorRestFill = Color(0xF7FFFFFF);
+const Color kNavIndicatorRestFill = Color(0xFFD3D3D3);
 
 /// Cast by the stat rows and the nav bar.
 ///

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../shared/layout.dart';
 import '../../../shared/widgets/app_background.dart';
 import '../../home/presentation/home_screen.dart';
+import '../../tasks/presentation/tasks_screen.dart';
 import 'widgets/coming_soon_tab.dart';
 import 'widgets/guven_glass_bottom_bar.dart';
 
@@ -18,6 +19,9 @@ class MainShell extends StatefulWidget {
   /// Cell order is the design's, not reading order — `Əsas səhifə` sits
   /// fourth, not first.
   static const int homeIndex = 3;
+
+  /// `Tapşırıqlar`, the fifth cell.
+  static const int tasksIndex = 4;
 
   @override
   State<MainShell> createState() => _MainShellState();
@@ -137,6 +141,11 @@ class _MainShellState extends State<MainShell> {
         for (int i = 0; i < _titles.length; i++)
           if (i == MainShell.homeIndex)
             HomeScreen(bottomReserve: reserve)
+          else if (i == MainShell.tasksIndex)
+            TasksScreen(
+              bottomReserve: reserve,
+              active: _index == MainShell.tasksIndex,
+            )
           else
             ComingSoonTab(title: _titles[i], bottomReserve: reserve),
       ],
