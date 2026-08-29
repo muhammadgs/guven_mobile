@@ -1,5 +1,16 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET"/>
+
+    <!-- `open_filex` declares these so it can open files that are already on
+         the device's shared storage. This app never does: a task's attachment
+         is downloaded into our own cache directory and handed straight to the
+         system from there, so none of the four is needed and asking for them
+         would mean answering for media access we do not use. -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" tools:node="remove"/>
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" tools:node="remove"/>
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" tools:node="remove"/>
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" tools:node="remove"/>
     <application
         android:label="Güvən Finans"
         android:name="${applicationName}"

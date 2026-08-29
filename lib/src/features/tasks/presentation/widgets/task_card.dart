@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../shared/layout.dart';
 import '../../domain/task_attachment.dart';
+import '../../domain/task_dates.dart';
 import '../../domain/task_item.dart';
 import '../../domain/task_status.dart';
 import 'task_actions.dart';
@@ -30,7 +31,9 @@ class TaskCard extends StatefulWidget {
     required this.mine,
     required this.busy,
     required this.attachments,
+    required this.openingFileIds,
     required this.onAction,
+    required this.onOpenFile,
     required this.onOpened,
   });
 
@@ -43,10 +46,16 @@ class TaskCard extends StatefulWidget {
   /// True while one of this card's verbs is in flight.
   final bool busy;
 
-  /// The task's files, or null while they have not been fetched yet.
+  /// The task's files, or null while they have not been described yet.
   final List<TaskAttachment>? attachments;
 
+  /// Which of them are being downloaded right now.
+  final Set<String> openingFileIds;
+
   final ValueChanged<TaskAction> onAction;
+
+  /// Download this file and hand it to the phone.
+  final ValueChanged<TaskAttachment> onOpenFile;
 
   /// Fired the first time the card is opened, so the screen can go and fetch
   /// the files this card is about to show.
@@ -236,6 +245,8 @@ class _TaskCardState extends State<TaskCard>
           dueDate: task.dueDate,
           attachments: widget.attachments,
           expectsAttachments: task.hasAttachments,
+          openingIds: widget.openingFileIds,
+          onOpenFile: widget.onOpenFile,
           t: t,
           scale: s,
         ),
@@ -576,6 +587,8 @@ class _Extras extends StatelessWidget {
     required this.dueDate,
     required this.attachments,
     required this.expectsAttachments,
+    required this.openingIds,
+    required this.onOpenFile,
     required this.t,
     required this.scale,
   });
@@ -584,8 +597,13 @@ class _Extras extends StatelessWidget {
   final List<TaskAttachment>? attachments;
 
   /// Whether the task row named any files at all. Drives the small spinner
-  /// while they are being fetched, so the section does not pop in late.
+  /// while they are being described, so the section does not pop in late.
   final bool expectsAttachments;
+
+  /// Ids of the files currently being downloaded.
+  final Set<String> openingIds;
+
+  final ValueChanged<TaskAttachment> onOpenFile;
 
   final double t;
   final double scale;
@@ -639,7 +657,12 @@ class _Extras extends StatelessWidget {
                   runSpacing: 8 * scale,
                   children: <Widget>[
                     for (final TaskAttachment file in files)
-                      _AttachmentChip(file: file, scale: scale),
+                      _AttachmentChip(
+                        file: file,
+                        scale: scale,
+                        opening: openingIds.contains(file.id),
+                        onTap: () => onOpenFile(file),
+                      ),
                   ],
                 ),
               SizedBox(height: 14 * scale),
@@ -665,48 +688,86 @@ class _Extras extends StatelessWidget {
   }
 }
 
-/// One attached file: its type badge and its name.
+/// One attached file: its type badge and the type's name.
+///
+/// The label is the *type* — `PDF faylı`, `EXCEL faylı` — not the filename,
+/// which is what the design draws and what the website's own chips say. The
+/// real filename is the accessibility label and the name the file is saved
+/// under when it is opened.
+///
+/// Tapping downloads it and hands it to the phone. While that is happening the
+/// type icon is replaced by a spinner in the same place, so the chip does not
+/// change size.
 class _AttachmentChip extends StatelessWidget {
-  const _AttachmentChip({required this.file, required this.scale});
+  const _AttachmentChip({
+    required this.file,
+    required this.scale,
+    required this.opening,
+    required this.onTap,
+  });
 
   final TaskAttachment file;
   final double scale;
+  final bool opening;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.fromLTRB(
-        10 * scale,
-        7 * scale,
-        14 * scale,
-        7 * scale,
-      ),
-      decoration: ShapeDecoration(
-        color: const Color(0xF2FFFFFF),
-        shape: RoundedSuperellipseBorder(
-          borderRadius: BorderRadius.circular(12 * scale),
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Icon(file.kind.icon, size: 18 * scale, color: file.kind.color),
-          SizedBox(width: 8 * scale),
-          ConstrainedBox(
-            constraints: BoxConstraints(maxWidth: 150 * scale),
-            child: Text(
-              file.name,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontSize: 13 * scale,
-                height: 1.2,
-                color: kGlassInk,
-              ),
+    final double glyph = 18 * scale;
+
+    return Semantics(
+      button: true,
+      label: file.name ?? file.label,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: opening ? null : onTap,
+        child: Container(
+          padding: EdgeInsets.fromLTRB(
+            10 * scale,
+            7 * scale,
+            14 * scale,
+            7 * scale,
+          ),
+          decoration: ShapeDecoration(
+            color: const Color(0xF2FFFFFF),
+            shape: RoundedSuperellipseBorder(
+              borderRadius: BorderRadius.circular(12 * scale),
             ),
           ),
-        ],
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              SizedBox.square(
+                dimension: glyph,
+                child: opening
+                    ? Padding(
+                        padding: EdgeInsets.all(1.5 * scale),
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: file.kind.color,
+                        ),
+                      )
+                    : Icon(
+                        file.kind.icon,
+                        size: glyph,
+                        color: file.kind.color,
+                      ),
+              ),
+              SizedBox(width: 8 * scale),
+              Text(
+                file.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontFamily: 'Poppins',
+                  fontSize: 13 * scale,
+                  height: 1.2,
+                  color: kGlassInk,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -738,18 +799,4 @@ class _Chevron extends StatelessWidget {
       ),
     );
   }
-}
-
-/// `2026-08-25`. The design's format, and the site's.
-String formatTaskDate(DateTime value) {
-  final String month = value.month.toString().padLeft(2, '0');
-  final String day = value.day.toString().padLeft(2, '0');
-  return '${value.year}-$month-$day';
-}
-
-/// `18:15`, on a 24-hour clock.
-String formatTaskTime(DateTime value) {
-  final String hour = value.hour.toString().padLeft(2, '0');
-  final String minute = value.minute.toString().padLeft(2, '0');
-  return '$hour:$minute';
 }

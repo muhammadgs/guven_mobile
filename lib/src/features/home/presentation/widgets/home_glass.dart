@@ -24,7 +24,8 @@ export '../../../../shared/glass/app_glass.dart'
         AppGlassLayer,
         AppGlassStyle,
         AppGlassSurface,
-        glassAtRadius;
+        glassAtRadius,
+        lerpAppGlassStyle;
 
 /// Everything printed on this app's glass.
 ///

@@ -42,6 +42,14 @@ dependencies:
   liquid_glass_easy: ^3.5.0
   http: ^1.6.0
   flutter_secure_storage: ^10.3.1
+
+  # A task's attachments are downloaded to the app's cache and handed to
+  # whatever the phone already uses to open that type — the way a file sent in
+  # WhatsApp opens once it has been downloaded. `open_filex` ships its own
+  # Android `FileProvider` so a cached file can be shared out without any
+  # manifest work here, and uses `UIDocumentInteractionController` on iOS.
+  path_provider: ^2.1.5
+  open_filex: ^4.7.0
   liquid_glass_renderer: 0.2.0-dev.4
   flutter_liquid_glass_plus: ^0.0.7
   native_glass_navbar: ^1.0.2

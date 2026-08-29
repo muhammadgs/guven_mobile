@@ -2,6 +2,14 @@ import 'package:flutter/material.dart';
 
 import 'task_glass.dart';
 
+/// What a tool button hands back when it is pressed: its own rect in global
+/// coordinates, and its corner.
+///
+/// The filter panel grows out of that rect, so the button has to say where it
+/// is rather than merely that it was tapped — the same handover the start
+/// button makes to the login card.
+typedef TaskToolTap = void Function(Rect rect, double radius);
+
 /// The two round glass buttons under the scope bar: filter, and new task.
 ///
 /// The only real lenses on this screen besides the scope marker — the cards
@@ -16,28 +24,48 @@ class TaskToolButtons extends StatelessWidget {
     required this.gap,
     required this.onFilter,
     required this.onCreate,
+    this.filterCount = 0,
+    this.filterHidden = false,
   });
 
   final double size;
   final double gap;
-  final VoidCallback onFilter;
+  final TaskToolTap onFilter;
   final VoidCallback onCreate;
+
+  /// How many columns the filter is currently narrowing the list by. Drawn as
+  /// a badge on the funnel, so a filtered list never looks like an empty one.
+  final int filterCount;
+
+  /// True while the filter panel is open.
+  ///
+  /// The panel *is* this button's glass once it opens, so the button steps
+  /// out of the way rather than sitting under it and doubling both the lens
+  /// and the glyph. Its space is kept, so nothing below moves.
+  final bool filterHidden;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
-        _ToolButton(
-          size: size,
-          onTap: onFilter,
-          semanticLabel: 'Filtr',
-          painter: _FunnelPainter(size),
+        Visibility(
+          visible: !filterHidden,
+          maintainSize: true,
+          maintainAnimation: true,
+          maintainState: true,
+          child: _ToolButton(
+            size: size,
+            onTap: onFilter,
+            semanticLabel: 'Filtr',
+            painter: FunnelPainter(size),
+            badge: filterCount,
+          ),
         ),
         SizedBox(width: gap),
         _ToolButton(
           size: size,
-          onTap: onCreate,
+          onTap: (Rect _, double _) => onCreate(),
           semanticLabel: 'Yeni tapşırıq',
           painter: _PlusPainter(size),
         ),
@@ -52,12 +80,14 @@ class _ToolButton extends StatelessWidget {
     required this.onTap,
     required this.semanticLabel,
     required this.painter,
+    this.badge = 0,
   });
 
   final double size;
-  final VoidCallback onTap;
+  final TaskToolTap onTap;
   final String semanticLabel;
   final CustomPainter painter;
+  final int badge;
 
   @override
   Widget build(BuildContext context) {
@@ -71,24 +101,80 @@ class _ToolButton extends StatelessWidget {
       label: semanticLabel,
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
-        onTap: onTap,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(radius),
-            boxShadow: kGlassLift,
-          ),
-          child: SizedBox.square(
-            dimension: size,
-            child: AppGlassSurface(
-              // Pinned to `liquid_glass_easy` for its optical border, the same
-              // as both travelling markers — see [kTaskToolGlass].
-              backend: AppGlassBackend.easy,
-              style: glassAtRadius(kTaskToolGlass, radius),
-              cornerRadius: radius,
-              flex: const AppGlassFlex.statPill(),
-              child: CustomPaint(painter: painter, size: Size.square(size)),
+        // The rect is read from this element's own render object at the moment
+        // of the tap rather than measured up front, so a button that has moved
+        // — a rotation, a different scope bar height — still hands over where
+        // it actually is.
+        onTap: () {
+          final RenderObject? box = context.findRenderObject();
+          if (box is! RenderBox || !box.hasSize) return;
+          onTap(box.localToGlobal(Offset.zero) & box.size, radius);
+        },
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: <Widget>[
+            DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(radius),
+                boxShadow: kGlassLift,
+              ),
+              child: SizedBox.square(
+                dimension: size,
+                child: AppGlassSurface(
+                  // Pinned to `liquid_glass_easy` for its optical border, the
+                  // same as both travelling markers — see [kTaskToolGlass].
+                  backend: AppGlassBackend.easy,
+                  style: glassAtRadius(kTaskToolGlass, radius),
+                  cornerRadius: radius,
+                  flex: const AppGlassFlex.statPill(),
+                  child: CustomPaint(painter: painter, size: Size.square(size)),
+                ),
+              ),
             ),
-          ),
+            if (badge > 0)
+              Positioned(
+                right: -size * 0.06,
+                top: -size * 0.06,
+                child: _CountDot(count: badge, size: size * 0.38),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// The badge on the funnel. Sits proud of the glass rather than inside it: a
+/// lens refracts what is behind it, and a number drawn on one is unreadable.
+class _CountDot extends StatelessWidget {
+  const _CountDot({required this.count, required this.size});
+
+  final int count;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      constraints: BoxConstraints(minWidth: size),
+      height: size,
+      alignment: Alignment.center,
+      padding: EdgeInsets.symmetric(horizontal: size * 0.22),
+      decoration: ShapeDecoration(
+        color: kTaskFilterBadge,
+        shape: const StadiumBorder(
+          side: BorderSide(color: Color(0xF2FFFFFF), width: 1.5),
+        ),
+        shadows: kGlassLift,
+      ),
+      child: Text(
+        '$count',
+        maxLines: 1,
+        style: TextStyle(
+          fontFamily: 'Poppins',
+          fontWeight: FontWeight.w600,
+          fontSize: size * 0.6,
+          height: 1,
+          color: Colors.white,
         ),
       ),
     );
@@ -96,8 +182,12 @@ class _ToolButton extends StatelessWidget {
 }
 
 /// The filter glyph: a funnel drawn as a stroked outline.
-class _FunnelPainter extends CustomPainter {
-  const _FunnelPainter(this.box);
+///
+/// Public because the filter panel wears it too — the glass that grows out of
+/// this button carries the button's own glyph for the first few frames, and
+/// the two have to be the same drawing rather than two of them.
+class FunnelPainter extends CustomPainter {
+  const FunnelPainter(this.box);
 
   /// The button's side, so the glyph scales with it rather than being pinned
   /// to one phone's numbers.
@@ -135,7 +225,7 @@ class _FunnelPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _FunnelPainter oldDelegate) =>
+  bool shouldRepaint(covariant FunnelPainter oldDelegate) =>
       oldDelegate.box != box;
 }
 

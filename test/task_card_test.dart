@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:guven_mobile/src/features/tasks/domain/task_attachment.dart';
 import 'package:guven_mobile/src/features/tasks/domain/task_item.dart';
 import 'package:guven_mobile/src/features/tasks/domain/task_scope.dart';
 import 'package:guven_mobile/src/features/tasks/domain/task_status.dart';
@@ -54,6 +55,8 @@ void main() {
           mine: true,
           busy: false,
           attachments: const [],
+          openingFileIds: const <String>{},
+          onOpenFile: (_) {},
           onAction: (_) {},
           onOpened: () {},
         ),
@@ -112,6 +115,8 @@ void main() {
           mine: true,
           busy: false,
           attachments: const [],
+          openingFileIds: const <String>{},
+          onOpenFile: (_) {},
           onAction: (_) {},
           onOpened: () => opened = true,
         ),
@@ -162,6 +167,8 @@ void main() {
           mine: false,
           busy: false,
           attachments: const [],
+          openingFileIds: const <String>{},
+          onOpenFile: (_) {},
           onAction: (_) {},
           onOpened: () {},
         ),
@@ -170,6 +177,49 @@ void main() {
 
     expect(find.text(TaskStatus.overdue.label), findsOneWidget);
     expect(find.text('Başla'), findsNothing);
+  });
+
+  testWidgets('an opened card lists its files by type and opens one', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 1600);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    const TaskAttachment pdf = TaskAttachment(
+      id: '3f2504e0-4f89-11d3-9a0c-0305e82c3301',
+      name: 'müqavilə.pdf',
+      kind: AttachmentKind.pdf,
+      resolved: true,
+    );
+
+    TaskAttachment? tapped;
+    await tester.pumpWidget(
+      _host(
+        TaskCard(
+          task: _task(),
+          mine: true,
+          busy: false,
+          attachments: const <TaskAttachment>[pdf],
+          openingFileIds: const <String>{},
+          onOpenFile: (TaskAttachment file) => tapped = file,
+          onAction: (_) {},
+          onOpened: () {},
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Güvən Finans MMC'));
+    await tester.pumpAndSettle();
+
+    // The chip is labelled with the *type*, the way the design draws it — the
+    // filename is the accessibility label, not the visible text.
+    expect(find.text('Fayllar:'), findsOneWidget);
+    expect(find.text('PDF faylı'), findsOneWidget);
+    expect(find.text('müqavilə.pdf'), findsNothing);
+
+    await tester.tap(find.text('PDF faylı'));
+    expect(tapped, same(pdf));
   });
 
   testWidgets('the scope bar selects the cell that was tapped', (

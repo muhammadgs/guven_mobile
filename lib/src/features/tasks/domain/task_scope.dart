@@ -27,7 +27,9 @@ enum TaskScope {
     TaskSource.partner,
   ),
 
-  /// The reporting view — everything in a date window, finished or not.
+  /// Hesabat. Deliberately blank: it is being designed as something other
+  /// than a list of task cards, so it fetches nothing and shows nothing until
+  /// that design arrives.
   report(
     'Hesabat',
     'assets/images/icons/task_list_selection_icons/hesabat.svg',
@@ -49,12 +51,18 @@ enum TaskScope {
   /// Which resource its rows belong to, and so which verbs act on them.
   final TaskSource source;
 
+  /// Whether this cell has a task list behind it at all.
+  ///
+  /// Only [report] does not. Nothing is requested for it and nothing is drawn
+  /// — an empty message would be a claim about data that was never asked for.
+  bool get hasFeed => this != TaskScope.report;
+
   /// What an empty list says under this cell.
   String get emptyMessage => switch (this) {
     TaskScope.internal => 'Daxili tapşırıq yoxdur.',
     TaskScope.company => 'Şirkət tapşırığı yoxdur.',
     TaskScope.partner => 'Partniyor tapşırığı yoxdur.',
-    TaskScope.report => 'Bu dövr üçün hesabat yoxdur.',
+    TaskScope.report => '',
     TaskScope.archive => 'Arxivdə tapşırıq yoxdur.',
   };
 }

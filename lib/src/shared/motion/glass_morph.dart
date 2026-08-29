@@ -67,14 +67,27 @@ class GlassMorph extends InheritedWidget {
 ///
 /// The route itself draws nothing extra — it only publishes a [GlassMorph]
 /// above the incoming screen. Screens that ignore it are pushed normally.
+///
+/// `opaque: false` plus a barrier makes it a surface that floats *over* the
+/// screen it grew out of rather than replacing it — a menu rather than a
+/// page. A destination pushed that way has to leave the space around its
+/// glass genuinely empty: the barrier is what a tap outside lands on, and a
+/// full-bleed hit target in the route's own child would swallow it, leaving
+/// nothing to dismiss with.
 class GlassMorphRoute<T> extends PageRouteBuilder<T> {
   GlassMorphRoute({
     required Rect sourceRect,
     required double sourceRadius,
     required WidgetBuilder builder,
+    Duration duration = kGlassMorphDuration,
+    Duration reverseDuration = kGlassMorphReverseDuration,
+    super.opaque,
+    super.barrierDismissible,
+    super.barrierColor,
+    super.barrierLabel,
   }) : super(
-         transitionDuration: kGlassMorphDuration,
-         reverseTransitionDuration: kGlassMorphReverseDuration,
+         transitionDuration: duration,
+         reverseTransitionDuration: reverseDuration,
          pageBuilder: (context, animation, secondaryAnimation) =>
              builder(context),
          transitionsBuilder: (context, animation, secondaryAnimation, child) {

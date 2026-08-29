@@ -56,6 +56,31 @@ class ApiClient {
   }) =>
       _send('POST', endpoint, body: body, authenticated: authenticated);
 
+  /// Sends a request whose *response* is the payload rather than its JSON.
+  ///
+  /// Two things on this backend need it: a file's type and name, which come
+  /// back in the `Content-Type` and `Content-Disposition` headers of
+  /// `/files/{id}/download` because the `/files/{id}` metadata endpoint 500s,
+  /// and the file's bytes themselves. Everything else should use [get] or
+  /// [post] — this one hands back the raw response and leaves the status code
+  /// to the caller.
+  ///
+  /// [timeout] is separate from [kApiTimeout] because a download is not a
+  /// dashboard call and should be given longer.
+  Future<http.Response> rawRequest(
+    String method,
+    String endpoint, {
+    Map<String, String>? query,
+    Map<String, String>? headers,
+    Duration? timeout,
+  }) => _sendRaw(
+    method,
+    endpoint,
+    query: query,
+    extraHeaders: headers,
+    timeout: timeout,
+  );
+
   /// Sends one request, refreshing the token around it when needed.
   ///
   /// [authenticated] is false for the login and refresh calls themselves —
@@ -67,6 +92,28 @@ class ApiClient {
     Map<String, String>? query,
     Object? body,
     bool authenticated = true,
+  }) async {
+    final http.Response response = await _sendRaw(
+      method,
+      endpoint,
+      query: query,
+      body: body,
+      authenticated: authenticated,
+    );
+    return _decode(response);
+  }
+
+  /// The transport [_send] and [rawRequest] share: auth header, one silent
+  /// refresh-and-retry on a 401, and this app's error wording for a dead
+  /// connection.
+  Future<http.Response> _sendRaw(
+    String method,
+    String endpoint, {
+    Map<String, String>? query,
+    Object? body,
+    Map<String, String>? extraHeaders,
+    Duration? timeout,
+    bool authenticated = true,
     bool isRetry = false,
   }) async {
     if (authenticated && !isRetry && _tokenIsAboutToLapse) {
@@ -77,6 +124,7 @@ class ApiClient {
     final Map<String, String> headers = <String, String>{
       'Accept': 'application/json',
       if (body != null) 'Content-Type': 'application/json',
+      ...?extraHeaders,
     };
     final String? token = tokens.accessToken;
     if (authenticated && token != null) {
@@ -89,7 +137,7 @@ class ApiClient {
         ..headers.addAll(headers);
       if (body != null) request.body = jsonEncode(body);
       response = await http.Response.fromStream(
-        await _http.send(request).timeout(kApiTimeout),
+        await _http.send(request).timeout(timeout ?? kApiTimeout),
       );
     } on TimeoutException {
       throw const ApiException('Server cavab vermədi. Yenidən cəhd edin.');
@@ -99,18 +147,20 @@ class ApiClient {
 
     if (response.statusCode == 401 && authenticated && !isRetry) {
       if (await _refreshOnce()) {
-        return _send(
+        return _sendRaw(
           method,
           endpoint,
           query: query,
           body: body,
+          extraHeaders: extraHeaders,
+          timeout: timeout,
           isRetry: true,
         );
       }
       onSessionExpired?.call();
     }
 
-    return _decode(response);
+    return response;
   }
 
   bool get _tokenIsAboutToLapse {

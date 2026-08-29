@@ -5,10 +5,12 @@ import 'package:flutter/material.dart';
 import '../../../shared/layout.dart';
 import '../../auth/application/session_controller.dart';
 import '../application/tasks_controller.dart';
+import '../domain/task_attachment.dart';
 import '../domain/task_item.dart';
 import '../domain/task_scope.dart';
 import '../domain/task_status.dart';
 import 'widgets/task_card.dart';
+import 'widgets/task_filter_panel.dart';
 import 'widgets/task_glass.dart';
 import 'widgets/task_scope_bar.dart';
 import 'widgets/task_tools.dart';
@@ -55,6 +57,10 @@ class _TasksScreenState extends State<TasksScreen> {
   String? _flash;
   Timer? _flashTimer;
 
+  /// True while the filter panel is up. The funnel button steps aside for
+  /// it, because the panel is that button's own glass.
+  bool _filterOpen = false;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -93,6 +99,23 @@ class _TasksScreenState extends State<TasksScreen> {
 
   Future<void> _run(TaskAction action, TaskItem task) async {
     final String? failure = await _controller!.run(action, task);
+    if (failure != null && mounted) _showFlash(failure);
+  }
+
+  /// Opens the filter, growing out of the button that was pressed.
+  Future<void> _openFilter(Rect button, double radius) async {
+    setState(() => _filterOpen = true);
+    await openTaskFilter(
+      context,
+      button: button,
+      radius: radius,
+      controller: _controller!,
+    );
+    if (mounted) setState(() => _filterOpen = false);
+  }
+
+  Future<void> _openFile(TaskAttachment file) async {
+    final String? failure = await _controller!.openAttachment(file);
     if (failure != null && mounted) _showFlash(failure);
   }
 
@@ -135,7 +158,9 @@ class _TasksScreenState extends State<TasksScreen> {
                 child: TaskToolButtons(
                   size: scaled(context, 42),
                   gap: scaled(context, 12),
-                  onFilter: () => _showFlash('Filtr bölməsi hazırlanır.'),
+                  filterCount: tasks.filter.activeFieldCount,
+                  filterHidden: _filterOpen,
+                  onFilter: _openFilter,
                   onCreate: () =>
                       _showFlash('Yeni tapşırıq bölməsi hazırlanır.'),
                 ),
@@ -152,6 +177,7 @@ class _TasksScreenState extends State<TasksScreen> {
                     controller: tasks,
                     bottomReserve: widget.bottomReserve,
                     onAction: _run,
+                    onOpenFile: _openFile,
                   ),
                 ),
               ),
@@ -236,16 +262,22 @@ class _TaskList extends StatelessWidget {
     required this.controller,
     required this.bottomReserve,
     required this.onAction,
+    required this.onOpenFile,
   });
 
   final TasksController controller;
   final double bottomReserve;
   final Future<void> Function(TaskAction, TaskItem) onAction;
+  final ValueChanged<TaskAttachment> onOpenFile;
 
   @override
   Widget build(BuildContext context) {
     final TaskScopeState state = controller.current;
     final EdgeInsets padding = EdgeInsets.only(bottom: bottomReserve);
+
+    // Hesabat is deliberately blank until its own design lands: it fetches
+    // nothing, so there is nothing to say about it either.
+    if (!controller.scope.hasFeed) return const SizedBox.expand();
 
     if (state.loading && !state.loaded) {
       return _Message(
@@ -283,18 +315,39 @@ class _TaskList extends StatelessWidget {
       );
     }
 
-    if (state.tasks.isEmpty) {
+    // What the filter left behind, which is the whole list when nothing is
+    // selected.
+    final List<TaskItem> tasks = state.visible;
+
+    if (tasks.isEmpty) {
+      // An empty list and a list filtered down to nothing are different
+      // things, and saying "no tasks" for the second would be a lie about
+      // the data — with the way out of it hidden behind a button the user has
+      // no reason to press again.
+      final bool filtered = state.tasks.isNotEmpty;
       return _Message(
         padding: padding,
-        child: Text(
-          controller.scope.emptyMessage,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontFamily: 'Poppins',
-            fontSize: scaled(context, 14),
-            height: 1.35,
-            color: kGlassInkMuted,
-          ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Text(
+              filtered
+                  ? 'Filtrə uyğun tapşırıq yoxdur.'
+                  : controller.scope.emptyMessage,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontFamily: 'Poppins',
+                fontSize: scaled(context, 14),
+                height: 1.35,
+                color: kGlassInkMuted,
+              ),
+            ),
+            if (filtered)
+              TextButton(
+                onPressed: controller.clearFilter,
+                child: const Text('Filtri sıfırla'),
+              ),
+          ],
         ),
       );
     }
@@ -306,11 +359,11 @@ class _TaskList extends StatelessWidget {
       child: ListView.separated(
         padding: padding,
         physics: const AlwaysScrollableScrollPhysics(),
-        itemCount: state.tasks.length,
+        itemCount: tasks.length,
         separatorBuilder: (BuildContext context, _) =>
             SizedBox(height: scaled(context, 14)),
         itemBuilder: (BuildContext context, int index) {
-          final TaskItem task = state.tasks[index];
+          final TaskItem task = tasks[index];
           return TaskCard(
             key: ValueKey<Object>(task.id ?? index),
             task: task,
@@ -320,7 +373,9 @@ class _TaskList extends StatelessWidget {
             ),
             busy: controller.isBusy(task),
             attachments: controller.attachmentsOf(task),
+            openingFileIds: controller.openingFileIds,
             onAction: (TaskAction action) => onAction(action, task),
+            onOpenFile: onOpenFile,
             onOpened: () => controller.loadAttachments(task),
           );
         },

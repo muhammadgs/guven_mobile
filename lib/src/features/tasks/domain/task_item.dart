@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/foundation.dart';
 
 import '../../../core/json.dart';
@@ -38,11 +40,11 @@ class TaskItem {
     this.assignedBy,
     this.assignedTo,
     this.assignedToId,
+    this.department,
     this.description,
     this.createdAt,
     this.dueDate,
     this.attachments = const <TaskAttachment>[],
-    this.attachmentIds = const <String>[],
   });
 
   final int? id;
@@ -65,19 +67,32 @@ class TaskItem {
   final String? assignedTo;
   final int? assignedToId;
 
+  /// `Şöbə` — the department the work belongs to.
+  ///
+  /// Nothing on the card draws this. It is read because the filter has a
+  /// `Şöbə` column, the same one the site's table filters on, and a column
+  /// can only offer the values its rows actually carry.
+  final String? department;
+
   final String? description;
   final DateTime? createdAt;
   final DateTime? dueDate;
 
-  /// Files already embedded in the list payload.
+  /// The task's files.
+  ///
+  /// Usually bare ids: the list endpoints name files through a `file_uuids`
+  /// column and nothing else, so these arrive with no type and no name and are
+  /// described later — see [needsFileDetails].
   final List<TaskAttachment> attachments;
 
-  /// File uuids the row named without expanding. Fetched one by one the first
-  /// time a card is opened, so a list of forty tasks costs no file requests.
-  final List<String> attachmentIds;
+  bool get hasAttachments => attachments.isNotEmpty;
 
-  bool get hasAttachments =>
-      attachments.isNotEmpty || attachmentIds.isNotEmpty;
+  /// True while at least one file is still only an id.
+  ///
+  /// Describing them costs a request each, so it is done the first time a card
+  /// is opened rather than while the list is being built.
+  bool get needsFileDetails =>
+      attachments.any((TaskAttachment file) => !file.resolved);
 
   /// Whether the signed-in user is the one carrying this out.
   ///
@@ -104,11 +119,11 @@ class TaskItem {
       assignedBy: assignedBy,
       assignedTo: assignedTo,
       assignedToId: assignedToId,
+      department: department,
       description: description,
       createdAt: createdAt,
       dueDate: dueDate,
       attachments: attachments ?? this.attachments,
-      attachmentIds: attachmentIds,
     );
   }
 
@@ -168,6 +183,15 @@ class TaskItem {
         'assignee_id',
         'executor_id',
       ]),
+      department:
+          readString(data, <String>[
+            'department_name',
+            'departmentName',
+          ]) ??
+          readString(asMap(data['department']), <String>[
+            'name',
+            'department_name',
+          ]),
       description: readString(data, <String>[
         'task_description',
         'description',
@@ -182,20 +206,28 @@ class TaskItem {
       ]),
       dueDate: readDate(data, <String>['due_date', 'deadline', 'dueDate']),
       attachments: _attachments(data),
-      attachmentIds: _attachmentIds(data),
     );
   }
 
+  /// The files a task names.
+  ///
+  /// The website looks in two places in this order and so does this: an
+  /// `attachments` array of real file objects — which some rows carry as a
+  /// *JSON string* rather than a list — and, failing that, the `file_uuids`
+  /// column, which is bare ids with no type or name attached. The second is
+  /// the common case; those attachments start out unresolved and are described
+  /// by `TaskFilesApi` when the card is first opened.
   static List<TaskAttachment> _attachments(Map<String, Object?> row) {
     for (final String key in <String>[
-      'files',
       'attachments',
+      'files',
       'task_files',
       'attached_files',
-      'documents',
     ]) {
-      final Object? value = row[key];
+      final Object? raw = row[key];
+      final Object? value = raw is String ? _tryJson(raw) : raw;
       if (value is! List) continue;
+
       final List<TaskAttachment> parsed = <TaskAttachment>[];
       for (final Object? entry in value) {
         if (entry is! Map) continue;
@@ -206,29 +238,20 @@ class TaskItem {
       }
       if (parsed.isNotEmpty) return parsed;
     }
-    return const <TaskAttachment>[];
+
+    return <TaskAttachment>[
+      for (final String id in parseFileUuids(
+        row['file_uuids'] ?? row['file_uuid'] ?? row['file_ids'],
+      ))
+        TaskAttachment(id: id),
+    ];
   }
 
-  /// Bare uuids, for the rows that reference files without embedding them.
-  static List<String> _attachmentIds(Map<String, Object?> row) {
-    final List<String> ids = <String>[];
-    for (final String key in <String>[
-      'file_uuids',
-      'file_ids',
-      'files',
-      'attachments',
-      'file_uuid',
-    ]) {
-      final Object? value = row[key];
-      if (value is String && value.trim().isNotEmpty) {
-        ids.add(value.trim());
-      } else if (value is List) {
-        for (final Object? entry in value) {
-          if (entry is String && entry.trim().isNotEmpty) ids.add(entry.trim());
-        }
-      }
-      if (ids.isNotEmpty) return ids;
+  static Object? _tryJson(String value) {
+    try {
+      return jsonDecode(value);
+    } on FormatException {
+      return null;
     }
-    return const <String>[];
   }
 }
