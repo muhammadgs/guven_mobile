@@ -31,22 +31,17 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<!-- The Güvən API is served over plain http on port 8008, which App
-	     Transport Security blocks by default. The exception is scoped to that
-	     one host: everything else the app touches still requires TLS. Delete
-	     this block once the backend has a certificate and lib/src/core/network/
-	     api_config.dart points at https. -->
+	     Transport Security blocks by default. It is now reached by raw IP
+	     (212.64.211.194), and an NSExceptionDomains key has to be a host name —
+	     an IP literal there is not matched — so the exception cannot be scoped
+	     and has to be the blanket one. Put the host-scoped entry back the
+	     moment the API answers on a name again, and delete this block entirely
+	     once it has a certificate and lib/src/core/network/api_config.dart
+	     points at https. -->
 	<key>NSAppTransportSecurity</key>
 	<dict>
-		<key>NSExceptionDomains</key>
-		<dict>
-			<key>vps.guvenfinans.az</key>
-			<dict>
-				<key>NSExceptionAllowsInsecureHTTPLoads</key>
-				<true/>
-				<key>NSIncludesSubdomains</key>
-				<false/>
-			</dict>
-		</dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
 	</dict>
 	<key>UIApplicationSceneManifest</key>
 	<dict>

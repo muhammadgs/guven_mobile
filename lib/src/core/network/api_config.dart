@@ -14,7 +14,7 @@
 library;
 
 /// Scheme, host and port of the API. No trailing slash.
-const String kApiOrigin = 'http://vps.guvenfinans.az:8008';
+const String kApiOrigin = 'http://212.64.211.194:8008';
 
 /// Version prefix every endpoint in this app sits under.
 const String kApiPrefix = '/api/v1';
