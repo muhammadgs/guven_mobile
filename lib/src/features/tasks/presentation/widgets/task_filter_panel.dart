@@ -309,10 +309,7 @@ class _ColumnPanel extends StatelessWidget {
                     ),
                   ),
                   if (filter.isNotEmpty)
-                    _ResetChip(
-                      metrics: metrics,
-                      onTap: controller.clearFilter,
-                    ),
+                    _ResetChip(metrics: metrics, onTap: controller.clearFilter),
                 ],
               ),
             ),

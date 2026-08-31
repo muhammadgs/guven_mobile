@@ -27,16 +27,22 @@ enum FileOpenResult {
 
 /// Reads and opens a task's attachments.
 ///
-/// Two things here are the backend's doing rather than choices:
+/// Three things here are the backend's doing rather than choices:
 ///
-/// 1. **`GET /files/{id}` is broken** — it answers 500 — so a file's type,
-///    name and size are read from the *headers* of `/files/{id}/download`
-///    instead: `Content-Type`, `Content-Disposition`, `Content-Length`. The
-///    website does exactly this and says why in `fileUpload.js`. A `HEAD` is
-///    tried first so nothing is transferred; deployments that reject `HEAD`
-///    get a one-byte `Range` request instead.
+/// 1. **There is no metadata endpoint.** Both file routes answer with the file
+///    itself, so a file's type, name and size are read from the *headers* —
+///    `Content-Type`, `Content-Disposition`, `Content-Length`. The website
+///    does exactly this and says why in `fileUpload.js`.
 ///
-/// 2. **The download endpoint takes the token as a query parameter**, because
+/// 2. **Which of the two routes works keeps swapping.** As of 2026-08-31
+///    `GET /files/{id}/download` answers 500 for every id, out of its own SQL
+///    and before any lookup, while the inline `GET /files/{id}` is healthy —
+///    it was the other way round a fortnight earlier. So both are tried, in
+///    both directions: the inline route leads for metadata, the download route
+///    leads for the bytes (it is the one that sets a filename), and each falls
+///    through to the other. Without that fallback nothing opens at all.
+///
+/// 3. **The download endpoint takes the token as a query parameter**, because
 ///    the site opens it in a new tab and a tab cannot set a header. The
 ///    `Authorization` header is sent as well — belt and braces, since both are
 ///    accepted and only one of them survives a redirect.
@@ -94,35 +100,48 @@ class TaskFilesApi {
     );
   }
 
-  /// Asks the download endpoint what the file is without fetching it.
+  /// Asks the backend what a file is without fetching it.
+  ///
+  /// Both endpoints answer with the file itself, so what is read is the
+  /// *headers*: `Content-Type`, `Content-Disposition`, `Content-Length`. The
+  /// inline one is tried first because the download one has been answering 500
+  /// for every id since 2026-08-31 — `column "id" does not exist`, out of its
+  /// own SQL, before any lookup — while `/files/{id}` answers cleanly.
+  /// [guven-file-endpoints] has the whole story; the order here is the one
+  /// thing that has to change back if that query is ever fixed and the inline
+  /// route turns out to be the narrower of the two.
   Future<_FileHeaders?> _probe(String id) async {
-    http.Response? response;
-    try {
-      response = await _client.rawRequest(
-        'HEAD',
-        _downloadPath(id),
-        query: _tokenQuery(),
-      );
-    } on ApiException {
-      response = null;
+    for (final String path in <String>[_inlinePath(id), _downloadPath(id)]) {
+      final http.Response? response = await _peek(path);
+      if (response != null) return _FileHeaders.from(response.headers);
     }
+    return null;
+  }
 
-    if (response == null || response.statusCode >= 400) {
+  /// One endpoint's headers, without pulling the body down.
+  ///
+  /// `HEAD` first, so nothing is transferred at all; deployments that answer
+  /// `405 allow: GET` to it — this one does — get a one-byte `Range` request
+  /// instead.
+  Future<http.Response?> _peek(String path) async {
+    for (final Map<String, String> attempt in <Map<String, String>>[
+      const <String, String>{},
+      const <String, String>{'Range': 'bytes=0-0'},
+    ]) {
       try {
-        response = await _client.rawRequest(
-          'GET',
-          _downloadPath(id),
+        final http.Response response = await _client.rawRequest(
+          attempt.isEmpty ? 'HEAD' : 'GET',
+          path,
           query: _tokenQuery(),
-          headers: <String, String>{'Range': 'bytes=0-0'},
+          headers: attempt.isEmpty ? null : attempt,
         );
+        // 206 is the Range request having been honoured; both count.
+        if (response.statusCode < 400) return response;
       } on ApiException {
-        return null;
+        // Try the next shape, then the next endpoint.
       }
     }
-
-    // 206 is the Range request having been honoured; both count.
-    if (response.statusCode >= 400) return null;
-    return _FileHeaders.from(response.headers);
+    return null;
   }
 
   /// Downloads [file] if it is not already here, then hands it to the phone.
@@ -155,19 +174,40 @@ class TaskFilesApi {
     }
   }
 
+  /// Downloads [file] if it is not already here and answers with the path it
+  /// was written to.
+  ///
+  /// Public because a voice note is *played* rather than handed to the phone:
+  /// the card's own player needs the file on disk, and it needs it under the
+  /// same one-download-per-session rule everything else here follows.
+  Future<String> localPath(TaskAttachment file) => _localCopy(file);
+
   Future<String> _localCopy(TaskAttachment file) async {
     final String? existing = _downloaded[file.id];
     if (existing != null && File(existing).existsSync()) return existing;
 
-    final http.Response response = await _client.rawRequest(
-      'GET',
+    // The download endpoint first — it is the one that sets a filename — and
+    // the inline one behind it, which is what actually answers while
+    // `/download` is returning 500 for every id ([guven-file-endpoints]).
+    // Without this second attempt no attachment can be opened at all, and a
+    // voice note cannot be played.
+    http.Response? response;
+    for (final String path in <String>[
       _downloadPath(file.id),
-      query: _tokenQuery(),
-      timeout: _downloadTimeout,
-    );
-    if (response.statusCode >= 400 || response.bodyBytes.isEmpty) {
-      throw const ApiException('Fayl yüklənmədi.');
+      _inlinePath(file.id),
+    ]) {
+      final http.Response attempt = await _client.rawRequest(
+        'GET',
+        path,
+        query: _tokenQuery(),
+        timeout: _downloadTimeout,
+      );
+      if (attempt.statusCode < 400 && attempt.bodyBytes.isNotEmpty) {
+        response = attempt;
+        break;
+      }
     }
+    if (response == null) throw const ApiException('Fayl yüklənmədi.');
 
     // A name the server gave beats the one the list row carried, and a plain
     // id beats both when neither is usable. Whatever wins, it is given an
@@ -192,6 +232,10 @@ class TaskFilesApi {
   }
 
   String _downloadPath(String id) => '/files/$id/download';
+
+  /// The same file, served inline. Not a metadata endpoint — it answers with
+  /// the bytes too — but it is the one that works.
+  String _inlinePath(String id) => '/files/$id';
 
   /// The access token, as the query parameter the download endpoint expects.
   Map<String, String> _tokenQuery() {

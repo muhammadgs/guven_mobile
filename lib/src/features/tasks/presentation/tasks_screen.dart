@@ -5,10 +5,12 @@ import 'package:flutter/material.dart';
 import '../../../shared/layout.dart';
 import '../../auth/application/session_controller.dart';
 import '../application/tasks_controller.dart';
+import '../domain/new_task.dart';
 import '../domain/task_attachment.dart';
 import '../domain/task_item.dart';
 import '../domain/task_scope.dart';
 import '../domain/task_status.dart';
+import 'widgets/new_task_panel.dart';
 import 'widgets/task_card.dart';
 import 'widgets/task_filter_panel.dart';
 import 'widgets/task_glass.dart';
@@ -60,6 +62,10 @@ class _TasksScreenState extends State<TasksScreen> {
   /// True while the filter panel is up. The funnel button steps aside for
   /// it, because the panel is that button's own glass.
   bool _filterOpen = false;
+
+  /// True while the `Yeni tapşırıq` chooser or form is up, for the same
+  /// reason: that surface *is* the `+` button's glass.
+  bool _createOpen = false;
 
   @override
   void didChangeDependencies() {
@@ -114,6 +120,30 @@ class _TasksScreenState extends State<TasksScreen> {
     if (mounted) setState(() => _filterOpen = false);
   }
 
+  /// Opens `Yeni tapşırıq`, growing out of the `+` that was pressed.
+  ///
+  /// A task that was actually created switches the scope bar to the cell it
+  /// landed in and reloads that cell — the three kinds live in three different
+  /// resources, so a new `Şirkət` task would otherwise be invisible from
+  /// `Daxili`, where it was raised.
+  Future<void> _openCreate(Rect button, double radius) async {
+    setState(() => _createOpen = true);
+    final NewTaskKind? created = await openNewTask(
+      context,
+      button: button,
+      radius: radius,
+      session: SessionScope.read(context),
+    );
+    if (!mounted) return;
+    setState(() => _createOpen = false);
+    if (created == null) return;
+
+    final TasksController tasks = _controller!;
+    tasks.select(created.scope);
+    unawaited(tasks.load(created.scope));
+    _showFlash('Tapşırıq yaradıldı.');
+  }
+
   Future<void> _openFile(TaskAttachment file) async {
     final String? failure = await _controller!.openAttachment(file);
     if (failure != null && mounted) _showFlash(failure);
@@ -160,9 +190,9 @@ class _TasksScreenState extends State<TasksScreen> {
                   gap: scaled(context, 12),
                   filterCount: tasks.filter.activeFieldCount,
                   filterHidden: _filterOpen,
+                  createHidden: _createOpen,
                   onFilter: _openFilter,
-                  onCreate: () =>
-                      _showFlash('Yeni tapşırıq bölməsi hazırlanır.'),
+                  onCreate: _openCreate,
                 ),
               ),
               _FlashBar(message: _flash),
@@ -374,6 +404,7 @@ class _TaskList extends StatelessWidget {
             busy: controller.isBusy(task),
             attachments: controller.attachmentsOf(task),
             openingFileIds: controller.openingFileIds,
+            voice: controller.voice,
             onAction: (TaskAction action) => onAction(action, task),
             onOpenFile: onOpenFile,
             onOpened: () => controller.loadAttachments(task),

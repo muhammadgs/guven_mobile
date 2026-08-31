@@ -258,9 +258,7 @@ class RenderTaskCardLayout extends RenderBox
   /// pass — writes the blended offsets into the children's parent data.
   Size _layoutPass(BoxConstraints constraints, {required bool dry}) {
     assert(childCount == TaskCardSlot.values.length);
-    final double width = constraints.hasBoundedWidth
-        ? constraints.maxWidth
-        : 0;
+    final double width = constraints.hasBoundedWidth ? constraints.maxWidth : 0;
     final double t = _expansion.clamp(0.0, 1.0);
     final TaskCardMetrics m = _metrics;
 
@@ -348,7 +346,10 @@ class RenderTaskCardLayout extends RenderBox
     // ----------------------------------------------------------- the shut card
 
     final _Placement stampShut = _Placement(
-      Offset(width - stamp.width, math.max(0, (title.height - stamp.height) / 2)),
+      Offset(
+        width - stamp.width,
+        math.max(0, (title.height - stamp.height) / 2),
+      ),
       stamp,
     );
     final _Placement titleShut = _Placement(Offset.zero, title);
@@ -357,8 +358,12 @@ class RenderTaskCardLayout extends RenderBox
       subtitle,
     );
 
-    final double bodyTop = subtitleShut.offset.dy + subtitle.height + m.headerGap;
-    final _Placement fromShut = _Placement(Offset(m.dotLane, bodyTop), fromName);
+    final double bodyTop =
+        subtitleShut.offset.dy + subtitle.height + m.headerGap;
+    final _Placement fromShut = _Placement(
+      Offset(m.dotLane, bodyTop),
+      fromName,
+    );
     final _Placement toShut = _Placement(
       Offset(m.dotLane, bodyTop + fromName.height + m.nameGap),
       toName,
@@ -428,14 +433,14 @@ class RenderTaskCardLayout extends RenderBox
       actions,
     );
     final _Placement extrasOpen = _Placement(
-      Offset(
-        0,
-        actionsOpen.rect.bottom + (extras.height > 0 ? m.stackGap : 0),
-      ),
+      Offset(0, actionsOpen.rect.bottom + (extras.height > 0 ? m.stackGap : 0)),
       extras,
     );
     final _Placement chevronOpen = _Placement(
-      Offset((width - chevron.width) / 2, extrasOpen.rect.bottom + m.chevronGap),
+      Offset(
+        (width - chevron.width) / 2,
+        extrasOpen.rect.bottom + m.chevronGap,
+      ),
       chevron,
     );
     final double heightOpen = chevronOpen.rect.bottom;
@@ -485,10 +490,8 @@ class RenderTaskCardLayout extends RenderBox
     final double t = _expansion.clamp(0.0, 1.0);
     final double r = _metrics.dotRadius;
 
-    Offset lerpOffset(Offset a, Offset b) => Offset(
-      lerpDouble(a.dx, b.dx, t)!,
-      lerpDouble(a.dy, b.dy, t)!,
-    );
+    Offset lerpOffset(Offset a, Offset b) =>
+        Offset(lerpDouble(a.dx, b.dx, t)!, lerpDouble(a.dy, b.dy, t)!);
 
     // Where the two bullets are: to the left of the stacked names, and hard
     // against the inner edge of each name once they sit side by side.

@@ -5,6 +5,7 @@ import 'dart:ui' show lerpDouble;
 import 'package:flutter/material.dart';
 
 import '../../../../shared/layout.dart';
+import '../../application/task_voice_player.dart';
 import '../../domain/task_attachment.dart';
 import '../../domain/task_dates.dart';
 import '../../domain/task_item.dart';
@@ -12,6 +13,7 @@ import '../../domain/task_status.dart';
 import 'task_actions.dart';
 import 'task_card_layout.dart';
 import 'task_glass.dart';
+import 'task_voice_note.dart';
 
 /// One task, shut or open.
 ///
@@ -32,6 +34,7 @@ class TaskCard extends StatefulWidget {
     required this.busy,
     required this.attachments,
     required this.openingFileIds,
+    required this.voice,
     required this.onAction,
     required this.onOpenFile,
     required this.onOpened,
@@ -51,6 +54,11 @@ class TaskCard extends StatefulWidget {
 
   /// Which of them are being downloaded right now.
   final Set<String> openingFileIds;
+
+  /// The screen's one voice-note player. Listened to *inside* the recordings
+  /// section rather than around the card, so a note playing does not rebuild
+  /// every card in the list ten times a second.
+  final TaskVoicePlayer voice;
 
   final ValueChanged<TaskAction> onAction;
 
@@ -247,6 +255,7 @@ class _TaskCardState extends State<TaskCard>
           expectsAttachments: task.hasAttachments,
           openingIds: widget.openingFileIds,
           onOpenFile: widget.onOpenFile,
+          voice: widget.voice,
           t: t,
           scale: s,
         ),
@@ -589,12 +598,14 @@ class _Extras extends StatelessWidget {
     required this.expectsAttachments,
     required this.openingIds,
     required this.onOpenFile,
+    required this.voice,
     required this.t,
     required this.scale,
   });
 
   final DateTime? dueDate;
   final List<TaskAttachment>? attachments;
+  final TaskVoicePlayer voice;
 
   /// Whether the task row named any files at all. Drives the small spinner
   /// while they are being described, so the section does not pop in late.
@@ -610,10 +621,23 @@ class _Extras extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final List<TaskAttachment> files = attachments ?? const <TaskAttachment>[];
+    final List<TaskAttachment> all = attachments ?? const <TaskAttachment>[];
+    // Recordings get a section of their own, because they are not opened —
+    // they are listened to, in place. Everything else stays a chip.
+    final List<TaskAttachment> notes = <TaskAttachment>[
+      for (final TaskAttachment file in all)
+        if (file.kind == AttachmentKind.voiceNote) file,
+    ];
+    final List<TaskAttachment> files = <TaskAttachment>[
+      for (final TaskAttachment file in all)
+        if (file.kind != AttachmentKind.voiceNote) file,
+    ];
     final bool loading = attachments == null && expectsAttachments;
     final bool hasFiles = files.isNotEmpty || loading;
-    if (!hasFiles && dueDate == null) return const SizedBox.shrink();
+    final bool hasNotes = notes.isNotEmpty;
+    if (!hasFiles && !hasNotes && dueDate == null) {
+      return const SizedBox.shrink();
+    }
 
     final TextStyle label = TextStyle(
       fontFamily: 'Poppins',
@@ -639,6 +663,30 @@ class _Extras extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
+            if (hasNotes) ...<Widget>[
+              Text('Səs qeydləri:', style: label),
+              SizedBox(height: 8 * scale),
+              ListenableBuilder(
+                listenable: voice,
+                builder: (BuildContext context, _) => Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    for (int i = 0; i < notes.length; i++) ...<Widget>[
+                      if (i > 0) SizedBox(height: 8 * scale),
+                      TaskVoiceNote(
+                        file: notes[i],
+                        player: voice,
+                        scale: scale,
+                        saving: openingIds.contains(notes[i].id),
+                        onSave: () => onOpenFile(notes[i]),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              SizedBox(height: 14 * scale),
+            ],
             if (hasFiles) ...<Widget>[
               Text('Fayllar:', style: label),
               SizedBox(height: 8 * scale),
@@ -747,11 +795,7 @@ class _AttachmentChip extends StatelessWidget {
                           color: file.kind.color,
                         ),
                       )
-                    : Icon(
-                        file.kind.icon,
-                        size: glyph,
-                        color: file.kind.color,
-                      ),
+                    : Icon(file.kind.icon, size: glyph, color: file.kind.color),
               ),
               SizedBox(width: 8 * scale),
               Text(

@@ -26,12 +26,17 @@ class TaskToolButtons extends StatelessWidget {
     required this.onCreate,
     this.filterCount = 0,
     this.filterHidden = false,
+    this.createHidden = false,
   });
 
   final double size;
   final double gap;
   final TaskToolTap onFilter;
-  final VoidCallback onCreate;
+
+  /// Hands over the `+` button's own rect: the chooser, and then the whole
+  /// form, are that button's glass growing — the same handover the funnel
+  /// makes to the filter.
+  final TaskToolTap onCreate;
 
   /// How many columns the filter is currently narrowing the list by. Drawn as
   /// a badge on the funnel, so a filtered list never looks like an empty one.
@@ -43,6 +48,10 @@ class TaskToolButtons extends StatelessWidget {
   /// out of the way rather than sitting under it and doubling both the lens
   /// and the glyph. Its space is kept, so nothing below moves.
   final bool filterHidden;
+
+  /// The same, for the `+`: while the chooser or the form is up, this button
+  /// *is* that surface, so it steps aside rather than sitting under it.
+  final bool createHidden;
 
   @override
   Widget build(BuildContext context) {
@@ -63,11 +72,17 @@ class TaskToolButtons extends StatelessWidget {
           ),
         ),
         SizedBox(width: gap),
-        _ToolButton(
-          size: size,
-          onTap: (Rect _, double _) => onCreate(),
-          semanticLabel: 'Yeni tapşırıq',
-          painter: _PlusPainter(size),
+        Visibility(
+          visible: !createHidden,
+          maintainSize: true,
+          maintainAnimation: true,
+          maintainState: true,
+          child: _ToolButton(
+            size: size,
+            onTap: onCreate,
+            semanticLabel: 'Yeni tapşırıq',
+            painter: PlusPainter(size),
+          ),
         ),
       ],
     );
@@ -230,8 +245,12 @@ class FunnelPainter extends CustomPainter {
 }
 
 /// The new-task glyph.
-class _PlusPainter extends CustomPainter {
-  const _PlusPainter(this.box);
+///
+/// Public for the same reason [FunnelPainter] is: the surface that grows out
+/// of this button carries the button’s own glyph for the first few frames, and
+/// it has to be the same drawing rather than a second one that looks like it.
+class PlusPainter extends CustomPainter {
+  const PlusPainter(this.box);
 
   final double box;
 
@@ -245,19 +264,11 @@ class _PlusPainter extends CustomPainter {
       ..strokeCap = StrokeCap.round
       ..color = kGlassInk;
 
-    canvas.drawLine(
-      centre - Offset(arm, 0),
-      centre + Offset(arm, 0),
-      paint,
-    );
-    canvas.drawLine(
-      centre - Offset(0, arm),
-      centre + Offset(0, arm),
-      paint,
-    );
+    canvas.drawLine(centre - Offset(arm, 0), centre + Offset(arm, 0), paint);
+    canvas.drawLine(centre - Offset(0, arm), centre + Offset(0, arm), paint);
   }
 
   @override
-  bool shouldRepaint(covariant _PlusPainter oldDelegate) =>
+  bool shouldRepaint(covariant PlusPainter oldDelegate) =>
       oldDelegate.box != box;
 }

@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:guven_mobile/src/core/network/api_client.dart';
+import 'package:guven_mobile/src/core/network/token_store.dart';
+import 'package:guven_mobile/src/features/tasks/application/task_voice_player.dart';
+import 'package:guven_mobile/src/features/tasks/data/task_files_api.dart';
 import 'package:guven_mobile/src/features/tasks/domain/task_attachment.dart';
 import 'package:guven_mobile/src/features/tasks/domain/task_item.dart';
 import 'package:guven_mobile/src/features/tasks/domain/task_scope.dart';
@@ -12,6 +16,12 @@ const String _description =
     'Əməkdaşların ümumi siyahısı ancaq səlahiyyəti olan şəxslər görə '
     'bilməsin. lazım olan əmokdaş filtirə yazanda görsənə bilər feature '
     'kimi əlavə olunsun ki, siyahı hamıya açıq qalmasın.';
+
+/// A real player, which is safe here because it opens no native one until a
+/// voice note is actually tapped — and none of these cards carries one.
+final TaskVoicePlayer _player = TaskVoicePlayer(
+  TaskFilesApi(ApiClient(tokens: TokenStore())),
+);
 
 TaskItem _task({TaskStatus status = TaskStatus.pendingApproval}) {
   return TaskItem(
@@ -56,6 +66,7 @@ void main() {
           busy: false,
           attachments: const [],
           openingFileIds: const <String>{},
+          voice: _player,
           onOpenFile: (_) {},
           onAction: (_) {},
           onOpened: () {},
@@ -116,6 +127,7 @@ void main() {
           busy: false,
           attachments: const [],
           openingFileIds: const <String>{},
+          voice: _player,
           onOpenFile: (_) {},
           onAction: (_) {},
           onOpened: () => opened = true,
@@ -168,6 +180,7 @@ void main() {
           busy: false,
           attachments: const [],
           openingFileIds: const <String>{},
+          voice: _player,
           onOpenFile: (_) {},
           onAction: (_) {},
           onOpened: () {},
@@ -202,6 +215,7 @@ void main() {
           busy: false,
           attachments: const <TaskAttachment>[pdf],
           openingFileIds: const <String>{},
+          voice: _player,
           onOpenFile: (TaskAttachment file) => tapped = file,
           onAction: (_) {},
           onOpened: () {},

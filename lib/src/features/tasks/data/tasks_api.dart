@@ -56,8 +56,17 @@ class TasksApi {
           'status': _openStatuses.join(','),
         },
       ),
+      // `/tasks-external/` — "the current company's viewable external tasks" —
+      // and not `/tasks/external`, which is a different endpoint entirely:
+      // that one returns *other companies'* tasks (`exclude_my_company` is
+      // true by default), so `Şirkət` was showing work that has nothing to do
+      // with this relationship. A cross-company task is one we handed up to an
+      // executor company of ours, or one handed to us; a company with no
+      // parent companies has none, and this endpoint correctly answers with
+      // nothing. It is also the resource `POST /tasks-external/` writes to and
+      // the one the website's own external table reads.
       TaskScope.company => await _client.get(
-        '/tasks/external',
+        '/tasks-external/',
         query: <String, String>{
           'page': '1',
           'limit': '$_pageSize',

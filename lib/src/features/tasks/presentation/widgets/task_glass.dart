@@ -188,3 +188,136 @@ const Color kTaskFilterRowInk = Color(0xD90C1017);
 /// The count on a column that is narrowing the list, and on the filter button
 /// itself. The site marks an active column in blue and so does this.
 const Color kTaskFilterBadge = Color(0xFF4AB6FF);
+
+// ── Yeni tapşırıq ─────────────────────────────────────────────────────────
+//
+// The chooser and the sheet are deliberately *not* given a glass of their own:
+// they are one surface growing out of the `+` button, and the user asked for
+// the filter's glass exactly — so [kTaskFilterGlass] is what they wear, and
+// there is one set of Figma numbers on this screen rather than two that drift.
+
+/// How dark the screen goes behind the open sheet, and how far it is blurred.
+///
+/// The chooser barely shades anything (it is a menu, and the list behind it is
+/// still the subject); the sheet is a page in its own right and the design
+/// pushes the task list well back behind it.
+const Color kNewTaskMenuScrim = Color(0x14101826);
+const Color kNewTaskSheetScrim = Color(0x66070C14);
+const double kNewTaskSheetBlur = 14;
+
+/// A field's box inside the sheet — a real lens, drawn by `liquid_glass_easy`.
+///
+/// It is a *small* lens sitting on a big one, so almost every number here is
+/// held back from what the sheet itself wears: the sheet has already bent the
+/// screen once and a second refraction at full strength on top of it reads as
+/// a smear rather than as glass. What is left at full strength is easy's
+/// optical border, which is the only thing that says "this is a box you can
+/// press" on a surface with no fill of its own.
+///
+/// The light comes from −45°, the same corner as the sheet's, so the boxes and
+/// the panel they sit in are lit by one source rather than two.
+const AppGlassStyle kNewTaskFieldGlass = AppGlassStyle(
+  cornerRadius: 23,
+  settings: renderer.LiquidGlassSettings(
+    thickness: 10,
+    blur: 6,
+    chromaticAberration: 0,
+    lightAngle: -0.7853981633974483,
+    lightIntensity: 1.0,
+    ambientStrength: 0.28,
+    refractiveIndex: 1.30,
+    saturation: 1.05,
+    // 101826 at 8%: barely a tint, enough that the box reads as a recess in
+    // the sheet rather than a hole in it.
+    glassColor: Color(0x14101826),
+  ),
+  legacy: AppGlassLegacyTuning(
+    distortion: 0.03,
+    distortionWidth: 14,
+    magnification: 1.06,
+    chromaticAberration: 0.0015,
+    lightIntensity: 1.15,
+    ambientIntensity: 0.9,
+    borderSaturation: 1.2,
+    borderSolidity: 0.45,
+    // −45° in easy's degrees-clockwise convention.
+    lightDirection: 315,
+  ),
+);
+
+/// What a box is drawn as while the sheet is still flying.
+///
+/// Not a preference — a necessity. The sheet's contents cross-fade inside the
+/// glass, and a fade is an `Opacity`, which opens a `saveLayer`. A lens under
+/// one samples that empty layer and renders **black**
+/// ([backdrop-filter-black-flash]). So for the few hundred milliseconds the
+/// form is fading in, the boxes are this flat fill instead, and they become
+/// lenses on the frame the flight lands. It is the same colour as
+/// [kNewTaskFieldGlass]'s tint, so the swap is a rim appearing, not a colour
+/// changing.
+const Color kNewTaskFieldFill = Color(0x14101826);
+
+/// What a field says once it has been answered.
+const Color kNewTaskValueInk = Color(0xE6070C14);
+
+/// …and while it has not.
+const Color kNewTaskHintInk = Color(0x73101826);
+
+/// The option list that grows out of a field.
+///
+/// Dark, per the design: it opens *over* the sheet rather than beside it, and
+/// a pale panel on a pale panel leaves the eye nothing to separate them by.
+/// The darkness is also what stops the two lenses reading as a double image —
+/// this one keeps very little of the sheet's own refraction.
+const AppGlassStyle kNewTaskPickerGlass = AppGlassStyle(
+  cornerRadius: 26,
+  settings: renderer.LiquidGlassSettings(
+    thickness: 16,
+    blur: 22,
+    chromaticAberration: 0,
+    lightAngle: -0.7853981633974483,
+    lightIntensity: 1.15,
+    ambientStrength: 0.18,
+    refractiveIndex: 1.20,
+    saturation: 1.1,
+    // 141A24 at 84%: dark enough for white type, open enough that the sheet
+    // behind it still moves.
+    glassColor: Color(0x45C8C8C8),
+  ),
+  legacy: AppGlassLegacyTuning(
+    distortion: 0.04,
+    distortionWidth: 22,
+    magnification: 1.03,
+    chromaticAberration: 0,
+    lightIntensity: 1.3,
+    ambientIntensity: 0.8,
+    borderSaturation: 1.1,
+    borderSolidity: 0.55,
+    lightDirection: 315,
+  ),
+);
+
+/// Type on the dark picker.
+const Color kNewTaskPickerInk = Color(0xFF000000);
+const Color kNewTaskPickerInkMuted = Color(0xFF000000);
+
+/// The capsule under the option that is already chosen.
+const Color kNewTaskPickerRowFill = Color(0x1FFFFFFF);
+
+/// The two buttons at the foot of the sheet, in the design's own stops.
+const List<Color> kNewTaskCancelGradient = <Color>[
+  Color(0xFFFE8750),
+  Color(0xFFFF0048),
+];
+const List<Color> kNewTaskSubmitGradient = <Color>[
+  Color(0xFF2BF07E),
+  Color(0xFF00E0EB),
+];
+
+/// The waveform of a voice note: the part already played, and the part not.
+const Color kVoiceWaveLive = Color(0xFF2E9BF0);
+const Color kVoiceWaveRest = Color(0x662E9BF0);
+
+/// The recorder's own controls — delete, pause, send, microphone.
+const Color kVoiceControlInk = Color(0xFF2E9BF0);
+const Color kVoiceDeleteInk = Color(0xFF6B7684);

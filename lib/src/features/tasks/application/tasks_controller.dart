@@ -11,6 +11,7 @@ import '../domain/task_filter.dart';
 import '../domain/task_item.dart';
 import '../domain/task_scope.dart';
 import '../domain/task_status.dart';
+import 'task_voice_player.dart';
 
 /// One cell of the scope bar: its rows, and how they got there.
 @immutable
@@ -70,11 +71,21 @@ class TasksController extends ChangeNotifier {
   /// cannot choose the rows cannot say anything about the filter over them.
   TasksController(this._session, {TasksApi? api, TaskFilesApi? files})
     : _api = api ?? TasksApi(_session.client),
-      _files = files ?? TaskFilesApi(_session.client);
+      _files = files ?? TaskFilesApi(_session.client) {
+    voice = TaskVoicePlayer(_files);
+  }
 
   final SessionController _session;
   final TasksApi _api;
   final TaskFilesApi _files;
+
+  /// The one player behind every `Səs qeydləri` row on this screen.
+  ///
+  /// Deliberately *not* wired into this controller's own notifications: it
+  /// ticks ten times a second while a note plays, and rebuilding the whole
+  /// task list at that rate to move one waveform would be absurd. The cards
+  /// listen to it directly, around the section that actually changes.
+  late final TaskVoicePlayer voice;
 
   final Map<TaskScope, TaskScopeState> _scopes = <TaskScope, TaskScopeState>{
     for (final TaskScope scope in TaskScope.values) scope: const TaskScopeState(),
@@ -294,6 +305,7 @@ class TasksController extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    voice.dispose();
     super.dispose();
   }
 }

@@ -53,6 +53,10 @@ dependencies:
   liquid_glass_renderer: 0.2.0-dev.4
   flutter_liquid_glass_plus: ^0.0.7
   native_glass_navbar: ^1.0.2
+  record: ^7.1.1
+  audioplayers: ^6.8.1
+  file_picker: ^12.1.2
+  http_parser: ^4.1.2
 
 dev_dependencies:
   flutter_test:
@@ -83,6 +87,7 @@ flutter:
     - assets/images/background/home_aurora.svg
     - assets/images/icons/nav_icons/
     - assets/images/icons/task_list_selection_icons/
+    - assets/images/icons/new_task_icons/
     - assets/videos/onboarding_background.mp4
     - assets/videos/page_3_icons/
 

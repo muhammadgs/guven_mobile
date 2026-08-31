@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart' show MediaType;
 
 import 'api_config.dart';
 import 'api_exception.dart';
@@ -55,6 +56,44 @@ class ApiClient {
     bool authenticated = true,
   }) =>
       _send('POST', endpoint, body: body, authenticated: authenticated);
+
+  /// A partial update. Several task resources take a free-form object here.
+  Future<Object?> patch(String endpoint, {Object? body}) =>
+      _send('PATCH', endpoint, body: body);
+
+  Future<Object?> put(String endpoint, {Object? body}) =>
+      _send('PUT', endpoint, body: body);
+
+  /// Uploads one file as `multipart/form-data`.
+  ///
+  /// The one endpoint this app posts a body of bytes to is
+  /// `/files/simple-upload`, which wants the file under `file` and takes its
+  /// category as an ordinary form field beside it. Kept separate from [post]
+  /// rather than folded into it because a multipart body is a different
+  /// `http.BaseRequest` subclass, not a different `Content-Type`.
+  Future<Object?> postMultipart(
+    String endpoint, {
+    required String field,
+    required String filename,
+    required List<int> bytes,
+    String? contentType,
+    Map<String, String> fields = const <String, String>{},
+    Duration? timeout,
+  }) async {
+    final http.Response response = await _sendRaw(
+      'POST',
+      endpoint,
+      timeout: timeout,
+      multipart: _Multipart(
+        field: field,
+        filename: filename,
+        bytes: bytes,
+        contentType: contentType,
+        fields: fields,
+      ),
+    );
+    return _decode(response);
+  }
 
   /// Sends a request whose *response* is the payload rather than its JSON.
   ///
@@ -113,6 +152,7 @@ class ApiClient {
     Object? body,
     Map<String, String>? extraHeaders,
     Duration? timeout,
+    _Multipart? multipart,
     bool authenticated = true,
     bool isRetry = false,
   }) async {
@@ -123,7 +163,10 @@ class ApiClient {
     final Uri uri = apiUri(endpoint, query);
     final Map<String, String> headers = <String, String>{
       'Accept': 'application/json',
-      if (body != null) 'Content-Type': 'application/json',
+      // A multipart request writes its own `Content-Type`, boundary included,
+      // and setting one here would replace it with a boundary-less header the
+      // server cannot parse.
+      if (body != null && multipart == null) 'Content-Type': 'application/json',
       ...?extraHeaders,
     };
     final String? token = tokens.accessToken;
@@ -133,9 +176,15 @@ class ApiClient {
 
     late final http.Response response;
     try {
-      final http.Request request = http.Request(method, uri)
-        ..headers.addAll(headers);
-      if (body != null) request.body = jsonEncode(body);
+      final http.BaseRequest request;
+      if (multipart != null) {
+        request = multipart.build(method, uri)..headers.addAll(headers);
+      } else {
+        final http.Request plain = http.Request(method, uri)
+          ..headers.addAll(headers);
+        if (body != null) plain.body = jsonEncode(body);
+        request = plain;
+      }
       response = await http.Response.fromStream(
         await _http.send(request).timeout(timeout ?? kApiTimeout),
       );
@@ -154,6 +203,7 @@ class ApiClient {
           body: body,
           extraHeaders: extraHeaders,
           timeout: timeout,
+          multipart: multipart,
           isRetry: true,
         );
       }
@@ -254,5 +304,54 @@ class ApiClient {
       >= 500 => 'Serverdə xəta baş verdi. Bir azdan yenidən cəhd edin.',
       _ => 'Xəta baş verdi ($status).',
     };
+  }
+}
+
+/// One file plus its form fields, ready to become an `http.MultipartRequest`.
+///
+/// A value rather than a request so [ApiClient._sendRaw] can build a fresh one
+/// for the retry after a token refresh: a `MultipartRequest` is single-use —
+/// finalising it a second time throws.
+class _Multipart {
+  const _Multipart({
+    required this.field,
+    required this.filename,
+    required this.bytes,
+    required this.fields,
+    this.contentType,
+  });
+
+  final String field;
+  final String filename;
+  final List<int> bytes;
+  final String? contentType;
+  final Map<String, String> fields;
+
+  http.MultipartRequest build(String method, Uri uri) {
+    return http.MultipartRequest(method, uri)
+      ..fields.addAll(fields)
+      ..files.add(
+        http.MultipartFile.fromBytes(
+          field,
+          bytes,
+          filename: filename,
+          contentType: _mediaType,
+        ),
+      );
+  }
+
+  /// The declared type, when it is one `MediaType` can actually parse.
+  ///
+  /// Left null otherwise, which makes it `application/octet-stream` — the
+  /// server then falls back to the extension in [filename], the same way this
+  /// app's own `AttachmentKind` does.
+  MediaType? get _mediaType {
+    final String? type = contentType;
+    if (type == null || !type.contains('/')) return null;
+    try {
+      return MediaType.parse(type);
+    } catch (_) {
+      return null;
+    }
   }
 }

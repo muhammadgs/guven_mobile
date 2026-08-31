@@ -257,10 +257,7 @@ class _TaskScopeBarState extends State<TaskScopeBar>
                         _MovingMarkerLens(
                           left: (left - swell).clamp(
                             0.0,
-                            math.max(
-                              0,
-                              rail.width - markerWidth - 2 * swell,
-                            ),
+                            math.max(0, rail.width - markerWidth - 2 * swell),
                           ),
                           width: markerWidth + 2 * swell,
                           inset: _kMarkerInset - swell,

@@ -43,6 +43,13 @@
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
 	</dict>
+	<!-- `Yeni tapşırıq` records a voice note the way a message does. iOS
+	     refuses to start the microphone at all without this string, and shows
+	     it verbatim in the permission sheet, so it is written in the app's own
+	     language. Android needs no counterpart here: `record_android` declares
+	     RECORD_AUDIO in its own manifest and the merge brings it in. -->
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Tapşırığa səs qeydi əlavə etmək üçün mikrofona icazə lazımdır.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
