@@ -570,13 +570,22 @@ class _MenuRow extends StatelessWidget {
             padding: EdgeInsets.symmetric(horizontal: metrics.menuPadH),
             child: Row(
               children: <Widget>[
-                SvgPicture.asset(
-                  kind.icon,
-                  width: metrics.labelSize * 1.25,
-                  height: metrics.labelSize * 1.25,
-                  colorFilter: const ColorFilter.mode(
-                    kGlassInk,
-                    BlendMode.srcIn,
+                // A fixed gutter, wide enough for the widest of the three, so
+                // every glyph is centred in the same column and every label
+                // starts at the same x â the icons differ in size, the rows
+                // must not.
+                SizedBox(
+                  width: metrics.labelSize * 1.25 * NewTaskKind.maxIconScale,
+                  child: Center(
+                    child: SvgPicture.asset(
+                      kind.icon,
+                      width: metrics.labelSize * 1.25 * kind.iconScale,
+                      height: metrics.labelSize * 1.25 * kind.iconScale,
+                      colorFilter: const ColorFilter.mode(
+                        kGlassInk,
+                        BlendMode.srcIn,
+                      ),
+                    ),
                   ),
                 ),
                 SizedBox(width: 10 * metrics.scale),

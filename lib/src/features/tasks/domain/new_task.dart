@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/foundation.dart';
 
 import '../../../core/json.dart';
@@ -30,6 +32,7 @@ enum NewTaskKind {
   internal(
     label: 'Daxili',
     icon: 'assets/images/icons/task_list_selection_icons/daxili.svg',
+    iconScale: 0.92,
     endpoint: '/tasks/',
     source: TaskSource.internal,
     scope: TaskScope.internal,
@@ -52,6 +55,7 @@ enum NewTaskKind {
   partner(
     label: 'Partniyor',
     icon: 'assets/images/icons/task_list_selection_icons/partniyor.svg',
+    iconScale: 1.32,
     endpoint: '/partner-tasks/',
     source: TaskSource.partner,
     scope: TaskScope.partner,
@@ -64,6 +68,7 @@ enum NewTaskKind {
   const NewTaskKind({
     required this.label,
     required this.icon,
+    this.iconScale = 1,
     required this.endpoint,
     required this.source,
     required this.scope,
@@ -79,6 +84,21 @@ enum NewTaskKind {
   /// The chooser's glyph — the same three the scope bar wears, so the menu row
   /// and the cell the new task lands in are visibly the same thing.
   final String icon;
+
+  /// How big that glyph is drawn *relative to the other two* in the chooser.
+  ///
+  /// The three SVGs are not drawn to one optical size: the partner handshake
+  /// is wide and low, so in a shared box it reads smaller than the rest, and
+  /// the internal checklist is dense enough to read larger. This nudges each
+  /// back onto the same apparent weight. It corrects the artwork, not the
+  /// layout — the menu's icon size itself is `NewTaskMetrics.labelSize`.
+  final double iconScale;
+
+  /// The widest of the three, which is what the chooser's icon gutter is
+  /// sized to.
+  static final double maxIconScale = values
+      .map((NewTaskKind kind) => kind.iconScale)
+      .reduce(math.max);
 
   final String endpoint;
   final TaskSource source;
