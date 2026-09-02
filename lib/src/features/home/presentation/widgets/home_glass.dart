@@ -152,8 +152,8 @@ const AppGlassStyle kNavBarGlass = AppGlassStyle(
     lightIntensity: 1.28,
     ambientStrength: 0.55,
     refractiveIndex: 1.40,
-    saturation: 1.14,
-    glassColor: Color(0x80FFFFFF),
+    saturation: 3.14,
+    glassColor: Color(0x90FFFFFF),
   ),
   legacy: AppGlassLegacyTuning(
     distortion: 0.09,

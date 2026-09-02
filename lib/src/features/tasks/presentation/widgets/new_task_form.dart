@@ -75,88 +75,98 @@ class _NewTaskFormState extends State<NewTaskForm> {
     final NewTaskMetrics m = widget.metrics;
     final NewTaskController c = widget.controller;
 
-    return ListView(
-      padding: EdgeInsets.fromLTRB(
-        m.sheetPadH,
-        m.sheetPadTop,
-        m.sheetPadH,
-        m.sheetPadBottom,
-      ),
-      physics: const ClampingScrollPhysics(),
-      children: <Widget>[
-        _Header(
-          metrics: m,
-          title: widget.kind.sheetTitle,
-          onBack: widget.onBack,
+    // Android's stretch overscroll lifts the scrolled content into an
+    // `ImageFilterLayer`, and every box on this form is a lens: inside that
+    // layer they sample an empty backdrop instead of the sheet and vanish the
+    // moment a finger pulls past either end
+    // ([backdrop-filter-black-flash]) — the home screen's activity tray drops
+    // the stretch for exactly this reason. The physics here are clamping, so
+    // the only thing that goes with it is the artefact.
+    return ScrollConfiguration(
+      behavior: const MaterialScrollBehavior().copyWith(overscroll: false),
+      child: ListView(
+        padding: EdgeInsets.fromLTRB(
+          m.sheetPadH,
+          m.sheetPadTop,
+          m.sheetPadH,
+          m.sheetPadBottom,
         ),
-        SizedBox(height: m.betweenFields),
-        for (final NewTaskField field in c.fields) ...<Widget>[
+        physics: const ClampingScrollPhysics(),
+        children: <Widget>[
+          _Header(
+            metrics: m,
+            title: widget.kind.sheetTitle,
+            onBack: widget.onBack,
+          ),
+          SizedBox(height: m.betweenFields),
+          for (final NewTaskField field in c.fields) ...<Widget>[
+            _Field(
+              metrics: m,
+              icon: field.icon,
+              label: field.labelFor(widget.kind),
+              value: c.chosen(field)?.name,
+              hint: field.hintFor(widget.kind),
+              busy: c.listOf(field).loading,
+              active: widget.openField == field,
+              onTap: (Rect rect) => widget.onOpenField(field, rect),
+            ),
+            SizedBox(height: m.betweenFields),
+          ],
           _Field(
             metrics: m,
-            icon: field.icon,
-            label: field.labelFor(widget.kind),
-            value: c.chosen(field)?.name,
-            hint: field.hintFor(widget.kind),
-            busy: c.listOf(field).loading,
-            active: widget.openField == field,
-            onTap: (Rect rect) => widget.onOpenField(field, rect),
+            icon: 'assets/images/icons/new_task_icons/son_muddet.svg',
+            label: 'Son müddət',
+            value: c.dueDate == null ? null : formatTaskDate(c.dueDate!),
+            hint: 'Tarix seçin',
+            busy: false,
+            active: widget.dateOpen,
+            onTap: widget.onOpenDate,
           ),
           SizedBox(height: m.betweenFields),
-        ],
-        _Field(
-          metrics: m,
-          icon: 'assets/images/icons/new_task_icons/son_muddet.svg',
-          label: 'Son müddət',
-          value: c.dueDate == null ? null : formatTaskDate(c.dueDate!),
-          hint: 'Tarix seçin',
-          busy: false,
-          active: widget.dateOpen,
-          onTap: widget.onOpenDate,
-        ),
-        SizedBox(height: m.betweenFields),
-        if (widget.kind.hasVisibilityToggle) ...<Widget>[
-          _VisibilityToggle(
+          if (widget.kind.hasVisibilityToggle) ...<Widget>[
+            _VisibilityToggle(
+              metrics: m,
+              value: c.showToCompany,
+              onChanged: c.setShowToCompany,
+            ),
+            SizedBox(height: m.betweenFields),
+          ],
+          _Label(
             metrics: m,
-            value: c.showToCompany,
-            onChanged: c.setShowToCompany,
+            icon: 'assets/images/icons/new_task_icons/aciqlama.svg',
+            text: 'Tapşırıq açıqlaması',
+          ),
+          SizedBox(height: m.fieldGap),
+          _DescriptionBox(
+            metrics: m,
+            controller: _description,
+            onChanged: c.setDescription,
           ),
           SizedBox(height: m.betweenFields),
+          _Label(
+            metrics: m,
+            icon: 'assets/images/icons/new_task_icons/ses_qeydi.svg',
+            text: 'Səs qeydi',
+          ),
+          SizedBox(height: m.fieldGap),
+          VoiceRecorderField(recorder: c.voice, scale: m.scale),
+          SizedBox(height: m.betweenFields),
+          _Label(
+            metrics: m,
+            icon: 'assets/images/icons/new_task_icons/fayl.svg',
+            text: 'Fayllar',
+          ),
+          SizedBox(height: m.fieldGap),
+          _Files(metrics: m, controller: c),
+          SizedBox(height: m.betweenFields * 1.4),
+          _Footer(
+            metrics: m,
+            controller: c,
+            onCancel: widget.onCancel,
+            onSubmit: widget.onSubmit,
+          ),
         ],
-        _Label(
-          metrics: m,
-          icon: 'assets/images/icons/new_task_icons/aciqlama.svg',
-          text: 'Tapşırıq açıqlaması',
-        ),
-        SizedBox(height: m.fieldGap),
-        _DescriptionBox(
-          metrics: m,
-          controller: _description,
-          onChanged: c.setDescription,
-        ),
-        SizedBox(height: m.betweenFields),
-        _Label(
-          metrics: m,
-          icon: 'assets/images/icons/new_task_icons/ses_qeydi.svg',
-          text: 'Səs qeydi',
-        ),
-        SizedBox(height: m.fieldGap),
-        VoiceRecorderField(recorder: c.voice, scale: m.scale),
-        SizedBox(height: m.betweenFields),
-        _Label(
-          metrics: m,
-          icon: 'assets/images/icons/new_task_icons/fayl.svg',
-          text: 'Fayllar',
-        ),
-        SizedBox(height: m.fieldGap),
-        _Files(metrics: m, controller: c),
-        SizedBox(height: m.betweenFields * 1.4),
-        _Footer(
-          metrics: m,
-          controller: c,
-          onCancel: widget.onCancel,
-          onSubmit: widget.onSubmit,
-        ),
-      ],
+      ),
     );
   }
 }

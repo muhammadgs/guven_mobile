@@ -282,7 +282,7 @@ const AppGlassStyle kNewTaskPickerGlass = AppGlassStyle(
     saturation: 1.1,
     // 141A24 at 84%: dark enough for white type, open enough that the sheet
     // behind it still moves.
-    glassColor: Color(0x45C8C8C8),
+    glassColor: Color(0xA0CACACA),
   ),
   legacy: AppGlassLegacyTuning(
     distortion: 0.04,

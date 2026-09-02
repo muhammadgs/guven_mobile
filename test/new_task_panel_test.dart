@@ -134,6 +134,26 @@ void main() {
     },
   );
 
+  testWidgets('nothing stretches the form when it is pulled past an end', (
+    WidgetTester tester,
+  ) async {
+    await _pump(tester);
+    await tester.tap(find.text('Daxili'));
+    await tester.pumpAndSettle();
+
+    // Android's overscroll stretch lifts the scrolled content into an
+    // `ImageFilterLayer`, and every box in here is a lens: inside that layer
+    // it samples an empty backdrop and vanishes at both ends of the scroll.
+    // The form drops the stretch, so there is none to find.
+    expect(
+      find.descendant(
+        of: find.byType(NewTaskForm),
+        matching: find.byType(StretchingOverscrollIndicator),
+      ),
+      findsNothing,
+    );
+  });
+
   testWidgets('the field whose list is open steps out of its own way', (
     WidgetTester tester,
   ) async {
