@@ -105,7 +105,10 @@ class _NewTaskFormState extends State<NewTaskForm> {
               icon: field.icon,
               label: field.labelFor(widget.kind),
               value: c.chosen(field)?.name,
-              hint: field.hintFor(widget.kind),
+              // A field whose list is deliberately not offered says why in
+              // place of its hint, so the reason is on the form rather than
+              // hidden behind a tap.
+              hint: c.listOf(field).notice ?? field.hintFor(widget.kind),
               busy: c.listOf(field).loading,
               active: widget.openField == field,
               onTap: (Rect rect) => widget.onOpenField(field, rect),

@@ -203,14 +203,16 @@ class TaskOption {
   int get hashCode => Object.hash(id, name);
 
   /// An employee row: `/users/company/{code}`.
+  ///
+  /// The name is read by [readPersonName], which knows both spellings the
+  /// endpoint mixes — an employee's `first_name`/`last_name` and an owner's
+  /// `ceo_name`/`ceo_lastname`. A row that names nobody keeps its email
+  /// address as the label, because a picker cannot offer several people all
+  /// called `Ad yoxdur`; a row with neither is dropped.
   static TaskOption? employee(Map<String, Object?> row) {
     final int? id = readInt(row, <String>['id', 'user_id']);
-    final String? name = readString(row, <String>[
-      'full_name',
-      'name',
-      'ceo_name',
-      'email',
-    ]);
+    final String? name =
+        readPersonName(row) ?? readString(row, <String>['email', 'ceo_email']);
     if (id == null || name == null) return null;
     return TaskOption(id: id, name: name);
   }

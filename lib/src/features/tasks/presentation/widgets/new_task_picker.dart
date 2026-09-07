@@ -77,6 +77,10 @@ class NewTaskPickerPanel extends StatelessWidget {
     }
     final String? error = list.error;
     if (error != null) return _Notice(metrics: metrics, text: error);
+    // What the field itself is already saying, repeated here so opening it is
+    // not a dead end: "Digər şirkət seçin", not "İşçi tapılmadı".
+    final String? notice = list.notice;
+    if (notice != null) return _Notice(metrics: metrics, text: notice);
     if (list.options.isEmpty) {
       return _Notice(metrics: metrics, text: field.emptyMessage);
     }

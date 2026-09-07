@@ -11,6 +11,7 @@ import 'package:guven_mobile/src/features/tasks/domain/new_task.dart';
 import 'package:guven_mobile/src/features/tasks/presentation/widgets/new_task_box.dart';
 import 'package:guven_mobile/src/features/tasks/presentation/widgets/new_task_form.dart';
 import 'package:guven_mobile/src/features/tasks/presentation/widgets/new_task_panel.dart';
+import 'package:guven_mobile/src/features/tasks/presentation/widgets/new_task_picker.dart';
 import 'package:guven_mobile/src/shared/glass/app_glass.dart';
 
 /// The chooser and the form are one surface, and the form is the tallest thing
@@ -108,6 +109,47 @@ void main() {
     await tester.pumpAndSettle();
 
     // The other company's people are its own, not ours.
+    expect(api.employeesFor, contains('ALT26002'));
+  });
+
+  testWidgets('our own company leaves no other company to have a worker at', (
+    WidgetTester tester,
+  ) async {
+    final _StubApi api = _StubApi();
+    await _pump(tester, api: api);
+
+    await tester.tap(find.text('Daxili'));
+    await tester.pumpAndSettle();
+
+    // The form opens on our own company, so `Digər şirkətin işçisi` has no
+    // other side to name. It says what to do about that instead of offering
+    // our own people a second time…
+    expect(find.text('Digər şirkət seçin'), findsOneWidget);
+    expect(api.employeesFor, <String>['GUV26001']);
+
+    // …and the panel it opens says the same rather than "İşçi tapılmadı".
+    await tester.tap(find.text('Digər şirkət seçin'));
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(
+        of: find.byType(NewTaskPickerPanel),
+        matching: find.text('Digər şirkət seçin'),
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Əli Balakişiyev'), findsNothing);
+
+    // A tap off the list closes it and leaves the form alone.
+    await tester.tapAt(const Offset(196, 40));
+    await tester.pumpAndSettle();
+
+    // Choosing a company that *is* another one asks for its people.
+    await tester.tap(find.text('Güvən Finans MMC'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Alt Şirkət'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Digər şirkət seçin'), findsNothing);
     expect(api.employeesFor, contains('ALT26002'));
   });
 

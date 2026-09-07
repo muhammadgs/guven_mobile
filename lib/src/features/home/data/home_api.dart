@@ -238,16 +238,8 @@ class HomeApi {
     };
   }
 
-  String? _personName(Map<String, Object?> row) {
-    final String? first =
-        readString(row, <String>['first_name', 'ceo_name', 'name']);
-    final String? last =
-        readString(row, <String>['last_name', 'ceo_lastname', 'surname']);
-    final String joined =
-        <String?>[first, last].whereType<String>().join(' ').trim();
-    if (joined.isNotEmpty) return joined;
-    return readString(row, <String>['full_name', 'email', 'ceo_email']);
-  }
+  String? _personName(Map<String, Object?> row) =>
+      readPersonName(row) ?? readString(row, <String>['email', 'ceo_email']);
 
   bool _isAdmin(Map<String, Object?> row) {
     final String role =

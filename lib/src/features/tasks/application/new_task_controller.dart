@@ -33,13 +33,30 @@ class OptionList {
     this.options = const <TaskOption>[],
     this.loading = false,
     this.error,
+    this.notice,
   });
 
-  const OptionList.busy() : options = const <TaskOption>[], loading = true, error = null;
+  const OptionList.busy()
+    : options = const <TaskOption>[],
+      loading = true,
+      error = null,
+      notice = null;
+
+  /// A list that is deliberately not offered, and says why.
+  const OptionList.unavailable(String this.notice)
+    : options = const <TaskOption>[],
+      loading = false,
+      error = null;
 
   final List<TaskOption> options;
   final bool loading;
   final String? error;
+
+  /// Why this field has nothing to offer, when that is a consequence of an
+  /// answer above it rather than a failure — `Digər şirkətin işçisi` while the
+  /// company chosen is our own. It stands in for the field's hint as well as
+  /// filling the panel, so the answer is visible without opening it.
+  final String? notice;
 
   bool get isEmpty => options.isEmpty && !loading && error == null;
 }
@@ -204,14 +221,26 @@ class NewTaskController extends ChangeNotifier {
 
     _chosen.remove(NewTaskField.otherWorker);
     final String? code = company.code;
-    unawaited(
-      _load(
+    if (company.isMine) {
+      // `Digər şirkətin işçisi` is a watcher on the *other* side of the task.
+      // With our own company chosen there is no other side, and offering our
+      // own people here — which is what asking for this company's employees
+      // does — reads as a second `İcra edən`. The field says what to do about
+      // it instead of listing the wrong people.
+      _set(
         NewTaskField.otherWorker,
-        () => code == null
-            ? Future<List<TaskOption>>.value(const <TaskOption>[])
-            : _api.employees(code),
-      ),
-    );
+        const OptionList.unavailable('Digər şirkət seçin'),
+      );
+    } else {
+      unawaited(
+        _load(
+          NewTaskField.otherWorker,
+          () => code == null
+              ? Future<List<TaskOption>>.value(const <TaskOption>[])
+              : _api.employees(code),
+        ),
+      );
+    }
 
     // On a task handed to another company, the work type and the department
     // are that company's — ours mean nothing there.

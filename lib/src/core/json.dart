@@ -130,3 +130,35 @@ bool isActiveRow(Map<String, Object?> row) {
   }
   return true;
 }
+
+/// A person's name, out of every spelling the backend has for one.
+///
+/// The same row type carries either pair: an employee is `first_name` /
+/// `last_name` and a company owner is `ceo_name` / `ceo_lastname`, and
+/// `/users/company/{code}` returns both kinds mixed in one list — which is why
+/// reading only half the spellings leaves a row looking nameless when it is
+/// not. `full_name` and `name` are the already-joined forms some other
+/// endpoints send.
+///
+/// Null when the row genuinely names nobody. It never falls back to the email
+/// address: an address is what these lists were showing while the two name
+/// pairs went unread, and it is not a name.
+String? readPersonName(Map<String, Object?> row) {
+  final String? first = readString(row, <String>[
+    'first_name',
+    'firstName',
+    'ceo_name',
+    'given_name',
+  ]);
+  final String? last = readString(row, <String>[
+    'last_name',
+    'lastName',
+    'ceo_lastname',
+    'ceo_surname',
+    'surname',
+  ]);
+  final String joined =
+      <String?>[first, last].whereType<String>().join(' ').trim();
+  if (joined.isNotEmpty) return joined;
+  return readString(row, <String>['full_name', 'fullName', 'name']);
+}
