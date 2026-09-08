@@ -283,8 +283,7 @@ class _NewTaskPanelState extends State<NewTaskPanel>
                     metrics: metrics,
                     anchor: _anchor,
                     flight: _picker,
-                    field: _field!,
-                    kind: _kind ?? NewTaskKind.internal,
+                    emptyMessage: _field!.emptyMessage,
                     list: _controller.listOf(_field!),
                     chosen: _controller.chosen(_field!),
                     onPick: (TaskOption option) {

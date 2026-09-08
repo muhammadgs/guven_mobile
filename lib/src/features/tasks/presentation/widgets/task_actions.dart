@@ -22,6 +22,7 @@ class TaskActionButton extends StatefulWidget {
     required this.padding,
     required this.onTap,
     this.busy = false,
+    this.hidden = false,
   });
 
   final TaskAction action;
@@ -31,11 +32,25 @@ class TaskActionButton extends StatefulWidget {
   /// Horizontal padding either side of the label.
   final double padding;
 
-  final VoidCallback onTap;
+  /// Fired with this button's own rect in global coordinates, read from its
+  /// render object at the moment of the tap.
+  ///
+  /// `Redaktə` grows out of the button that was pressed, and the card it sits
+  /// on is halfway down a scrolling list — so where the button *is* can only
+  /// be answered when it is pressed, never when it was built.
+  final void Function(Rect rect) onTap;
 
   /// True while this card's verb is in flight — the label dims and taps stop
   /// landing, so a double tap cannot fire the same verb twice.
   final bool busy;
+
+  /// True while the sheet this button opened is up.
+  ///
+  /// That sheet *is* this button's surface for as long as it is on screen, so
+  /// the button steps out from under it rather than sitting there behind the
+  /// scrim — the same handover the `+` makes to `Yeni tapşırıq`. Its space is
+  /// kept, so the card does not move.
+  final bool hidden;
 
   @override
   State<TaskActionButton> createState() => _TaskActionButtonState();
@@ -48,7 +63,7 @@ class _TaskActionButtonState extends State<TaskActionButton> {
   Widget build(BuildContext context) {
     final double radius = widget.height / 2;
 
-    return GestureDetector(
+    final Widget button = GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTapDown: widget.busy ? null : (_) => setState(() => _down = true),
       onTapCancel: widget.busy ? null : () => setState(() => _down = false),
@@ -56,7 +71,9 @@ class _TaskActionButtonState extends State<TaskActionButton> {
           ? null
           : (_) {
               setState(() => _down = false);
-              widget.onTap();
+              final RenderObject? box = context.findRenderObject();
+              if (box is! RenderBox || !box.hasSize) return;
+              widget.onTap(box.localToGlobal(Offset.zero) & box.size);
             },
       child: AnimatedScale(
         scale: _down ? 0.955 : 1,
@@ -94,6 +111,15 @@ class _TaskActionButtonState extends State<TaskActionButton> {
           ),
         ),
       ),
+    );
+
+    if (!widget.hidden) return button;
+    return Visibility(
+      visible: false,
+      maintainSize: true,
+      maintainAnimation: true,
+      maintainState: true,
+      child: button,
     );
   }
 }

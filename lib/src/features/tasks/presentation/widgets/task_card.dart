@@ -38,6 +38,8 @@ class TaskCard extends StatefulWidget {
     required this.onAction,
     required this.onOpenFile,
     required this.onOpened,
+    this.canEdit = false,
+    this.editing = false,
   });
 
   final TaskItem task;
@@ -45,6 +47,14 @@ class TaskCard extends StatefulWidget {
   /// Whether the signed-in user is the executor. Their name is set in bold and
   /// they get the buttons; everybody else gets the status chip.
   final bool mine;
+
+  /// Whether this card offers `Redaktə` — true for the executor and for
+  /// whoever raised the task, and for nobody else (`TaskItem.canEdit`).
+  final bool canEdit;
+
+  /// True while this card's own edit sheet is up, so its `Redaktə` button can
+  /// step out from under the surface that grew out of it.
+  final bool editing;
 
   /// True while one of this card's verbs is in flight.
   final bool busy;
@@ -60,7 +70,10 @@ class TaskCard extends StatefulWidget {
   /// every card in the list ten times a second.
   final TaskVoicePlayer voice;
 
-  final ValueChanged<TaskAction> onAction;
+  /// Fired with the verb and the rect of the button that was pressed —
+  /// `Redaktə` grows out of that button, and a card halfway down a scrolling
+  /// list can only say where its buttons are at the moment one is tapped.
+  final void Function(TaskAction action, Rect button) onAction;
 
   /// Download this file and hand it to the phone.
   final ValueChanged<TaskAttachment> onOpenFile;
@@ -244,6 +257,8 @@ class _TaskCardState extends State<TaskCard>
         TaskCardSlot.actions: _Actions(
           task: task,
           mine: widget.mine,
+          canEdit: widget.canEdit,
+          editing: widget.editing,
           busy: widget.busy,
           onAction: widget.onAction,
           t: t,
@@ -535,6 +550,8 @@ class _Actions extends StatelessWidget {
   const _Actions({
     required this.task,
     required this.mine,
+    required this.canEdit,
+    required this.editing,
     required this.busy,
     required this.onAction,
     required this.t,
@@ -543,8 +560,10 @@ class _Actions extends StatelessWidget {
 
   final TaskItem task;
   final bool mine;
+  final bool canEdit;
+  final bool editing;
   final bool busy;
-  final ValueChanged<TaskAction> onAction;
+  final void Function(TaskAction, Rect) onAction;
   final double t;
   final double scale;
 
@@ -553,10 +572,17 @@ class _Actions extends StatelessWidget {
     final double height = lerpDouble(32, 42, t)! * scale;
     final double fontSize = lerpDouble(13, 16, t)! * scale;
     final double padding = lerpDouble(16, 26, t)! * scale;
+    final double gap = lerpDouble(9, 15, t)! * scale;
 
     final List<TaskAction> actions = task.source.isActionable
-        ? actionsFor(task.status, mine: mine)
+        ? actionsFor(task.status, mine: mine, canEdit: canEdit)
         : const <TaskAction>[];
+
+    // The executor's own buttons say where the task is — `Saxla` only appears
+    // on work that is running. Somebody who merely raised it gets `Redaktə`
+    // and no verbs, so the chip stays beside it: without it, theirs would be
+    // the one card in the list that never says what state its task is in.
+    final bool withChip = !mine;
 
     final Widget content = actions.isEmpty
         ? TaskStatusChip(
@@ -568,15 +594,25 @@ class _Actions extends StatelessWidget {
         : Row(
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
+              if (withChip) ...<Widget>[
+                TaskStatusChip(
+                  status: task.status,
+                  height: height,
+                  fontSize: fontSize,
+                  padding: padding,
+                ),
+                SizedBox(width: gap),
+              ],
               for (int i = 0; i < actions.length; i++) ...<Widget>[
-                if (i > 0) SizedBox(width: lerpDouble(9, 15, t)! * scale),
+                if (i > 0) SizedBox(width: gap),
                 TaskActionButton(
                   action: actions[i],
                   height: height,
                   fontSize: fontSize,
                   padding: padding,
                   busy: busy,
-                  onTap: () => onAction(actions[i]),
+                  hidden: editing && actions[i] == TaskAction.edit,
+                  onTap: (Rect rect) => onAction(actions[i], rect),
                 ),
               ],
             ],

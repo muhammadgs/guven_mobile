@@ -33,10 +33,10 @@ enum TaskStatus {
   unknown;
 
   static TaskStatus fromRaw(String? raw) {
-    final String value = (raw ?? '')
-        .trim()
-        .toLowerCase()
-        .replaceAll(RegExp(r'[\s-]+'), '_');
+    final String value = (raw ?? '').trim().toLowerCase().replaceAll(
+      RegExp(r'[\s-]+'),
+      '_',
+    );
     return switch (value) {
       'pending_approval' => TaskStatus.pendingApproval,
       'approval_overdue' => TaskStatus.approvalOverdue,
@@ -126,7 +126,7 @@ enum TaskAction {
   /// Pick it back up.
   resume,
 
-  /// Opens the task editor, which is not built yet.
+  /// Opens `Redaktə` — the task editor, which grows out of this very button.
   edit;
 
   String get label => switch (this) {
@@ -156,11 +156,23 @@ enum TaskAction {
 
 /// The buttons a card offers, or an empty list when it offers none.
 ///
-/// Only the person carrying the task out gets buttons; everybody else sees the
-/// status chip, which is exactly how the design reads — the one card with
+/// Only the person carrying the task out gets the *verbs*; everybody else sees
+/// the status chip, which is exactly how the design reads — the one card with
 /// buttons is the one whose executor name is in bold.
-List<TaskAction> actionsFor(TaskStatus status, {required bool mine}) {
-  if (!mine) return const <TaskAction>[];
+///
+/// [canEdit] is the one thing that crosses that line. `Redaktə` belongs to two
+/// people, the executor and whoever raised the task
+/// (`TaskItem.canEdit`), so a creator who is not the executor gets that button
+/// beside their status chip and nothing else. A task waiting to be accepted
+/// keeps its `Təsdiq et`/`İmtina et` pair untouched: answering a request is
+/// not the same question as changing what was asked for.
+List<TaskAction> actionsFor(
+  TaskStatus status, {
+  required bool mine,
+  bool canEdit = false,
+}) {
+  const List<TaskAction> editOnly = <TaskAction>[TaskAction.edit];
+  if (!mine) return canEdit ? editOnly : const <TaskAction>[];
   return switch (status) {
     TaskStatus.pendingApproval => const <TaskAction>[
       TaskAction.approve,
@@ -174,10 +186,8 @@ List<TaskAction> actionsFor(TaskStatus status, {required bool mine}) {
       TaskAction.pause,
       TaskAction.edit,
     ],
-    TaskStatus.paused || TaskStatus.onHold => const <TaskAction>[
-      TaskAction.resume,
-      TaskAction.edit,
-    ],
-    _ => const <TaskAction>[],
+    TaskStatus.paused ||
+    TaskStatus.onHold => const <TaskAction>[TaskAction.resume, TaskAction.edit],
+    _ => canEdit ? editOnly : const <TaskAction>[],
   };
 }

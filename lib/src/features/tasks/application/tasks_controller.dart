@@ -88,7 +88,8 @@ class TasksController extends ChangeNotifier {
   late final TaskVoicePlayer voice;
 
   final Map<TaskScope, TaskScopeState> _scopes = <TaskScope, TaskScopeState>{
-    for (final TaskScope scope in TaskScope.values) scope: const TaskScopeState(),
+    for (final TaskScope scope in TaskScope.values)
+      scope: const TaskScopeState(),
   };
 
   /// Files described for a card that has been opened, keyed by task id. Held
@@ -156,7 +157,8 @@ class TasksController extends ChangeNotifier {
   List<TaskItem> get visibleTasks => current.visible;
 
   /// The columns the panel offers for this cell — those its rows carry.
-  List<TaskFilterField> get filterFields => current.filter.fieldsIn(current.tasks);
+  List<TaskFilterField> get filterFields =>
+      current.filter.fieldsIn(current.tasks);
 
   /// What [field] can still be narrowed to, given the other columns.
   List<String> filterOptions(TaskFilterField field) =>
@@ -237,6 +239,18 @@ class TasksController extends ChangeNotifier {
       _busy.remove(id);
       _notify();
     }
+  }
+
+  /// Takes what the `Redaktə` sheet just wrote.
+  ///
+  /// A status the sheet set lands on the card straight away — same reason as
+  /// [run]'s: the chip swaps at the speed of the tap rather than of the round
+  /// trip — and the cell is refetched behind it, because the sheet may also
+  /// have changed the executor, the deadline or the work type, none of which
+  /// this screen can guess.
+  void applyEdit(TaskItem task, {TaskStatus? status}) {
+    if (status != null) _replace(task, task.copyWith(status: status));
+    unawaited(load(_scope));
   }
 
   /// Works out what the files on a just-opened card actually are, once.

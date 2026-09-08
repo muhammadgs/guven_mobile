@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../../../shared/layout.dart';
 import '../../auth/application/session_controller.dart';
+import '../application/task_edit_controller.dart';
 import '../application/tasks_controller.dart';
 import '../domain/new_task.dart';
 import '../domain/task_attachment.dart';
@@ -12,6 +13,7 @@ import '../domain/task_scope.dart';
 import '../domain/task_status.dart';
 import 'widgets/new_task_panel.dart';
 import 'widgets/task_card.dart';
+import 'widgets/task_edit_panel.dart';
 import 'widgets/task_filter_panel.dart';
 import 'widgets/task_glass.dart';
 import 'widgets/task_scope_bar.dart';
@@ -67,6 +69,11 @@ class _TasksScreenState extends State<TasksScreen> {
   /// reason: that surface *is* the `+` button's glass.
   bool _createOpen = false;
 
+  /// The task whose `Redaktə` sheet is up, so that card's own button steps
+  /// aside for it. By id rather than by row: a refresh landing while the sheet
+  /// is open replaces the row object.
+  int? _editingId;
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -103,9 +110,32 @@ class _TasksScreenState extends State<TasksScreen> {
     });
   }
 
-  Future<void> _run(TaskAction action, TaskItem task) async {
+  Future<void> _run(TaskAction action, TaskItem task, Rect button) async {
+    if (action == TaskAction.edit) return _openEdit(task, button);
     final String? failure = await _controller!.run(action, task);
     if (failure != null && mounted) _showFlash(failure);
+  }
+
+  /// Opens `Redaktə`, growing out of the button that was pressed.
+  ///
+  /// The card is refetched afterwards whatever the sheet changed: it may have
+  /// handed the task to somebody else, in which case this row belongs to a
+  /// different person now and possibly to a different cell.
+  Future<void> _openEdit(TaskItem task, Rect button) async {
+    setState(() => _editingId = task.id);
+    final TaskEditOutcome? saved = await openTaskEdit(
+      context,
+      button: button,
+      radius: button.height / 2,
+      session: SessionScope.read(context),
+      task: task,
+    );
+    if (!mounted) return;
+    setState(() => _editingId = null);
+    if (saved == null) return;
+
+    _controller!.applyEdit(task, status: saved.status);
+    _showFlash(saved.message ?? 'Tapşırıq yeniləndi.');
   }
 
   /// Opens the filter, growing out of the button that was pressed.
@@ -206,6 +236,7 @@ class _TasksScreenState extends State<TasksScreen> {
                   child: _TaskList(
                     controller: tasks,
                     bottomReserve: widget.bottomReserve,
+                    editingId: _editingId,
                     onAction: _run,
                     onOpenFile: _openFile,
                   ),
@@ -291,13 +322,18 @@ class _TaskList extends StatelessWidget {
   const _TaskList({
     required this.controller,
     required this.bottomReserve,
+    required this.editingId,
     required this.onAction,
     required this.onOpenFile,
   });
 
   final TasksController controller;
   final double bottomReserve;
-  final Future<void> Function(TaskAction, TaskItem) onAction;
+
+  /// The task whose edit sheet is up, or null.
+  final int? editingId;
+
+  final Future<void> Function(TaskAction, TaskItem, Rect) onAction;
   final ValueChanged<TaskAttachment> onOpenFile;
 
   @override
@@ -401,11 +437,19 @@ class _TaskList extends StatelessWidget {
               userId: controller.myUserId,
               fullName: controller.myFullName,
             ),
+            // `Redaktə` belongs to two people: the executor and whoever raised
+            // the task. Nobody else gets the button at all.
+            canEdit: task.canEdit(
+              userId: controller.myUserId,
+              fullName: controller.myFullName,
+            ),
+            editing: task.id != null && task.id == editingId,
             busy: controller.isBusy(task),
             attachments: controller.attachmentsOf(task),
             openingFileIds: controller.openingFileIds,
             voice: controller.voice,
-            onAction: (TaskAction action) => onAction(action, task),
+            onAction: (TaskAction action, Rect button) =>
+                onAction(action, task, button),
             onOpenFile: onOpenFile,
             onOpened: () => controller.loadAttachments(task),
           );

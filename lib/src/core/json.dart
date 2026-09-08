@@ -17,7 +17,10 @@ Map<String, Object?> asMap(Object? value) =>
 /// Accepts a bare array, or an object carrying one under any of [keys] (tried
 /// in order) or under the usual envelope names. Anything else yields an empty
 /// list — callers count these, and a count of zero beats a crash.
-List<Map<String, Object?>> asRows(Object? value, {List<String> keys = const []}) {
+List<Map<String, Object?>> asRows(
+  Object? value, {
+  List<String> keys = const [],
+}) {
   if (value is List) return _rows(value);
   if (value is Map) {
     for (final String key in <String>[...keys, 'data', 'items', 'results']) {
@@ -74,8 +77,8 @@ DateTime? readDate(Map<String, Object?> row, List<String> keys) {
     final String text = value.trim();
     final DateTime? parsed = DateTime.tryParse(text);
     if (parsed == null) continue;
-    final bool hasZone = text.endsWith('Z') ||
-        RegExp(r'[+-]\d{2}:?\d{2}$').hasMatch(text);
+    final bool hasZone =
+        text.endsWith('Z') || RegExp(r'[+-]\d{2}:?\d{2}$').hasMatch(text);
     return hasZone
         ? parsed.toLocal()
         : DateTime.utc(
@@ -157,8 +160,29 @@ String? readPersonName(Map<String, Object?> row) {
     'ceo_surname',
     'surname',
   ]);
-  final String joined =
-      <String?>[first, last].whereType<String>().join(' ').trim();
+  final String joined = <String?>[
+    first,
+    last,
+  ].whereType<String>().join(' ').trim();
   if (joined.isNotEmpty) return joined;
   return readString(row, <String>['full_name', 'fullName', 'name']);
+}
+
+/// The first flag among [keys], however the backend chose to spell it.
+///
+/// One column comes back as a real boolean from one endpoint, as `1`/`0` from
+/// another and as `"true"` from a third — `is_company_viewable` does all
+/// three — so nothing may read one of these with a bare cast.
+bool? readBool(Map<String, Object?> row, List<String> keys) {
+  for (final String key in keys) {
+    final Object? value = row[key];
+    if (value is bool) return value;
+    if (value is num) return value != 0;
+    if (value is String) {
+      final String text = value.trim().toLowerCase();
+      if (text == 'true' || text == '1' || text == 'yes') return true;
+      if (text == 'false' || text == '0' || text == 'no') return false;
+    }
+  }
+  return null;
 }

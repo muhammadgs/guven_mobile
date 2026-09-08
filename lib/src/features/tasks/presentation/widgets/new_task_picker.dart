@@ -26,8 +26,7 @@ class NewTaskPickerPanel extends StatelessWidget {
     required this.metrics,
     required this.anchor,
     required this.flight,
-    required this.field,
-    required this.kind,
+    required this.emptyMessage,
     required this.list,
     required this.chosen,
     required this.onPick,
@@ -39,8 +38,13 @@ class NewTaskPickerPanel extends StatelessWidget {
   final Rect anchor;
 
   final Animation<double> flight;
-  final NewTaskField field;
-  final NewTaskKind kind;
+
+  /// What this panel says when the list it was given is empty, which is never
+  /// the same sentence as "nothing chosen yet" — `İşçi tapılmadı`, not
+  /// `İşçi seçin`. A string rather than the field itself, because both task
+  /// sheets open this panel and they name their fields with different enums.
+  final String emptyMessage;
+
   final OptionList list;
   final TaskOption? chosen;
   final ValueChanged<TaskOption> onPick;
@@ -82,7 +86,7 @@ class NewTaskPickerPanel extends StatelessWidget {
     final String? notice = list.notice;
     if (notice != null) return _Notice(metrics: metrics, text: notice);
     if (list.options.isEmpty) {
-      return _Notice(metrics: metrics, text: field.emptyMessage);
+      return _Notice(metrics: metrics, text: emptyMessage);
     }
 
     return ListView.builder(

@@ -88,6 +88,7 @@ flutter:
     - assets/images/icons/nav_icons/
     - assets/images/icons/task_list_selection_icons/
     - assets/images/icons/new_task_icons/
+    - assets/images/icons/edit_icons_different_ones/
     - assets/videos/onboarding_background.mp4
     - assets/videos/page_3_icons/
 

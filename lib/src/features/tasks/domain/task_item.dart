@@ -38,9 +38,11 @@ class TaskItem {
     required this.workType,
     required this.status,
     this.assignedBy,
+    this.assignedById,
     this.assignedTo,
     this.assignedToId,
     this.department,
+    this.workTypeId,
     this.description,
     this.createdAt,
     this.dueDate,
@@ -63,6 +65,13 @@ class TaskItem {
   /// `Kim tərəfindən` — who handed the task over.
   final String? assignedBy;
 
+  /// …and their user id, where the row carries one.
+  ///
+  /// Read for one reason: `Redaktə` is offered to the person who raised the
+  /// task as well as to the person carrying it out ([isCreatedByMe]), and a
+  /// name is not an identity — two people can share one.
+  final int? assignedById;
+
   /// `İcra edən` — who is carrying it out.
   final String? assignedTo;
   final int? assignedToId;
@@ -73,6 +82,13 @@ class TaskItem {
   /// `Şöbə` column, the same one the site's table filters on, and a column
   /// can only offer the values its rows actually carry.
   final String? department;
+
+  /// The work type's own id, where the row carries one.
+  ///
+  /// The card draws [workType]'s name; this is what the edit sheet needs, so
+  /// the `İşin növü` picker opens with the task's current answer ticked rather
+  /// than with nothing selected.
+  final int? workTypeId;
 
   final String? description;
   final DateTime? createdAt;
@@ -106,10 +122,32 @@ class TaskItem {
     return mine == theirs;
   }
 
-  TaskItem copyWith({
-    TaskStatus? status,
-    List<TaskAttachment>? attachments,
-  }) {
+  /// Whether the signed-in user is the one who raised this task.
+  ///
+  /// Same two-step test as [isMine], for the same reason: `creator_name` is
+  /// the only thing several list endpoints say about who created a task.
+  bool isCreatedByMe({int? userId, String? fullName}) {
+    if (assignedById != null && userId != null) return assignedById == userId;
+    final String? mine = fullName?.trim().toLowerCase();
+    final String? theirs = assignedBy?.trim().toLowerCase();
+    if (mine == null || mine.isEmpty || theirs == null) return false;
+    return mine == theirs;
+  }
+
+  /// Whether this task may be opened in `Redaktə`.
+  ///
+  /// Two people and no others: the one who raised it and the one carrying it
+  /// out. Finished work is not editable — the three statuses the sheet's own
+  /// `Status` field can set are the ends of the line, and a task that has
+  /// reached one is a record rather than a plan.
+  bool canEdit({int? userId, String? fullName}) =>
+      id != null &&
+      source.isActionable &&
+      status.isOpen &&
+      (isMine(userId: userId, fullName: fullName) ||
+          isCreatedByMe(userId: userId, fullName: fullName));
+
+  TaskItem copyWith({TaskStatus? status, List<TaskAttachment>? attachments}) {
     return TaskItem(
       id: id,
       source: source,
@@ -117,9 +155,11 @@ class TaskItem {
       workType: workType,
       status: status ?? this.status,
       assignedBy: assignedBy,
+      assignedById: assignedById,
       assignedTo: assignedTo,
       assignedToId: assignedToId,
       department: department,
+      workTypeId: workTypeId,
       description: description,
       createdAt: createdAt,
       dueDate: dueDate,
@@ -172,6 +212,12 @@ class TaskItem {
         'created_by_name',
         'assigner_name',
       ]),
+      assignedById: readInt(data, <String>[
+        'created_by',
+        'creator_id',
+        'assigned_by',
+        'created_by_id',
+      ]),
       assignedTo: readString(data, <String>[
         'assigned_to_name',
         'assignee_name',
@@ -184,14 +230,12 @@ class TaskItem {
         'executor_id',
       ]),
       department:
-          readString(data, <String>[
-            'department_name',
-            'departmentName',
-          ]) ??
+          readString(data, <String>['department_name', 'departmentName']) ??
           readString(asMap(data['department']), <String>[
             'name',
             'department_name',
           ]),
+      workTypeId: readInt(data, <String>['work_type_id', 'worktype_id']),
       description: readString(data, <String>[
         'task_description',
         'description',

@@ -154,7 +154,12 @@ class TasksApi {
         await _client.post('$base/resume');
         return TaskStatus.inProgress;
       case TaskAction.edit:
-        throw const ApiException('Redaktə bölməsi hazırlanır.');
+        // Not a verb: `Redaktə` opens a sheet rather than posting anything,
+        // and the screen intercepts it before this is ever reached
+        // (`TasksScreen._run`). Reaching it means a new caller has forgotten
+        // to, which is worth saying out loud rather than silently doing
+        // nothing.
+        throw const ApiException('Redaktə bu yolla açılmır.');
     }
   }
 
