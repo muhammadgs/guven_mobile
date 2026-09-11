@@ -49,7 +49,11 @@ void main() {
 
     test('and the finished task is copied into the archive', () async {
       expect(
-        await api.archive(task: _task(TaskSource.internal), myUserId: 4),
+        await api.archive(
+          task: _task(TaskSource.internal),
+          status: TaskEditStatus.complete,
+          myUserId: 4,
+        ),
         isTrue,
       );
 
@@ -86,14 +90,68 @@ void main() {
       expect(archived['actual_hours'], '6.50');
     });
 
+    test('a cancelled task is filed too, under its own status', () async {
+      // The user's rule of 2026-09-08: `Ləğv et` leaves the live lists exactly
+      // as `Tamamla` does, so it has to arrive somewhere. `Arxiv` badges every
+      // row with the status it was given, and filing a called-off task as
+      // `completed` would say the work was done.
+      expect(
+        await api.archive(
+          task: _task(TaskSource.internal),
+          status: TaskEditStatus.cancel,
+          myUserId: 4,
+        ),
+        isTrue,
+      );
+
+      final Map<String, Object?> archived = bodies.single;
+      expect(archived['status'], 'cancelled');
+      expect(archived['archive_reason'], 'Ləğv edildiyi üçün arxivləndi');
+      // However far the work had got when it was called off — not the 100 a
+      // completion writes, and not a 0 that would say it never started.
+      expect(archived['progress_percentage'], 40);
+      // Everything else is the same copy: the archive is the only record of
+      // this task once it leaves the tasks table.
+      expect(archived['task_code'], 'TASK-2026-118');
+      expect(archived['company_id'], 51);
+      expect(archived['file_uuids'], '{"$_uuid"}');
+    });
+
+    test('a cancelled partner task also leaves the site\'s table', () async {
+      await api.archive(
+        task: _task(TaskSource.partner),
+        status: TaskEditStatus.cancel,
+        myUserId: 4,
+      );
+
+      expect(calls, <String>[
+        'GET /api/v1/partner-tasks/12',
+        'POST /api/v1/task-archive/archive-partner',
+        'PUT /api/v1/partner-tasks/12',
+      ]);
+      expect(
+        bodies.first['archive_reason'],
+        'Partner task ləğv edildiyi üçün arxivləndi',
+      );
+      expect(bodies.last['is_active'], isFalse);
+    });
+
     test('each kind of task is filed in its own list', () async {
-      await api.archive(task: _task(TaskSource.external), myUserId: 4);
+      await api.archive(
+        task: _task(TaskSource.external),
+        status: TaskEditStatus.complete,
+        myUserId: 4,
+      );
       expect(calls.last, 'POST /api/v1/task-archive/archive-external');
       expect(bodies.last['task_source'], 'sifarishci');
 
       calls.clear();
       bodies.clear();
-      await api.archive(task: _task(TaskSource.partner), myUserId: 4);
+      await api.archive(
+        task: _task(TaskSource.partner),
+        status: TaskEditStatus.complete,
+        myUserId: 4,
+      );
       expect(calls, <String>[
         'GET /api/v1/partner-tasks/12',
         'POST /api/v1/task-archive/archive-partner',
@@ -118,7 +176,11 @@ void main() {
       );
 
       expect(
-        await thin.archive(task: _task(TaskSource.internal), myUserId: 4),
+        await thin.archive(
+        task: _task(TaskSource.internal),
+        status: TaskEditStatus.complete,
+        myUserId: 4,
+      ),
         isFalse,
       );
       // The archive is keyed by company; a copy filed under none is one no
@@ -130,7 +192,11 @@ void main() {
       final TaskEditApi refusing = _api(calls, bodies, archiveStatus: 500);
 
       expect(
-        await refusing.archive(task: _task(TaskSource.internal), myUserId: 4),
+        await refusing.archive(
+        task: _task(TaskSource.internal),
+        status: TaskEditStatus.complete,
+        myUserId: 4,
+      ),
         isFalse,
       );
       // By this point the task is already completed. Throwing here would have
@@ -254,6 +320,7 @@ const Map<String, Object?> _row = <String, Object?>{
   'due_date': '2026-09-30',
   'started_date': '2026-09-02',
   'work_type_id': 3,
+  'progress_percentage': 40,
   'notes': 'Ödəniş sonra həll olunacaq',
   'partner_notes': 'Ödəniş sonra həll olunacaq',
   'estimated_hours': '8.00',

@@ -95,6 +95,18 @@ enum TaskEditStatus {
     TaskEditStatus.reject => 'rejected',
     TaskEditStatus.cancel => 'cancelled',
   };
+
+  /// Whether a task brought to this end is filed in `Arxiv`.
+  ///
+  /// Two of the three, on the user's rule of 2026-09-08. A completed task and
+  /// a called-off one are both finished with, and `Arxiv` is where this app
+  /// keeps what is finished with — the live lists drop both.
+  ///
+  /// A refusal is not an end at all. The work still wants doing; it is this
+  /// executor who will not do it. So a refused task stays in `Daxili`,
+  /// `Şirkət` and `Partniyor` where somebody else can pick it up —
+  /// `TaskItem.canTakeOver`.
+  bool get isArchived => this != TaskEditStatus.reject;
 }
 
 /// Which rows a task of this source can carry — see the note at the top of
@@ -155,12 +167,22 @@ extension TaskEditCapabilities on TaskSource {
   };
 
   /// The line the archive stores as `archive_reason`, in the site's wording —
-  /// it is shown as-is in the archived task's details.
-  String get archiveReason => switch (this) {
-    TaskSource.partner => 'Partner task tamamlandığı üçün arxivləndi',
-    TaskSource.external => 'External task tamamlandı',
-    _ => 'Tamamlandığı üçün arxivləndi',
-  };
+  /// it is shown as-is in the archived task's details, so it has to say which
+  /// of the two ends brought the task here.
+  String archiveReasonFor(TaskEditStatus status) {
+    if (status == TaskEditStatus.cancel) {
+      return switch (this) {
+        TaskSource.partner => 'Partner task ləğv edildiyi üçün arxivləndi',
+        TaskSource.external => 'External task ləğv edildi',
+        _ => 'Ləğv edildiyi üçün arxivləndi',
+      };
+    }
+    return switch (this) {
+      TaskSource.partner => 'Partner task tamamlandığı üçün arxivləndi',
+      TaskSource.external => 'External task tamamlandı',
+      _ => 'Tamamlandığı üçün arxivləndi',
+    };
+  }
 
   /// Which column the sheet's `Qeyd` is written to. All three resources have
   /// one; they simply do not agree on its name — the site's own external edit

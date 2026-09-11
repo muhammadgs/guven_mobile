@@ -171,22 +171,51 @@ void main() {
     await tester.pumpAndSettle();
     await _tapSave(tester);
 
-    expect(api.archived, isTrue);
+    expect(api.archivedAs, TaskEditStatus.complete);
     expect(outcome?.message, 'Tapşırıq tamamlandı və arxivə köçürüldü.');
   });
 
-  testWidgets('a cancelled one is not', (WidgetTester tester) async {
+  testWidgets('and so is a cancelled one, under its own status', (
+    WidgetTester tester,
+  ) async {
+    // The user's rule of 2026-09-08: a called-off task is as finished with as
+    // a completed one, and both belong in `Arxiv`. It is filed as `cancelled`
+    // and not as `completed` — the archive badges what it is given.
     final _StubEditApi api = _StubEditApi();
-    final TaskEditController controller = await _pump(tester, api: api);
+    TaskEditOutcome? outcome;
+    final TaskEditController controller = await _pump(
+      tester,
+      api: api,
+      onSaved: (TaskEditOutcome saved) => outcome = saved,
+    );
 
     controller.setStatus(TaskEditStatus.cancel);
     await tester.pumpAndSettle();
     await _tapSave(tester);
 
-    // The site files neither of the other two ends, and an archive full of
-    // cancelled tasks is not an archive of anything.
     expect(api.status, TaskEditStatus.cancel);
+    expect(api.archivedAs, TaskEditStatus.cancel);
+    expect(outcome?.message, 'Tapşırıq ləğv edildi və arxivə köçürüldü.');
+  });
+
+  testWidgets('a refused one stays where it is', (WidgetTester tester) async {
+    final _StubEditApi api = _StubEditApi();
+    TaskEditOutcome? outcome;
+    final TaskEditController controller = await _pump(
+      tester,
+      api: api,
+      onSaved: (TaskEditOutcome saved) => outcome = saved,
+    );
+
+    controller.setStatus(TaskEditStatus.reject);
+    await tester.pumpAndSettle();
+    await _tapSave(tester);
+
+    // A refusal is not an end: the work still wants doing, and the task stays
+    // in the live lists for somebody else to take over.
+    expect(api.status, TaskEditStatus.reject);
     expect(api.archived, isFalse);
+    expect(outcome?.message, isNull);
   });
 
   testWidgets('a partner task is not asked what it cannot store', (
@@ -307,8 +336,13 @@ class _StubEditApi extends TaskEditApi {
   Map<String, Object?>? saved;
   TaskEditStatus? status;
 
-  /// Whether the finished task's copy was filed under `Arxiv`.
-  bool archived = false;
+  /// Which end the archived copy was filed under, or null when no copy was
+  /// filed at all. The two are a different question: `Arxiv` badges every row
+  /// with its status, so a cancelled task filed as `completed` would read as
+  /// work that was done.
+  TaskEditStatus? archivedAs;
+
+  bool get archived => archivedAs != null;
 
   @override
   Future<TaskEditSnapshot> load(TaskItem task) async => TaskEditSnapshot(
@@ -356,9 +390,10 @@ class _StubEditApi extends TaskEditApi {
   @override
   Future<bool> archive({
     required TaskItem task,
+    required TaskEditStatus status,
     required int? myUserId,
   }) async {
-    archived = true;
+    archivedAs = status;
     return true;
   }
 }

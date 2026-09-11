@@ -3,6 +3,11 @@ import 'package:flutter/material.dart';
 import '../../domain/task_status.dart';
 import 'task_glass.dart';
 
+/// How wide an icon-only pill is, as a multiple of its own height — the
+/// proportion the design draws the hand button at, next to a chip more than
+/// twice its width.
+const double _kIconPillRatio = 1.9;
+
 /// One of the design's gradient pills.
 ///
 /// The gradients are the Figma stops exactly, on [TaskAction.gradient], and
@@ -62,6 +67,7 @@ class _TaskActionButtonState extends State<TaskActionButton> {
   @override
   Widget build(BuildContext context) {
     final double radius = widget.height / 2;
+    final IconData? icon = widget.action.icon;
 
     final Widget button = GestureDetector(
       behavior: HitTestBehavior.opaque,
@@ -84,7 +90,13 @@ class _TaskActionButtonState extends State<TaskActionButton> {
           duration: const Duration(milliseconds: 160),
           child: Container(
             height: widget.height,
-            padding: EdgeInsets.symmetric(horizontal: widget.padding),
+            // An icon-only pill is sized by the design's own proportion rather
+            // than by the label padding: `Götür` has no word to make room for,
+            // and padding meant for one would leave it as wide as `Saxla`.
+            width: icon == null ? null : widget.height * _kIconPillRatio,
+            padding: icon == null
+                ? EdgeInsets.symmetric(horizontal: widget.padding)
+                : null,
             alignment: Alignment.center,
             decoration: ShapeDecoration(
               gradient: LinearGradient(
@@ -96,18 +108,30 @@ class _TaskActionButtonState extends State<TaskActionButton> {
                 borderRadius: BorderRadius.circular(radius),
               ),
             ),
-            child: Text(
-              widget.action.label,
-              maxLines: 1,
-              softWrap: false,
-              style: TextStyle(
-                fontFamily: 'Poppins',
-                fontWeight: FontWeight.w500,
-                fontSize: widget.fontSize,
-                height: 1.1,
-                color: kTaskButtonInk,
-              ),
-            ),
+            child: icon == null
+                ? Text(
+                    widget.action.label,
+                    maxLines: 1,
+                    softWrap: false,
+                    style: TextStyle(
+                      fontFamily: 'Poppins',
+                      fontWeight: FontWeight.w500,
+                      fontSize: widget.fontSize,
+                      height: 1.1,
+                      color: kTaskButtonInk,
+                    ),
+                  )
+                // Named all the same: the button says nothing out loud, so the
+                // verb has to reach a screen reader some other way.
+                : Semantics(
+                    label: widget.action.label,
+                    button: true,
+                    child: Icon(
+                      icon,
+                      size: widget.height * 0.5,
+                      color: kTaskButtonInk,
+                    ),
+                  ),
           ),
         ),
       ),

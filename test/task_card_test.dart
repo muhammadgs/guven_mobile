@@ -192,6 +192,72 @@ void main() {
     expect(find.text('Başla'), findsNothing);
   });
 
+  testWidgets('a refused task offers the hand beside its status', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    TaskAction? fired;
+    await tester.pumpWidget(
+      _host(
+        TaskCard(
+          task: _task(status: TaskStatus.rejected),
+          mine: false,
+          canTake: true,
+          busy: false,
+          attachments: const [],
+          openingFileIds: const <String>{},
+          voice: _player,
+          onOpenFile: (_) {},
+          onAction: (TaskAction action, _) => fired = action,
+          onOpened: () {},
+        ),
+      ),
+    );
+
+    // Both, and in this order: the chip says what happened, the button is what
+    // to do about it.
+    final Finder chip = find.text(TaskStatus.rejected.label);
+    final Finder hand = find.byIcon(Icons.back_hand_rounded);
+    expect(chip, findsOneWidget);
+    expect(hand, findsOneWidget);
+    expect(tester.getRect(chip).right, lessThan(tester.getRect(hand).left));
+    // No word on it — the design gives it the width of a hand and no more.
+    expect(find.text('Götür'), findsNothing);
+
+    await tester.tap(hand);
+    expect(fired, TaskAction.take);
+  });
+
+  testWidgets('…and the executor who refused it gets no hand', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(390, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(
+      _host(
+        TaskCard(
+          task: _task(status: TaskStatus.rejected),
+          mine: true,
+          busy: false,
+          attachments: const [],
+          openingFileIds: const <String>{},
+          voice: _player,
+          onOpenFile: (_) {},
+          onAction: (_, _) {},
+          onOpened: () {},
+        ),
+      ),
+    );
+
+    expect(find.text(TaskStatus.rejected.label), findsOneWidget);
+    expect(find.byIcon(Icons.back_hand_rounded), findsNothing);
+  });
+
   testWidgets('an opened card lists its files by type and opens one', (
     WidgetTester tester,
   ) async {

@@ -113,7 +113,14 @@ class _TasksScreenState extends State<TasksScreen> {
   Future<void> _run(TaskAction action, TaskItem task, Rect button) async {
     if (action == TaskAction.edit) return _openEdit(task, button);
     final String? failure = await _controller!.run(action, task);
-    if (failure != null && mounted) _showFlash(failure);
+    if (!mounted) return;
+    if (failure != null) return _showFlash(failure);
+    // Said out loud only for `Götür`: the other verbs swap the buttons they
+    // were pressed on, which is answer enough. This one changes whose task it
+    // is, and the card it changes is one the reader was not watching.
+    if (action == TaskAction.take) {
+      _showFlash('Tapşırıq üzərinizə götürüldü.');
+    }
   }
 
   /// Opens `Redaktə`, growing out of the button that was pressed.
@@ -440,6 +447,13 @@ class _TaskList extends StatelessWidget {
             // `Redaktə` belongs to two people: the executor and whoever raised
             // the task. Nobody else gets the button at all.
             canEdit: task.canEdit(
+              userId: controller.myUserId,
+              fullName: controller.myFullName,
+            ),
+            // `Götür` belongs to everybody *except* the executor the task was
+            // refused by — including the person who raised it, who then
+            // carries out their own task.
+            canTake: task.canTakeOver(
               userId: controller.myUserId,
               fullName: controller.myFullName,
             ),

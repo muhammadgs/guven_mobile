@@ -147,7 +147,30 @@ class TaskItem {
       (isMine(userId: userId, fullName: fullName) ||
           isCreatedByMe(userId: userId, fullName: fullName));
 
-  TaskItem copyWith({TaskStatus? status, List<TaskAttachment>? attachments}) {
+  /// Whether the signed-in user may take this refused task over.
+  ///
+  /// A refusal is not an end the way a completion is: the work still wants
+  /// doing, it is only this executor who will not do it. So the task stays in
+  /// the live lists and anybody who reads it may pick it up — the person who
+  /// raised it included, who then carries out their own task.
+  ///
+  /// The one person who may not is **the executor it was refused by**. That is
+  /// the whole rule, and it is why this is [isMine] and not
+  /// `!isCreatedByMe`: a creator who refused a task they had also been given
+  /// is still that task's executor, and taking it straight back would undo the
+  /// refusal instead of handing the work on.
+  bool canTakeOver({int? userId, String? fullName}) =>
+      id != null &&
+      source.isActionable &&
+      status == TaskStatus.rejected &&
+      !isMine(userId: userId, fullName: fullName);
+
+  TaskItem copyWith({
+    TaskStatus? status,
+    List<TaskAttachment>? attachments,
+    String? assignedTo,
+    int? assignedToId,
+  }) {
     return TaskItem(
       id: id,
       source: source,
@@ -156,8 +179,8 @@ class TaskItem {
       status: status ?? this.status,
       assignedBy: assignedBy,
       assignedById: assignedById,
-      assignedTo: assignedTo,
-      assignedToId: assignedToId,
+      assignedTo: assignedTo ?? this.assignedTo,
+      assignedToId: assignedToId ?? this.assignedToId,
       department: department,
       workTypeId: workTypeId,
       description: description,

@@ -1,4 +1,4 @@
-import 'package:flutter/widgets.dart';
+import 'package:flutter/material.dart';
 
 /// Every state a task can be in, across all four task tables the backend
 /// keeps.
@@ -126,6 +126,13 @@ enum TaskAction {
   /// Pick it back up.
   resume,
 
+  /// Take a refused task over — become its executor.
+  ///
+  /// The one verb on this screen that belongs to somebody with no part in the
+  /// task yet, which is why it is drawn as a hand and not as a word: it sits
+  /// beside the `İmtina edildi` chip rather than replacing it.
+  take,
+
   /// Opens `Redaktə` — the task editor, which grows out of this very button.
   edit;
 
@@ -135,8 +142,19 @@ enum TaskAction {
     TaskAction.start => 'Başla',
     TaskAction.pause => 'Saxla',
     TaskAction.resume => 'Davam et',
+    TaskAction.take => 'Götür',
     TaskAction.edit => 'Redaktə',
   };
+
+  /// The glyph a button wears *instead of* its label, or null for the ones
+  /// that carry a word.
+  ///
+  /// Only `Götür` has one. A refused card already spends its width on the
+  /// status chip, and the design puts a bare hand next to it — so [label]
+  /// stays as what the button is called, for the screen reader and for
+  /// anything that has to name the verb.
+  IconData? get icon =>
+      this == TaskAction.take ? Icons.back_hand_rounded : null;
 
   /// The two-or-three stop linear gradient the design specifies, left to
   /// right. These are the exact Figma stops.
@@ -151,6 +169,10 @@ enum TaskAction {
     TaskAction.edit => const <Color>[Color(0xFFFEE450), Color(0xFFABD769)],
     TaskAction.pause => const <Color>[Color(0xFFFFA04D), Color(0xFFFFD43A)],
     TaskAction.resume => const <Color>[Color(0xFF61BD67), Color(0xFF58FF6E)],
+    // The flattest of the six on purpose: it sits against a red chip, and a
+    // full sweep beside one would read as a second status rather than as the
+    // one thing on the card that can be pressed.
+    TaskAction.take => const <Color>[Color(0xFF6BD97A), Color(0xFF8CEE99)],
   };
 }
 
@@ -166,12 +188,22 @@ enum TaskAction {
 /// beside their status chip and nothing else. A task waiting to be accepted
 /// keeps its `Təsdiq et`/`İmtina et` pair untouched: answering a request is
 /// not the same question as changing what was asked for.
+///
+/// [canTake] crosses the same line from the other side. A refused task is
+/// nobody's work until somebody picks it up, so `Götür` is offered to whoever
+/// is *not* carrying it — `TaskItem.canTakeOver`, which is the rule, and which
+/// already excludes the executor who refused it.
 List<TaskAction> actionsFor(
   TaskStatus status, {
   required bool mine,
   bool canEdit = false,
+  bool canTake = false,
 }) {
   const List<TaskAction> editOnly = <TaskAction>[TaskAction.edit];
+  // Nothing else is on offer beside it: a refused task has no verbs left, and
+  // `Redaktə` is shut on it too — it is a record until somebody takes it back
+  // on.
+  if (canTake) return const <TaskAction>[TaskAction.take];
   if (!mine) return canEdit ? editOnly : const <TaskAction>[];
   return switch (status) {
     TaskStatus.pendingApproval => const <TaskAction>[

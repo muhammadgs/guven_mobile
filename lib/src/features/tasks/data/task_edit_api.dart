@@ -121,7 +121,7 @@ class TaskEditApi {
     );
   }
 
-  /// Files a finished task's copy under `Arxiv`.
+  /// Files a finished or cancelled task's copy under `Arxiv`.
   ///
   /// The backend does not do this for us — `PUT /tasks/{id}/complete` was meant
   /// to and is broken, see [setStatus] — so it is done the way the website does
@@ -130,13 +130,27 @@ class TaskEditApi {
   /// read from `/task-archive/…` and never from the tasks table, so a task
   /// nobody filed is a task that finished and then vanished.
   ///
+  /// [status] is which of the two ends brought it here, and it is written into
+  /// the copy rather than assumed: `Arxiv` badges every row with its status,
+  /// and a called-off task filed as `completed` would read as work that was
+  /// done.
+  ///
   /// Answers false rather than throwing when the copy could not be written: by
   /// the time this runs the task is already completed, and calling the whole
   /// save failed would be wrong about the half that worked.
-  Future<bool> archive({required TaskItem task, required int? myUserId}) async {
+  Future<bool> archive({
+    required TaskItem task,
+    required TaskEditStatus status,
+    required int? myUserId,
+  }) async {
     try {
       final Map<String, Object?> row = asMap(await _client.get(_base(task)));
-      final Map<String, Object?> body = _archiveBody(task, row, myUserId);
+      final Map<String, Object?> body = _archiveBody(
+        task,
+        row,
+        myUserId,
+        status,
+      );
       // The archive is keyed by company and the site will not post without
       // one: a copy filed under no company is one no screen finds again.
       if (body['company_id'] == null) return false;
@@ -148,8 +162,8 @@ class TaskEditApi {
     }
   }
 
-  /// Takes a finished partner task out of the live list, once its copy is
-  /// safely filed.
+  /// Takes a finished or cancelled partner task out of the live list, once its
+  /// copy is safely filed.
   ///
   /// Only partner tasks. A finished *task* leaves the screens on its own —
   /// every list that draws one asks for open statuses — but the partner table
@@ -171,7 +185,8 @@ class TaskEditApi {
     }
   }
 
-  /// The finished task in the shape `/task-archive/…` stores.
+  /// The finished — or called-off — task in the shape `/task-archive/…`
+  /// stores.
   ///
   /// Built from the task's own row rather than from the card, because the
   /// archive keeps a dozen columns no list row carries — the task's code, its
@@ -182,6 +197,7 @@ class TaskEditApi {
     TaskItem task,
     Map<String, Object?> row,
     int? myUserId,
+    TaskEditStatus status,
   ) {
     // Some of these endpoints answer `{task: {…}}` and some answer the task
     // itself, resolved exactly as `TaskEditSnapshot.fromRow` resolves it.
@@ -226,16 +242,25 @@ class TaskEditApi {
       'department_id': readInt(data, <String>['department_id']),
       'work_type_id': readInt(data, <String>['work_type_id']),
       'priority': readString(data, <String>['priority']) ?? 'medium',
-      'status': TaskEditStatus.complete.raw,
-      'progress_percentage': 100,
+      'status': status.raw,
+      // A completion is a hundred per cent by definition. A cancellation is
+      // however far the work had got when it was called off, which is the
+      // number the archive is read for — overwriting it with 100 would say the
+      // work was finished and with 0 that it was never started.
+      'progress_percentage': status == TaskEditStatus.complete
+          ? 100
+          : readInt(data, <String>['progress_percentage']) ?? 0,
       'due_date': readString(data, <String>['due_date']),
       'started_date': readString(data, <String>['started_date']),
+      // The day the task stopped, whichever way it stopped — the site fills
+      // this column in on its called-off copies too, and an archive row with
+      // no date sorts and reads as though nothing ever happened to it.
       'completed_date':
           readString(data, <String>['completed_date']) ?? _date(DateTime.now()),
       'notes': readString(data, <String>[task.source.noteField, 'notes']),
       'archived_by': myUserId,
       'updated_by': myUserId,
-      'archive_reason': task.source.archiveReason,
+      'archive_reason': task.source.archiveReasonFor(status),
       // Which of the archive's three lists this copy belongs in.
       'task_source': task.source.archiveSource,
       if (task.source == TaskSource.partner) 'is_partner_task': true,

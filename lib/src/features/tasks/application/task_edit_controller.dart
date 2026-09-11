@@ -340,14 +340,17 @@ class TaskEditController extends ChangeNotifier {
           myUserId: _session.user?.id,
         );
 
-        // A finished task is filed in the archive by whoever finished it — the
-        // backend does not do it, and `Arxiv` is read from the archive and not
-        // from the tasks table. See [TaskEditApi.archive].
-        if (status == TaskEditStatus.complete) {
+        // A task that has stopped for good is filed in the archive by whoever
+        // stopped it — the backend does not do it, and `Arxiv` is read from
+        // the archive and not from the tasks table. Both ends that leave the
+        // live lists are filed, `Tamamla` and `Ləğv et` alike; a refusal is
+        // not one of them. See [TaskEditStatus.isArchived].
+        if (status.isArchived) {
           _progress = 'Arxivə köçürülür…';
           _notify();
           archived = await _api.archive(
             task: task,
+            status: status,
             myUserId: _session.user?.id,
           );
         }
@@ -358,14 +361,9 @@ class TaskEditController extends ChangeNotifier {
       return TaskEditOutcome(
         saved: true,
         status: status?.status,
-        message: status == TaskEditStatus.complete
-            ? (archived
-                  ? 'Tapşırıq tamamlandı və arxivə köçürüldü.'
-                  // Said out loud rather than swallowed: the task really is
-                  // completed, and somebody looking for it under `Arxiv`
-                  // afterwards needs to know it is not there.
-                  : 'Tapşırıq tamamlandı, arxivə köçürülmədi.')
-            : null,
+        message: status == null || !status.isArchived
+            ? null
+            : _archiveMessage(status, archived),
       );
     } on ApiException catch (error) {
       _progress = null;
@@ -373,6 +371,23 @@ class TaskEditController extends ChangeNotifier {
       _notify();
       return TaskEditOutcome(saved: false, message: error.message);
     }
+  }
+
+  /// What the flash bar says after a task has left the live lists.
+  ///
+  /// A failed copy is said out loud rather than swallowed: the status really
+  /// did change, and somebody who then goes looking under `Arxiv` needs to
+  /// know it is not there.
+  static String _archiveMessage(TaskEditStatus status, bool archived) {
+    final bool done = status == TaskEditStatus.complete;
+    if (archived) {
+      return done
+          ? 'Tapşırıq tamamlandı və arxivə köçürüldü.'
+          : 'Tapşırıq ləğv edildi və arxivə köçürüldü.';
+    }
+    return done
+        ? 'Tapşırıq tamamlandı, arxivə köçürülmədi.'
+        : 'Tapşırıq ləğv edildi, arxivə köçürülmədi.';
   }
 
   /// A picker's answer, but only when it is a different one.

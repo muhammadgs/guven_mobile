@@ -36,9 +36,17 @@ class GuvenGlassBottomBar extends StatefulWidget {
     required this.height,
     required this.iconSize,
     required this.textStyle,
+    this.menuIndex,
+    this.menuOpenIcon,
+    this.menuOpen,
+    this.liftedIndex,
+    this.onLiftStart,
   }) : assert(labels.length == icons.length),
        assert(labels.length > 1);
 
+  /// One per cell, and unique: a cell is keyed by its label, so when the
+  /// order changes each one slides to its new place instead of the glyphs
+  /// swapping under a stationary row.
   final List<String> labels;
 
   /// One SVG asset path per cell, drawn tinted to [kGlassInk] — the artwork's
@@ -46,10 +54,27 @@ class GuvenGlassBottomBar extends StatefulWidget {
   /// one look the same here.
   final List<String> icons;
   final int selectedIndex;
+
+  /// Every tap is reported, the selected cell's included — a cell that opens
+  /// something, like `Daha çox`, has to hear the second tap that shuts it. A
+  /// drag reports only a change.
   final ValueChanged<int> onSelected;
   final double height;
   final double iconSize;
   final TextStyle textStyle;
+
+  /// A cell whose glyph turns into [menuOpenIcon] as [menuOpen] runs to 1.
+  final int? menuIndex;
+  final String? menuOpenIcon;
+  final Animation<double>? menuOpen;
+
+  /// A cell whose content a drag has picked up. It keeps its place in the
+  /// row, drawn empty, until the drag puts something back.
+  final int? liftedIndex;
+
+  /// A long press on a cell. The caller owns the drag from then on; the bar
+  /// only says which cell it started on and where.
+  final void Function(int index, Offset globalPosition)? onLiftStart;
 
   @override
   State<GuvenGlassBottomBar> createState() => _GuvenGlassBottomBarState();
@@ -106,6 +131,119 @@ const double _kGrabReach = 0.6;
 /// Cells of overdrag allowed past either end of the bar.
 const double _kOverdrag = 0.35;
 
+/// How long a cell takes to slide to a new place when the order changes.
+const Duration _kReflow = Duration(milliseconds: 260);
+
+/// Room either side of a name inside the marker. The name sits low in the
+/// capsule, where its rounded ends are already curving in, so less than this
+/// and a letter at the name's bottom corner pokes out of the marker.
+const double _kPillPad = 10;
+
+/// The marker never comes closer than this to the bar's own rim.
+const double _kEdgeInset = 3;
+
+/// Between a marker and the name in the next cell.
+const double _kNeighbourGap = 4;
+
+/// Where each cell's name, marker and content go, for one set of names.
+///
+/// Five equal cells, but not every name fits one: a marker is its name plus
+/// [_kPillPad] a side, so a long name's marker is wider than its cell and
+/// reaches into the next one. That is fine until the next name is long too —
+/// then the marker lands on its first letter. And an end cell's marker has to
+/// be pushed in off the bar's rim, which leaves its own name hanging out of
+/// the marker's rounded end unless the name moves with it.
+///
+/// So the names are fitted as a set. Any two neighbours must be short enough
+/// that either one's marker clears the other's name; where a pair is not, the
+/// longer name gives way — scaled down, never cut — by exactly the excess.
+/// Every page can be dragged into the bar now, so this is worked out for
+/// whatever row there is, not for the default one.
+@immutable
+class _BarCells {
+  const _BarCells._(this.labels, this.pills, this.centers);
+
+  factory _BarCells.fit({
+    required List<double> natural,
+    required double slotWidth,
+    required double barWidth,
+    required double iconSize,
+  }) {
+    final int n = natural.length;
+    final List<double> labels = <double>[
+      for (final double w in natural)
+        math.min(w, barWidth - 2 * (_kEdgeInset + _kPillPad)),
+    ];
+    // Either one's marker, centred on its cell, clears the other's name.
+    final double pairLimit = 2 * (slotWidth - _kPillPad - _kNeighbourGap);
+    // An end marker pushed in off the rim clears the second cell's name.
+    final double endLimit =
+        1.5 * slotWidth - _kEdgeInset - 2 * _kPillPad - _kNeighbourGap;
+
+    double body(int i) => math.max(labels[i], iconSize);
+
+    void fitPair(int a, int b) {
+      double excess = body(a) + body(b) - pairLimit;
+      if (excess <= 0) return;
+      // The longer name gives way first; only once the two are level is the
+      // rest shared between them.
+      final int long = labels[a] >= labels[b] ? a : b;
+      final int short = long == a ? b : a;
+      final double take = math.min(excess, labels[long] - labels[short]);
+      labels[long] -= take;
+      excess -= take;
+      if (excess > 0) {
+        labels[a] -= excess / 2;
+        labels[b] -= excess / 2;
+      }
+    }
+
+    void fitEnd(int end, int next) {
+      double excess = body(end) + labels[next] / 2 - endLimit;
+      if (excess <= 0) return;
+      final double take = math.min(excess, labels[end] - iconSize);
+      if (take > 0) {
+        labels[end] -= take;
+        excess -= take;
+      }
+      if (excess > 0) labels[next] -= 2 * excess;
+    }
+
+    // Each fix can only shorten a name, so a few sweeps settle.
+    for (int pass = 0; pass < 4; pass++) {
+      for (int i = 0; i + 1 < n; i++) {
+        fitPair(i, i + 1);
+      }
+      if (n > 2) {
+        fitEnd(0, 1);
+        fitEnd(n - 1, n - 2);
+      }
+    }
+
+    final List<double> pills = <double>[
+      for (int i = 0; i < n; i++)
+        math.min(body(i) + 2 * _kPillPad, barWidth - 2 * _kEdgeInset),
+    ];
+    final List<double> centers = <double>[
+      for (int i = 0; i < n; i++)
+        (slotWidth * (i + 0.5)).clamp(
+          _kEdgeInset + pills[i] / 2,
+          barWidth - _kEdgeInset - pills[i] / 2,
+        ),
+    ];
+    return _BarCells._(labels, pills, centers);
+  }
+
+  /// How wide each name may be drawn.
+  final List<double> labels;
+
+  /// Each cell's resting marker.
+  final List<double> pills;
+
+  /// Where each cell's marker — and so its glyph and name — is centred.
+  final List<double> centers;
+}
+
 class _GuvenGlassBottomBarState extends State<GuvenGlassBottomBar>
     with SingleTickerProviderStateMixin {
   /// Where the lens is, in cells.
@@ -143,6 +281,7 @@ class _GuvenGlassBottomBarState extends State<GuvenGlassBottomBar>
   final ValueNotifier<int> _frame = ValueNotifier<int>(0);
 
   Duration _lastTick = Duration.zero;
+  bool _laidOut = false;
   bool _pressed = false;
   bool _grabbed = false;
   double _grabOffset = 0;
@@ -201,10 +340,18 @@ class _GuvenGlassBottomBarState extends State<GuvenGlassBottomBar>
             builder: (BuildContext context, BoxConstraints constraints) {
               final double barWidth = constraints.maxWidth;
               final double slotWidth = barWidth / widget.labels.length;
-              final List<double> indicatorWidths = <double>[
-                for (final String label in widget.labels)
-                  _measureIndicatorWidth(context, label, slotWidth, barWidth),
-              ];
+              final _BarCells cells = _BarCells.fit(
+                natural: <double>[
+                  for (final String label in widget.labels)
+                    _labelWidth(context, label),
+                ],
+                slotWidth: slotWidth,
+                barWidth: barWidth,
+                iconSize: widget.iconSize,
+              );
+              // Whether the row has been drawn before. See [_PopIn].
+              final bool laidOut = _laidOut;
+              _laidOut = true;
 
               return GestureDetector(
                 behavior: HitTestBehavior.opaque,
@@ -221,22 +368,27 @@ class _GuvenGlassBottomBarState extends State<GuvenGlassBottomBar>
                 onPanEnd: (DragEndDetails details) =>
                     _onPanEnd(details, slotWidth, barWidth),
                 onPanCancel: _onPanCancel,
+                // Held still for long enough, a touch stops being about the
+                // selection and picks the cell up instead. The pan above loses
+                // the arena to it and drains the lens it had started to swell.
+                onLongPressStart: widget.onLiftStart == null
+                    ? null
+                    : (LongPressStartDetails details) => _onLongPressStart(
+                        details,
+                        slotWidth,
+                      ),
                 child: AnimatedBuilder(
                   animation: _frame,
                   builder: (BuildContext context, Widget? child) {
                     final double last = (widget.labels.length - 1).toDouble();
                     final double index = _travel.value.clamp(0.0, last);
-                    final double indicatorWidth = _widthAtIndex(
-                      indicatorWidths,
-                      index,
-                    );
-                    final double desiredCenter = slotWidth * (index + 0.5);
-                    const double edgeInset = 3;
-                    final double left = (desiredCenter - indicatorWidth / 2)
-                        .clamp(
-                          edgeInset,
-                          barWidth - indicatorWidth - edgeInset,
-                        );
+                    final double indicatorWidth = _lerpAt(cells.pills, index);
+                    final double left =
+                        (_lerpAt(cells.centers, index) - indicatorWidth / 2)
+                            .clamp(
+                              _kEdgeInset,
+                              barWidth - indicatorWidth - _kEdgeInset,
+                            );
 
                     final double lens = _lens.value;
                     final double swell = _kSwell * lens;
@@ -288,10 +440,30 @@ class _GuvenGlassBottomBarState extends State<GuvenGlassBottomBar>
                       ],
                     );
                   },
-                  child: Row(
+                  child: Stack(
+                    fit: StackFit.expand,
                     children: <Widget>[
                       for (int index = 0; index < widget.labels.length; index++)
-                        Expanded(child: _tab(index)),
+                        AnimatedPositioned(
+                          key: ValueKey<String>(widget.labels[index]),
+                          duration: _kReflow,
+                          curve: Curves.easeOutCubic,
+                          // Centred on its marker, not on its slot: an end
+                          // cell's marker is pushed in off the bar's rim, and
+                          // its glyph and name go with it rather than being
+                          // left half outside it.
+                          left: cells.centers[index] - slotWidth / 2,
+                          top: 0,
+                          bottom: 0,
+                          width: slotWidth,
+                          child: _PopIn(
+                            // A cell that is new to the bar — traded in from
+                            // `Daha çox` — pops into its place. The first row
+                            // the bar ever draws just appears.
+                            enabled: laidOut,
+                            child: _tab(index, cells.labels[index]),
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -303,70 +475,91 @@ class _GuvenGlassBottomBarState extends State<GuvenGlassBottomBar>
     );
   }
 
-  Widget _tab(int index) {
+  /// [labelWidth] is as wide as the name may be drawn — its own width, unless
+  /// its neighbours leave it less. See [_BarCells].
+  Widget _tab(int index, double labelWidth) {
+    if (index == widget.liftedIndex) return const SizedBox.shrink();
+    Widget glyph = _glyph(widget.icons[index]);
+    final Animation<double>? menuOpen = widget.menuOpen;
+    final String? menuOpenIcon = widget.menuOpenIcon;
+    if (index == widget.menuIndex && menuOpen != null && menuOpenIcon != null) {
+      // The filled glyph drains away and leaves only its outlines: the cell
+      // empties, and what it held is out on the screen instead.
+      glyph = Stack(
+        alignment: Alignment.center,
+        children: <Widget>[
+          FadeTransition(opacity: ReverseAnimation(menuOpen), child: glyph),
+          FadeTransition(opacity: menuOpen, child: _glyph(menuOpenIcon)),
+        ],
+      );
+    }
+
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
-        SvgPicture.asset(
-          widget.icons[index],
-          width: widget.iconSize,
-          height: widget.iconSize,
-          // The exports are not all square — `contain` letterboxes them inside
-          // the square box so every cell's glyph keeps its own proportions and
-          // still sits on one baseline with the others.
-          fit: BoxFit.contain,
-          colorFilter: const ColorFilter.mode(kGlassInk, BlendMode.srcIn),
-        ),
+        glyph,
         const SizedBox(height: 3),
-        // Five cells share the bar's width, so on a 360pt phone each one is
-        // barely wider than the longest Azerbaijani label. An ellipsis there
-        // truncates a word — `Əməkdaşl…` — for the sake of two or three
-        // pixels; scaling the label down by those same pixels keeps it whole
-        // and is invisible next to its neighbours.
-        FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Text(
-            widget.labels[index],
-            maxLines: 1,
-            softWrap: false,
-            overflow: TextOverflow.visible,
-            textAlign: TextAlign.center,
-            style: widget.textStyle.copyWith(color: kGlassInk),
+        // Five cells share the bar's width, and some Azerbaijani names are as
+        // wide as a whole cell. An ellipsis would truncate a word — `Əməkdaşl…`
+        // — so a name that has to give way is scaled down instead, by exactly
+        // as much as its neighbours need, and stays whole.
+        ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: labelWidth),
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              widget.labels[index],
+              maxLines: 1,
+              softWrap: false,
+              overflow: TextOverflow.visible,
+              textAlign: TextAlign.center,
+              style: widget.textStyle.copyWith(color: kGlassInk),
+            ),
           ),
         ),
       ],
     );
   }
 
-  double _measureIndicatorWidth(
-    BuildContext context,
-    String label,
-    double slotWidth,
-    double barWidth,
-  ) {
+  Widget _glyph(String asset) {
+    return SvgPicture.asset(
+      asset,
+      width: widget.iconSize,
+      height: widget.iconSize,
+      // The exports are not all square — `contain` letterboxes them inside
+      // the square box so every cell's glyph keeps its own proportions and
+      // still sits on one baseline with the others.
+      fit: BoxFit.contain,
+      colorFilter: const ColorFilter.mode(kGlassInk, BlendMode.srcIn),
+    );
+  }
+
+  /// How wide [label] wants to be drawn.
+  double _labelWidth(BuildContext context, String label) {
     final TextPainter painter = TextPainter(
-      text: TextSpan(text: label, style: widget.textStyle),
+      // Measured in the style it is drawn in — the ambient one merged with
+      // the bar's. Measuring the bar's alone missed the theme's letter
+      // spacing, and every marker came out a few points narrower than its
+      // name.
+      text: TextSpan(
+        text: label,
+        style: DefaultTextStyle.of(context).style.merge(widget.textStyle),
+      ),
       textDirection: Directionality.of(context),
       // Measured at the same scale it is drawn at, now that the app bounds the
       // system font scale centrally instead of pinning this label to 1.
       textScaler: MediaQuery.textScalerOf(context),
       maxLines: 1,
     )..layout();
-    // The label is drawn inside a `FittedBox`, so however large the font
-    // scale it is never wider than its cell. The lens hugs what is actually
-    // drawn rather than the width the text would have wanted.
-    final double drawnWidth = math.min(painter.width, slotWidth);
-    final double contentWidth = math.max(drawnWidth, widget.iconSize);
-    final double minimum = widget.iconSize + 20;
-    final double maximum = math.min(slotWidth * 1.48, barWidth - 6);
-    return (contentWidth + 20).clamp(minimum, maximum);
+    return painter.width;
   }
 
-  double _widthAtIndex(List<double> widths, double index) {
-    final int lower = index.floor().clamp(0, widths.length - 1);
-    final int upper = index.ceil().clamp(0, widths.length - 1);
-    return widths[lower] + (widths[upper] - widths[lower]) * (index - lower);
+  /// [values] read at a fractional cell [index], for a marker in flight.
+  double _lerpAt(List<double> values, double index) {
+    final int lower = index.floor().clamp(0, values.length - 1);
+    final int upper = index.ceil().clamp(0, values.length - 1);
+    return values[lower] + (values[upper] - values[lower]) * (index - lower);
   }
 
   double _indexAtPosition(double dx, double barWidth) {
@@ -384,7 +577,15 @@ class _GuvenGlassBottomBarState extends State<GuvenGlassBottomBar>
       0,
       widget.labels.length - 1,
     );
-    if (next != widget.selectedIndex) widget.onSelected(next);
+    widget.onSelected(next);
+  }
+
+  void _onLongPressStart(LongPressStartDetails details, double slotWidth) {
+    final int index = (details.localPosition.dx / slotWidth).floor().clamp(
+      0,
+      widget.labels.length - 1,
+    );
+    widget.onLiftStart?.call(index, details.globalPosition);
   }
 
   /// Fires on every touch, a tap included — which is why it only lights the
@@ -525,6 +726,47 @@ class _GuvenGlassBottomBarState extends State<GuvenGlassBottomBar>
       _ticker.stop();
       _frame.value++;
     }
+  }
+}
+
+/// Grows a newly arrived cell into its place.
+class _PopIn extends StatefulWidget {
+  const _PopIn({required this.enabled, required this.child});
+
+  /// Read once, when the cell first appears.
+  final bool enabled;
+  final Widget child;
+
+  @override
+  State<_PopIn> createState() => _PopInState();
+}
+
+class _PopInState extends State<_PopIn> with SingleTickerProviderStateMixin {
+  late final AnimationController _pop = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 280),
+    value: widget.enabled ? 0 : 1,
+  );
+  late final Animation<double> _scale = Tween<double>(
+    begin: 0.55,
+    end: 1,
+  ).chain(CurveTween(curve: Curves.easeOutBack)).animate(_pop);
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.enabled) _pop.forward();
+  }
+
+  @override
+  void dispose() {
+    _pop.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ScaleTransition(scale: _scale, child: widget.child);
   }
 }
 

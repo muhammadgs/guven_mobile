@@ -39,6 +39,7 @@ class TaskCard extends StatefulWidget {
     required this.onOpenFile,
     required this.onOpened,
     this.canEdit = false,
+    this.canTake = false,
     this.editing = false,
   });
 
@@ -51,6 +52,10 @@ class TaskCard extends StatefulWidget {
   /// Whether this card offers `Redaktə` — true for the executor and for
   /// whoever raised the task, and for nobody else (`TaskItem.canEdit`).
   final bool canEdit;
+
+  /// Whether this card offers `Götür` — true on a refused task for everybody
+  /// except the executor who refused it (`TaskItem.canTakeOver`).
+  final bool canTake;
 
   /// True while this card's own edit sheet is up, so its `Redaktə` button can
   /// step out from under the surface that grew out of it.
@@ -258,6 +263,7 @@ class _TaskCardState extends State<TaskCard>
           task: task,
           mine: widget.mine,
           canEdit: widget.canEdit,
+          canTake: widget.canTake,
           editing: widget.editing,
           busy: widget.busy,
           onAction: widget.onAction,
@@ -551,6 +557,7 @@ class _Actions extends StatelessWidget {
     required this.task,
     required this.mine,
     required this.canEdit,
+    required this.canTake,
     required this.editing,
     required this.busy,
     required this.onAction,
@@ -561,6 +568,7 @@ class _Actions extends StatelessWidget {
   final TaskItem task;
   final bool mine;
   final bool canEdit;
+  final bool canTake;
   final bool editing;
   final bool busy;
   final void Function(TaskAction, Rect) onAction;
@@ -575,13 +583,22 @@ class _Actions extends StatelessWidget {
     final double gap = lerpDouble(9, 15, t)! * scale;
 
     final List<TaskAction> actions = task.source.isActionable
-        ? actionsFor(task.status, mine: mine, canEdit: canEdit)
+        ? actionsFor(
+            task.status,
+            mine: mine,
+            canEdit: canEdit,
+            canTake: canTake,
+          )
         : const <TaskAction>[];
 
     // The executor's own buttons say where the task is — `Saxla` only appears
     // on work that is running. Somebody who merely raised it gets `Redaktə`
     // and no verbs, so the chip stays beside it: without it, theirs would be
     // the one card in the list that never says what state its task is in.
+    //
+    // `Götür` is the same case and the design draws it that way: the red
+    // `İmtina edildi` first, then the hand. The button is what to do about the
+    // chip, so the chip has to be there.
     final bool withChip = !mine;
 
     final Widget content = actions.isEmpty

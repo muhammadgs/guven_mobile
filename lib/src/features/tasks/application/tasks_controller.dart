@@ -229,8 +229,22 @@ class TasksController extends ChangeNotifier {
     _busy.add(id);
     _notify();
     try {
-      final TaskStatus next = await _api.run(action, task);
-      _replace(task, task.copyWith(status: next));
+      // `Götür` is the one button that needs to know who pressed it, and this
+      // is the layer that knows.
+      final bool taking = action == TaskAction.take;
+      final TaskStatus next = taking
+          ? await _api.take(task, myUserId: myUserId)
+          : await _api.run(action, task);
+      _replace(
+        task,
+        task.copyWith(
+          status: next,
+          // The card becomes the taker's on the spot — their name in bold,
+          // their verbs — rather than a second after the refetch lands.
+          assignedTo: taking ? myFullName : null,
+          assignedToId: taking ? myUserId : null,
+        ),
+      );
       unawaited(load(_scope));
       return null;
     } on ApiException catch (error) {

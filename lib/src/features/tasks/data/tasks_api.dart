@@ -1,6 +1,7 @@
 import '../../../core/json.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_exception.dart';
+import '../domain/task_edit.dart' show TaskEditCapabilities;
 import '../domain/task_item.dart';
 import '../domain/task_scope.dart';
 import '../domain/task_status.dart';
@@ -153,6 +154,11 @@ class TasksApi {
       case TaskAction.resume:
         await _client.post('$base/resume');
         return TaskStatus.inProgress;
+      case TaskAction.take:
+        // Not a verb either: taking a task over needs to know *who* is taking
+        // it, and this layer has no session. `TasksController.run` sends it to
+        // [take] instead.
+        throw const ApiException('Bu düymə bu yolla işləmir.');
       case TaskAction.edit:
         // Not a verb: `Redaktə` opens a sheet rather than posting anything,
         // and the screen intercepts it before this is ever reached
@@ -163,4 +169,47 @@ class TasksApi {
     }
   }
 
+  /// `Götür` — hands a refused task to whoever pressed it.
+  ///
+  /// Two columns and no more. `assigned_to` is the point of the whole
+  /// exercise, and `status` is what has to come off `rejected` for the task to
+  /// be work again rather than a record — it goes back to `pending`, exactly
+  /// where a freshly assigned task starts, so the new executor's card offers
+  /// `Başla`. Everything else the task says — who raised it, its company, its
+  /// deadline, its description — is untouched: it is the same task, being done
+  /// by somebody else.
+  ///
+  /// Written through the ordinary update endpoint like every other status this
+  /// app sets. The backend's own `PUT /tasks/{id}/status` says it supports
+  /// taking a task over, but its neighbours on that path answer 500 and the
+  /// website has never called them — see `TaskEditApi.setStatus`.
+  Future<TaskStatus> take(TaskItem task, {required int? myUserId}) async {
+    final int? id = task.id;
+    if (id == null || !task.source.isActionable) {
+      throw const ApiException('Bu tapşırıq üzərində əməliyyat mümkün deyil.');
+    }
+    if (myUserId == null) {
+      // Without an id there is nobody to hand it to, and a write with a null
+      // executor would leave the task refused *and* unassigned.
+      throw const ApiException('İstifadəçi məlumatı tapılmadı.');
+    }
+
+    final String base = '${task.source.pathPrefix}/$id';
+    const TaskStatus next = TaskStatus.pending;
+    final Map<String, Object?> body = <String, Object?>{
+      'assigned_to': myUserId,
+      'status': 'pending',
+    };
+
+    if (task.source.hasFreeFormUpdate) {
+      await _client.patch(base, body: body);
+      return next;
+    }
+    // `PartnerTaskUpdate` refuses a body without `updated_by`.
+    await _client.put(
+      base,
+      body: <String, Object?>{'updated_by': myUserId, ...body},
+    );
+    return next;
+  }
 }
