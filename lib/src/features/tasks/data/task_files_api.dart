@@ -7,6 +7,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_exception.dart';
+import '../../../core/user_files.dart';
 import '../domain/task_attachment.dart';
 
 /// How a file ended up on screen, or why it did not open.
@@ -42,10 +43,16 @@ enum FileOpenResult {
 ///    leads for the bytes (it is the one that sets a filename), and each falls
 ///    through to the other. Without that fallback nothing opens at all.
 ///
-/// 3. **The download endpoint takes the token as a query parameter**, because
-///    the site opens it in a new tab and a tab cannot set a header. The
-///    `Authorization` header is sent as well — belt and braces, since both are
-///    accepted and only one of them survives a redirect.
+/// 3. **The token travels in the `Authorization` header only.** The download
+///    endpoint also accepts it as `?token=`, because the site opens it in a
+///    new tab and a tab cannot set a header — but a query string is written
+///    into the server's access log line by line and carried along by any
+///    redirect, and this app can set a header, so it does not use it.
+///
+/// A file id is also a path segment twice over — in the URL and in the cache
+/// folder the file is written to — so an id that is anything other than a
+/// plain token of letters, digits and hyphens is refused before either is
+/// built ([_isSafeId]).
 class TaskFilesApi {
   TaskFilesApi(this._client);
 
@@ -111,6 +118,7 @@ class TaskFilesApi {
   /// thing that has to change back if that query is ever fixed and the inline
   /// route turns out to be the narrower of the two.
   Future<_FileHeaders?> _probe(String id) async {
+    if (!_isSafeId(id)) return null;
     for (final String path in <String>[_inlinePath(id), _downloadPath(id)]) {
       final http.Response? response = await _peek(path);
       if (response != null) return _FileHeaders.from(response.headers);
@@ -132,7 +140,6 @@ class TaskFilesApi {
         final http.Response response = await _client.rawRequest(
           attempt.isEmpty ? 'HEAD' : 'GET',
           path,
-          query: _tokenQuery(),
           headers: attempt.isEmpty ? null : attempt,
         );
         // 206 is the Range request having been honoured; both count.
@@ -183,6 +190,7 @@ class TaskFilesApi {
   Future<String> localPath(TaskAttachment file) => _localCopy(file);
 
   Future<String> _localCopy(TaskAttachment file) async {
+    if (!_isSafeId(file.id)) throw const ApiException('Fayl yüklənmədi.');
     final String? existing = _downloaded[file.id];
     if (existing != null && File(existing).existsSync()) return existing;
 
@@ -199,7 +207,6 @@ class TaskFilesApi {
       final http.Response attempt = await _client.rawRequest(
         'GET',
         path,
-        query: _tokenQuery(),
         timeout: _downloadTimeout,
       );
       if (attempt.statusCode < 400 && attempt.bodyBytes.isNotEmpty) {
@@ -222,7 +229,9 @@ class TaskFilesApi {
         (extension == null ? '' : '.$extension');
 
     final Directory cache = await getTemporaryDirectory();
-    final Directory folder = Directory('${cache.path}/task_files/${file.id}');
+    final Directory folder = Directory(
+      '${cache.path}/$kTaskFilesFolder/${file.id}',
+    );
     await folder.create(recursive: true);
     final File target = File('${folder.path}/$name');
     await target.writeAsBytes(response.bodyBytes);
@@ -237,13 +246,14 @@ class TaskFilesApi {
   /// the bytes too — but it is the one that works.
   String _inlinePath(String id) => '/files/$id';
 
-  /// The access token, as the query parameter the download endpoint expects.
-  Map<String, String> _tokenQuery() {
-    final String? token = _client.tokens.accessToken;
-    return token == null ? const <String, String>{} : <String, String>{
-      'token': token,
-    };
-  }
+  /// Whether [id] can be put into a URL path and a folder name as it is.
+  ///
+  /// Real ids are uuids (or, on a few rows, plain numbers). The id arrives in
+  /// a task row that another user wrote, and one carrying `/` or `..` would
+  /// otherwise address a different endpoint and write outside the cache
+  /// folder.
+  static bool _isSafeId(String id) =>
+      RegExp(r'^[A-Za-z0-9-]{1,64}$').hasMatch(id);
 
   /// Strips anything a filesystem would object to, and keeps the extension —
   /// which on Android is what decides who is offered the file.

@@ -5,8 +5,10 @@ import 'package:flutter/widgets.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/network/token_store.dart';
+import '../../../core/user_files.dart';
 import '../data/auth_api.dart';
 import '../domain/auth_user.dart';
+import '../domain/login_identifier.dart';
 
 /// Where the app is, as far as authentication is concerned.
 enum SessionStatus {
@@ -83,12 +85,16 @@ class SessionController extends ChangeNotifier {
         return;
       }
       await tokens.clear();
+      await wipeUserFiles();
       _set(SessionStatus.signedOut);
     }
   }
 
   /// Signs in. Returns true on success; on failure [error] holds the reason.
-  Future<bool> signIn({required String login, required String password}) async {
+  Future<bool> signIn({
+    required LoginIdentifier login,
+    required String password,
+  }) async {
     if (_busy) return false;
     _busy = true;
     _error = null;
@@ -121,6 +127,7 @@ class SessionController extends ChangeNotifier {
 
   Future<void> signOut() async {
     await _auth.signOut();
+    await wipeUserFiles();
     _user = null;
     _error = null;
     _expired = false;
@@ -141,6 +148,7 @@ class SessionController extends ChangeNotifier {
     _user = null;
     // Fire-and-forget: the client is mid-request and cannot be awaited here.
     unawaited(tokens.clear());
+    unawaited(wipeUserFiles());
     _set(SessionStatus.signedOut);
   }
 

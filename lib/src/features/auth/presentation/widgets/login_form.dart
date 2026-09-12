@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../../../shared/layout.dart';
 import '../../application/session_controller.dart';
+import '../../domain/login_identifier.dart';
 
 /// What lives inside the login card: title, two fields, the submit button and
 /// a slot for whatever the server said when it refused.
@@ -46,10 +48,22 @@ class _LoginFormState extends State<LoginForm> {
     final SessionController session = SessionScope.read(context);
     if (session.isBusy) return;
 
-    final String login = _login.text.trim();
+    final String raw = _login.text.trim();
     final String password = _password.text;
-    if (login.isEmpty || password.isEmpty) {
+    if (raw.isEmpty || password.isEmpty) {
       setState(() => _localError = 'Email/nömrə və şifrəni daxil edin.');
+      return;
+    }
+
+    // Anything that is not a real email or mobile number stops here, before a
+    // request is made — the server is never asked about it.
+    final LoginIdentifier? login = LoginIdentifier.parse(raw);
+    if (login == null) {
+      setState(
+        () => _localError = raw.contains('@')
+            ? 'Email ünvanı düzgün deyil.'
+            : 'Nömrə düzgün deyil. Məsələn: 050 123 45 67',
+      );
       return;
     }
 
@@ -96,6 +110,7 @@ class _LoginFormState extends State<LoginForm> {
           fieldHeight: widget.fieldHeight,
           labelSize: widget.labelSize,
           keyboardType: TextInputType.emailAddress,
+          inputFormatters: LoginIdentifier.inputFormatters,
           textInputAction: TextInputAction.next,
           onSubmitted: (_) => _passwordFocus.requestFocus(),
         ),
@@ -158,6 +173,7 @@ class _GlassLoginField extends StatelessWidget {
     this.focusNode,
     this.obscureText = false,
     this.keyboardType,
+    this.inputFormatters,
     this.textInputAction,
     this.onSubmitted,
   });
@@ -169,6 +185,7 @@ class _GlassLoginField extends StatelessWidget {
   final FocusNode? focusNode;
   final bool obscureText;
   final TextInputType? keyboardType;
+  final List<TextInputFormatter>? inputFormatters;
   final TextInputAction? textInputAction;
   final ValueChanged<String>? onSubmitted;
 
@@ -199,6 +216,7 @@ class _GlassLoginField extends StatelessWidget {
             focusNode: focusNode,
             obscureText: obscureText,
             keyboardType: keyboardType,
+            inputFormatters: inputFormatters,
             textInputAction: textInputAction,
             onSubmitted: onSubmitted,
             autocorrect: false,

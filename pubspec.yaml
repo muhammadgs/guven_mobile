@@ -57,6 +57,7 @@ dependencies:
   audioplayers: ^6.8.1
   file_picker: ^12.1.2
   http_parser: ^4.1.2
+  phone_numbers_parser: ^9.0.26
 
 dev_dependencies:
   flutter_test:

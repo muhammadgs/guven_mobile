@@ -41,10 +41,20 @@ workflows:
         script: flutter pub get
       - name: Analyze
         script: flutter analyze
+      # `--obfuscate` renames every Dart class and function in the shipped
+      # binary, so a decompiler shows `a.b()` instead of `TokenStore.save()`.
+      # It does not hide string literals — the API address and endpoint paths
+      # stay readable — so nothing secret may ever be put in the app's code.
+      # The symbols it strips out go to build/symbols and are kept as an
+      # artifact: `flutter symbolize` needs that exact build's copy to turn a
+      # crash stack trace back into names.
       - name: Build app bundle
-        script: flutter build appbundle --release
+        script: >
+          flutter build appbundle --release
+          --obfuscate --split-debug-info=build/symbols
     artifacts:
       - build/app/outputs/bundle/release/*.aab
+      - build/symbols/**
 
 # ── Next step: signed iOS build → TestFlight ─────────────────────────────────
 # Requires an Apple Developer Program membership ($99/yr). Once that exists,
@@ -62,6 +72,7 @@ workflows:
 #       script: xcode-project use-profiles
 #     - name: Build ipa
 #       script: flutter build ipa --release
+#             --obfuscate --split-debug-info=build/symbols
 #             --export-options-plist=/Users/builder/export_options.plist
 #   publishing:
 #     app_store_connect:

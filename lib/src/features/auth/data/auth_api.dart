@@ -3,6 +3,7 @@ import '../../../core/network/api_client.dart';
 import '../../../core/network/api_exception.dart';
 import '../../../core/network/token_store.dart';
 import '../domain/auth_user.dart';
+import '../domain/login_identifier.dart';
 
 /// The `/auth` endpoints, plus the token bookkeeping around them.
 class AuthApi {
@@ -13,11 +14,12 @@ class AuthApi {
 
   /// Signs in and stores the token pair.
   ///
-  /// [login] is an email or a phone number — the backend's `username` field
-  /// accepts either. Returns whatever the login body said about the user;
-  /// [currentUser] fills in the rest.
+  /// [login] is an email or a phone number that has already been checked and
+  /// normalised — the backend's `username` field accepts either. Returns
+  /// whatever the login body said about the user; [currentUser] fills in the
+  /// rest.
   Future<AuthUser> signIn({
-    required String login,
+    required LoginIdentifier login,
     required String password,
   }) async {
     final Object? payload;
@@ -26,7 +28,7 @@ class AuthApi {
         '/auth/login',
         authenticated: false,
         body: <String, String>{
-          'username': normaliseLogin(login),
+          'username': login.username,
           'password': password,
         },
       );
@@ -82,17 +84,4 @@ class AuthApi {
     }
     await _tokens.clear();
   }
-}
-
-/// Puts a login into the form the backend expects.
-///
-/// Matches the website's `formatLoginInput`: a bare local mobile number
-/// (`0501234567`) becomes `+994501234567`, and everything else — email or an
-/// already-international number — is passed through trimmed.
-String normaliseLogin(String raw) {
-  final String clean = raw.trim();
-  if (RegExp(r'^0\d{9}$').hasMatch(clean)) {
-    return '+994${clean.substring(1)}';
-  }
-  return clean;
 }

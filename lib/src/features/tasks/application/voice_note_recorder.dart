@@ -7,6 +7,7 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
 
+import '../../../core/user_files.dart';
 import '../domain/new_task.dart';
 
 /// What the `Səs qeydi` field is doing right now.
@@ -161,7 +162,7 @@ class VoiceNoteRecorder extends ChangeNotifier {
 
     try {
       final Directory folder = Directory(
-        '${(await getTemporaryDirectory()).path}/voice_notes',
+        '${(await getTemporaryDirectory()).path}/$kVoiceNotesFolder',
       );
       await folder.create(recursive: true);
       final String path =
