@@ -34,6 +34,34 @@ List<Map<String, Object?>> asRows(
   return const <Map<String, Object?>>[];
 }
 
+/// How many rows a paged list holds in all — not how many came back on this
+/// page.
+///
+/// The 1C bridge answers a list as `{data: […], total: N}`, and the website
+/// reads `total`, then `count`; the envelope names a few other APIs use are
+/// accepted after those. A bare array has no pages, so its length is the
+/// whole. Null when the answer does not say: a page's own length is *not* a
+/// total, and passing it off as one would print "1" for a catalogue that was
+/// asked for one row at a time.
+int? readListTotal(Object? payload) {
+  if (payload is List) return payload.length;
+  const List<String> keys = <String>[
+    'total',
+    'count',
+    'total_count',
+    'totalCount',
+    'total_items',
+  ];
+  final Map<String, Object?> map = asMap(payload);
+  final int? total = readInt(map, keys);
+  if (total != null) return total;
+  for (final String envelope in <String>['pagination', 'meta', 'data']) {
+    final int? nested = readInt(asMap(map[envelope]), keys);
+    if (nested != null) return nested;
+  }
+  return null;
+}
+
 List<Map<String, Object?>> _rows(List<Object?> list) => list
     .whereType<Map<Object?, Object?>>()
     .map((Map<Object?, Object?> row) => row.cast<String, Object?>())
@@ -60,6 +88,25 @@ int? readInt(Map<String, Object?> row, List<String> keys) {
     if (value is String) {
       final int? parsed = int.tryParse(value.trim());
       if (parsed != null) return parsed;
+    }
+  }
+  return null;
+}
+
+/// The first parsable number among [keys], as a double.
+///
+/// Money comes both ways from the 1C bridge: a plain JSON number from one
+/// field, and a quoted decimal — `"1455475.61"`, which is how a Python
+/// `Decimal` serialises — from the next.
+double? readDouble(Map<String, Object?> row, List<String> keys) {
+  for (final String key in keys) {
+    final Object? value = row[key];
+    if (value is num) return value.toDouble();
+    if (value is String) {
+      final double? parsed = double.tryParse(value.trim());
+      // `tryParse` also accepts "NaN" and "Infinity", neither of which is an
+      // amount anybody owes.
+      if (parsed != null && parsed.isFinite) return parsed;
     }
   }
   return null;

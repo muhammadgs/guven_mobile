@@ -90,6 +90,7 @@ flutter:
     - assets/images/icons/task_list_selection_icons/
     - assets/images/icons/new_task_icons/
     - assets/images/icons/edit_icons_different_ones/
+    - assets/images/icons/database_main_panel/
     - assets/videos/onboarding_background.mp4
     - assets/videos/page_3_icons/
 
@@ -119,6 +120,12 @@ flutter:
         # user's own — that is the whole signal that the task is theirs.
         - asset: assets/fonts/Poppins-Bold.ttf
           weight: 700
+    # The `Baza` section's figures. Every count and amount on its panels is
+    # set in it, the way the design does; nothing else in the app asks for it.
+    - family: ChakraPetch
+      fonts:
+        - asset: assets/fonts/ChakraPetch-Regular.ttf
+          weight: 400
 
   shaders:
     - shaders/aurora.frag

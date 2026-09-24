@@ -47,6 +47,16 @@ double uiScale(BuildContext context) =>
 double scaled(BuildContext context, double phoneValue) =>
     phoneValue * uiScale(context);
 
+/// [uiScale] for a screen whose design was drawn on a phone [frameWidth]
+/// points wide rather than on the canvas.
+///
+/// A design's numbers can then be written exactly as Figma gives them —
+/// `Baza` was drawn on a 402pt iPhone 16 Pro — and still land in the same
+/// proportion as the rest of the app on every device, instead of each one
+/// being converted by hand and drifting from the file it came from.
+double uiScaleForFrame(BuildContext context, double frameWidth) =>
+    uiScale(context) * _phoneCanvas / frameWidth;
+
 /// Resolves a proportional dimension the way this app writes them: a fraction
 /// of the canvas, clamped to a phone-calibrated range.
 ///

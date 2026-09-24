@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 
 import '../../../shared/layout.dart';
 import '../../../shared/widgets/app_background.dart';
+import '../../database/presentation/database_screen.dart';
 import '../../home/presentation/home_screen.dart';
 import '../../tasks/presentation/tasks_screen.dart';
 import '../data/nav_layout_store.dart';
@@ -364,6 +365,10 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
       ShellDestination.tasks => TasksScreen(
         bottomReserve: reserve,
         active: _current == ShellDestination.tasks,
+      ),
+      ShellDestination.database => DatabaseScreen(
+        bottomReserve: reserve,
+        active: _current == ShellDestination.database,
       ),
       // Every other page is a button for now; its screen comes later.
       _ => ComingSoonTab(title: page.title, bottomReserve: reserve),

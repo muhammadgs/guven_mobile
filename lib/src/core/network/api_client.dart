@@ -42,8 +42,15 @@ class ApiClient {
 
   void close() => _http.close();
 
-  Future<Object?> get(String endpoint, {Map<String, String>? query}) =>
-      _send('GET', endpoint, query: query);
+  /// [origin] picks the service: the main API unless told otherwise. The 1C
+  /// bridge ([kOnecApiOrigin]) takes the same token, so a call to it is
+  /// authenticated — and renewed through the main API's `/auth/refresh` —
+  /// exactly like any other.
+  Future<Object?> get(
+    String endpoint, {
+    Map<String, String>? query,
+    String origin = kApiOrigin,
+  }) => _send('GET', endpoint, query: query, origin: origin);
 
   /// Set [authenticated] false for a call that is *obtaining* credentials
   /// rather than using them. Signing in with a stale token still in the store
@@ -131,6 +138,7 @@ class ApiClient {
     Map<String, String>? query,
     Object? body,
     bool authenticated = true,
+    String origin = kApiOrigin,
   }) async {
     final http.Response response = await _sendRaw(
       method,
@@ -138,6 +146,7 @@ class ApiClient {
       query: query,
       body: body,
       authenticated: authenticated,
+      origin: origin,
     );
     return _decode(response);
   }
@@ -155,12 +164,13 @@ class ApiClient {
     _Multipart? multipart,
     bool authenticated = true,
     bool isRetry = false,
+    String origin = kApiOrigin,
   }) async {
     if (authenticated && !isRetry && _tokenIsAboutToLapse) {
       await _refreshOnce();
     }
 
-    final Uri uri = apiUri(endpoint, query);
+    final Uri uri = apiUri(endpoint, query, origin);
     final Map<String, String> headers = <String, String>{
       'Accept': 'application/json',
       // A multipart request writes its own `Content-Type`, boundary included,
@@ -205,6 +215,7 @@ class ApiClient {
           timeout: timeout,
           multipart: multipart,
           isRetry: true,
+          origin: origin,
         );
       }
       onSessionExpired?.call();

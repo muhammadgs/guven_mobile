@@ -63,11 +63,14 @@ class TaskToolButtons extends StatelessWidget {
           maintainSize: true,
           maintainAnimation: true,
           maintainState: true,
-          child: _ToolButton(
+          child: GlassToolButton(
             size: size,
             onTap: onFilter,
             semanticLabel: 'Filtr',
-            painter: FunnelPainter(size),
+            glyph: CustomPaint(
+              painter: FunnelPainter(size),
+              size: Size.square(size),
+            ),
             badge: filterCount,
           ),
         ),
@@ -77,11 +80,14 @@ class TaskToolButtons extends StatelessWidget {
           maintainSize: true,
           maintainAnimation: true,
           maintainState: true,
-          child: _ToolButton(
+          child: GlassToolButton(
             size: size,
             onTap: onCreate,
             semanticLabel: 'Yeni tapşırıq',
-            painter: PlusPainter(size),
+            glyph: CustomPaint(
+              painter: PlusPainter(size),
+              size: Size.square(size),
+            ),
           ),
         ),
       ],
@@ -89,27 +95,40 @@ class TaskToolButtons extends StatelessWidget {
   }
 }
 
-class _ToolButton extends StatelessWidget {
-  const _ToolButton({
+/// One round glass button: a lens [size] on a side with a [glyph] on it.
+///
+/// Public because it is not the task list's alone. `Baza`'s menu button is
+/// this button — the user asked for it to be exactly the filter's — with a
+/// different glyph and a different menu growing out of it.
+class GlassToolButton extends StatelessWidget {
+  const GlassToolButton({
+    super.key,
     required this.size,
     required this.onTap,
     required this.semanticLabel,
-    required this.painter,
+    required this.glyph,
     this.badge = 0,
   });
 
   final double size;
   final TaskToolTap onTap;
   final String semanticLabel;
-  final CustomPainter painter;
+
+  /// Drawn centred on the glass.
+  final Widget glyph;
+
   final int badge;
+
+  /// The corner a button of [size] is drawn with.
+  ///
+  /// A squircle rather than a circle: at this size a true circle reads as a
+  /// bubble floating over the layout, while the softened square sits with the
+  /// scope bar above it.
+  static double radiusFor(double size) => size * 0.42;
 
   @override
   Widget build(BuildContext context) {
-    // A squircle rather than a circle: at this size a true circle reads as a
-    // bubble floating over the layout, while the softened square sits with the
-    // scope bar above it.
-    final double radius = size * 0.42;
+    final double radius = radiusFor(size);
 
     return Semantics(
       button: true,
@@ -142,7 +161,7 @@ class _ToolButton extends StatelessWidget {
                   style: glassAtRadius(kTaskToolGlass, radius),
                   cornerRadius: radius,
                   flex: const AppGlassFlex.statPill(),
-                  child: CustomPaint(painter: painter, size: Size.square(size)),
+                  child: Center(child: glyph),
                 ),
               ),
             ),
