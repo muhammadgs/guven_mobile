@@ -13,6 +13,7 @@ import 'widgets/database_filter_panel.dart';
 import 'widgets/database_glass.dart';
 import 'widgets/database_menu.dart';
 import 'widgets/database_overview_row.dart';
+import 'widgets/manager_stats_list.dart';
 import 'widgets/orders_list.dart';
 import 'widgets/products_list.dart';
 import 'widgets/sales_list.dart';
@@ -23,8 +24,8 @@ import 'widgets/team_list.dart';
 ///
 /// `Baza` over the name of the page on screen, the menu button under them,
 /// and the page below. `Əsas panel`, `Satışlar`, `Stok`, `Sifarişlər`,
-/// `Məhsullar`, `Müştərilər` and `Komanda` are built; the rest are in the
-/// menu and say so when chosen.
+/// `Məhsullar`, `Müştərilər`, `Komanda` and `Menecer Statistikası` are
+/// built; the rest are in the menu and say so when chosen.
 ///
 /// Nothing scrolls except the page: the titles and the button are the fixed
 /// frame, as they are on the task list.
@@ -119,6 +120,7 @@ class _DatabaseScreenState extends State<DatabaseScreen> {
     DatabaseSection.products => database.products,
     DatabaseSection.customers => database.customers,
     DatabaseSection.team => database.team,
+    DatabaseSection.managerStats => database.managerStats,
     _ => null,
   };
 
@@ -260,6 +262,12 @@ class _DatabaseScreenState extends State<DatabaseScreen> {
                     controller: database.team,
                     bottomReserve: widget.bottomReserve,
                     // And `Komanda`'s.
+                    sideInset: 19.5 * s,
+                  ),
+                  DatabaseSection.managerStats => ManagerStatsList(
+                    controller: database.managerStats,
+                    bottomReserve: widget.bottomReserve,
+                    // And `Menecer statistikası`' — 363pt on its frame too.
                     sideInset: 19.5 * s,
                   ),
                   _ => Padding(

@@ -8,7 +8,9 @@
 /// which says what the columns are, which values are chosen, and where each
 /// column's values come from. A column of figures a
 /// [DatabaseRangeFilterSource] says takes a span opens onto a minimum and a
-/// maximum instead of a list.
+/// maximum instead of a list, and a column of months a
+/// [DatabasePeriodFilterSource] says takes a period onto a start, an end and
+/// a calendar.
 ///
 /// The task filter opens a second panel beside the first. This one does
 /// not: the design keeps one pane and changes what is in it, which leaves the
@@ -27,6 +29,8 @@ import 'package:flutter/services.dart';
 
 import '../../../../shared/effects.dart';
 import '../../../../shared/motion/glass_morph.dart';
+import '../../../tasks/presentation/widgets/new_task_picker.dart'
+    show kAzMonths;
 import '../../../tasks/presentation/widgets/task_tools.dart' show FunnelPainter;
 import '../../application/database_filter_source.dart';
 import '../../domain/database_filter.dart';
@@ -48,6 +52,10 @@ const Duration _kResize = Duration(milliseconds: 220);
 
 /// How long typing a span has to pause before the list is narrowed to it.
 const Duration _kRangeDelay = Duration(milliseconds: 450);
+
+/// How many years before the earliest it knows of a period's calendar can
+/// be turned back to.
+const int kPeriodYearsBack = 10;
 
 /// Opens [source]'s filter, growing out of the funnel at [button].
 ///
@@ -130,6 +138,16 @@ class _DatabaseFilterPanelState extends State<DatabaseFilterPanel>
   /// somebody typing.
   bool _quiet = false;
 
+  /// Whether the open column is narrowed by a period: a start and an end
+  /// set on a calendar.
+  bool _period = false;
+
+  /// The end of the period the next month tapped sets.
+  _PeriodEnd _periodEnd = _PeriodEnd.from;
+
+  /// The year the calendar is showing.
+  int _periodYear = DateTime.now().year;
+
   Animation<double>? _flight;
 
   DatabaseFilterValues get _values => widget.source.filterValues;
@@ -138,6 +156,12 @@ class _DatabaseFilterPanelState extends State<DatabaseFilterPanel>
   DatabaseRangeFilterSource? get _ranges {
     final DatabaseFilterSource source = widget.source;
     return source is DatabaseRangeFilterSource ? source : null;
+  }
+
+  /// The source, when one of its columns takes a period.
+  DatabasePeriodFilterSource? get _periods {
+    final DatabaseFilterSource source = widget.source;
+    return source is DatabasePeriodFilterSource ? source : null;
   }
 
   @override
@@ -196,6 +220,7 @@ class _DatabaseFilterPanelState extends State<DatabaseFilterPanel>
       _values.close();
       _column = null;
       _field = null;
+      _period = false;
     }
     setState(() {});
   }
@@ -211,12 +236,15 @@ class _DatabaseFilterPanelState extends State<DatabaseFilterPanel>
   void _openColumn(DatabaseFilterColumn column) {
     if (_page.value > 0) return;
     final FilterRangeField? field = _ranges?.rangeFieldOf(column);
+    final bool period = _periods?.takesPeriod(column) ?? false;
     _values.open(column);
     _query.clear();
     if (field != null) _fillRange(_ranges!.rangeOf(column));
+    if (period) _startPeriod(column);
     setState(() {
       _column = column;
       _field = field;
+      _period = period;
     });
     _page.forward();
   }
@@ -243,8 +271,107 @@ class _DatabaseFilterPanelState extends State<DatabaseFilterPanel>
     if (column == null) return;
     _unfocus();
     if (_field != null) _fillRange(FilterRange.any);
+    if (_period) setState(() => _periodEnd = _PeriodEnd.from);
     widget.source.clearFilterColumn(column);
   }
+
+  // ── A period ───────────────────────────────────────────────────────────
+
+  /// Where the calendar opens: on the year of the period the column already
+  /// holds, or of the latest month with figures — with the next tap setting
+  /// whichever end is still open.
+  void _startPeriod(DatabaseFilterColumn column) {
+    final DatabasePeriodFilterSource periods = _periods!;
+    final FilterPeriod period = periods.periodOf(column);
+    _periodEnd = period.from != null && period.to == null
+        ? _PeriodEnd.to
+        : _PeriodEnd.from;
+    final Set<FilterMonth> months = periods.periodMonthsOf(column);
+    _periodYear =
+        (period.from ?? period.to)?.year ??
+        (months.isEmpty
+            ? DateTime.now().year
+            : months
+                  .reduce((FilterMonth a, FilterMonth b) => a > b ? a : b)
+                  .year);
+  }
+
+  /// The years the calendar can be turned to: [kPeriodYearsBack] years
+  /// before the earliest of this year, the years with figures and the
+  /// years the period's ends are in, up to the latest of them.
+  ///
+  /// Not only the years with figures: the user turned the year expecting it
+  /// to move (2026-10-05), and a year with nothing in it is shown as such —
+  /// every month pale — rather than kept out of reach.
+  (int, int) _periodYears(DatabaseFilterColumn column) {
+    final DatabasePeriodFilterSource periods = _periods!;
+    final FilterPeriod period = periods.periodOf(column);
+    final List<int> years = <int>[
+      DateTime.now().year,
+      _periodYear,
+      ?period.from?.year,
+      ?period.to?.year,
+      for (final FilterMonth month in periods.periodMonthsOf(column))
+        month.year,
+    ];
+    return (years.reduce(math.min) - kPeriodYearsBack, years.reduce(math.max));
+  }
+
+  /// [month] tapped: it becomes the end being set.
+  ///
+  /// The start is set first and the end after it. A start later than the
+  /// end lets go of the end; an end earlier than the start becomes the new
+  /// start, the way every calendar that picks a range behaves.
+  void _chooseMonth(FilterMonth month) {
+    final DatabasePeriodFilterSource? periods = _periods;
+    final DatabaseFilterColumn? column = _column;
+    if (periods == null || column == null) return;
+    final FilterPeriod now = periods.periodOf(column);
+    FilterMonth? from = now.from;
+    FilterMonth? to = now.to;
+    if (_periodEnd == _PeriodEnd.from) {
+      from = month;
+      if (to != null && to < month) to = null;
+      _periodEnd = _PeriodEnd.to;
+    } else if (from != null && month < from) {
+      from = month;
+    } else {
+      to = month;
+    }
+    setState(() {});
+    periods.setPeriod(column, FilterPeriod(from: from, to: to));
+  }
+
+  /// One of the two ends tapped: the next month tapped sets it, and the
+  /// calendar turns to its year.
+  void _chooseEnd(_PeriodEnd end) {
+    final DatabasePeriodFilterSource? periods = _periods;
+    final DatabaseFilterColumn? column = _column;
+    if (periods == null || column == null) return;
+    final FilterPeriod period = periods.periodOf(column);
+    final FilterMonth? month = end == _PeriodEnd.from ? period.from : period.to;
+    setState(() {
+      _periodEnd = end;
+      if (month != null) _periodYear = month.year;
+    });
+  }
+
+  /// One of the two ends let go, and set next.
+  void _clearEnd(_PeriodEnd end) {
+    final DatabasePeriodFilterSource? periods = _periods;
+    final DatabaseFilterColumn? column = _column;
+    if (periods == null || column == null) return;
+    final FilterPeriod period = periods.periodOf(column);
+    setState(() => _periodEnd = end);
+    periods.setPeriod(
+      column,
+      end == _PeriodEnd.from
+          ? FilterPeriod(to: period.to)
+          : FilterPeriod(from: period.from),
+    );
+  }
+
+  void _turnYear(int by) => setState(() => _periodYear += by);
 
   // ── A span ─────────────────────────────────────────────────────────────
 
@@ -327,7 +454,10 @@ class _DatabaseFilterPanelState extends State<DatabaseFilterPanel>
     final double measured = metrics.valuesContentHeight(<String>[
       for (final FilterValue value in values) value.label,
     ]);
-    final Rect valuesTarget = field != null
+    final Rect valuesTarget = _period
+        // A period is a calendar, the same size whatever the months.
+        ? metrics.periodPanel
+        : field != null
         // A span lists nothing but what it offers beside the span.
         ? metrics.rangePanel(measured)
         : metrics.valuesPanel(values.isEmpty ? metrics.valueRowMin : measured);
@@ -348,8 +478,25 @@ class _DatabaseFilterPanelState extends State<DatabaseFilterPanel>
       curve: Curves.easeOutCubic,
       builder: (BuildContext context, Rect? valuesRect, _) {
         final Rect shown = valuesRect ?? valuesTarget;
+        final DatabasePeriodFilterSource? periods = _periods;
         final Widget valuesPage = column == null
             ? const SizedBox.shrink()
+            : _period && periods != null
+            ? _PeriodPage(
+                metrics: metrics,
+                period: periods.periodOf(column),
+                chosen: periods.narrows(column),
+                months: periods.periodMonthsOf(column),
+                end: _periodEnd,
+                year: _periodYear,
+                years: _periodYears(column),
+                onBack: _back,
+                onAll: _chooseAll,
+                onEnd: _chooseEnd,
+                onClearEnd: _clearEnd,
+                onYear: _turnYear,
+                onMonth: _chooseMonth,
+              )
             : field != null
             ? _RangePage(
                 metrics: metrics,
@@ -915,6 +1062,481 @@ class _RangePage extends StatelessWidget {
   }
 }
 
+/// The two ends of a period.
+enum _PeriodEnd { from, to }
+
+/// A column narrowed by a period: back, the start's field beside it and the
+/// end's under that, then `Hamısı`, the year and its twelve months.
+///
+/// The span's page with a calendar in place of its list, so the two read as
+/// one panel: the user asked for a period to be a start and an end, each a
+/// month and a year (2026-10-05). A month tapped sets the end whose field is
+/// darker — the start first, then the end — and the months between the two
+/// are shaded. Months the table has figures for are in ink, the rest paler.
+class _PeriodPage extends StatelessWidget {
+  const _PeriodPage({
+    required this.metrics,
+    required this.period,
+    required this.chosen,
+    required this.months,
+    required this.end,
+    required this.year,
+    required this.years,
+    required this.onBack,
+    required this.onAll,
+    required this.onEnd,
+    required this.onClearEnd,
+    required this.onYear,
+    required this.onMonth,
+  });
+
+  final DatabaseFilterMetrics metrics;
+  final FilterPeriod period;
+
+  /// Whether the column is narrowing the list.
+  final bool chosen;
+
+  /// The months with figures.
+  final Set<FilterMonth> months;
+
+  /// The end the next month tapped sets.
+  final _PeriodEnd end;
+
+  /// The year on show, and the first and last it can be turned to.
+  final int year;
+  final (int, int) years;
+
+  final VoidCallback onBack;
+  final VoidCallback onAll;
+  final ValueChanged<_PeriodEnd> onEnd;
+  final ValueChanged<_PeriodEnd> onClearEnd;
+  final ValueChanged<int> onYear;
+  final ValueChanged<FilterMonth> onMonth;
+
+  @override
+  Widget build(BuildContext context) {
+    final double control = metrics.controlSize;
+    final (int first, int last) = years;
+    final FilterPeriod span = period.ordered;
+
+    Widget field(_PeriodEnd which) => _MonthField(
+      metrics: metrics,
+      hint: which == _PeriodEnd.from ? 'Başlanğıc' : 'Son',
+      month: which == _PeriodEnd.from ? period.from : period.to,
+      active: end == which,
+      onTap: () => onEnd(which),
+      onClear: () => onClearEnd(which),
+    );
+
+    return Padding(
+      padding: EdgeInsets.only(
+        top: metrics.padTop + metrics.titleHeight + metrics.controlGap,
+        bottom: metrics.valuesPadBottom,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: metrics.controlInset),
+            child: SizedBox(
+              height: control,
+              child: Row(
+                children: <Widget>[
+                  _BackButton(side: control, onTap: onBack),
+                  SizedBox(width: metrics.controlSpacing),
+                  Expanded(child: field(_PeriodEnd.from)),
+                ],
+              ),
+            ),
+          ),
+          SizedBox(height: metrics.controlSpacing),
+          Padding(
+            padding: EdgeInsets.only(
+              // Under the start, not under the back button: the two ends
+              // line up as a pair, the way a span's minimum and maximum do.
+              left: metrics.controlInset + control + metrics.controlSpacing,
+              right: metrics.controlInset,
+            ),
+            child: SizedBox(height: control, child: field(_PeriodEnd.to)),
+          ),
+          SizedBox(height: metrics.listGap),
+          // Only the system font turned up on a short phone leaves this less
+          // room than it needs; then it scrolls rather than spilling off the
+          // glass.
+          Expanded(
+            child: ScrollConfiguration(
+              behavior: const MaterialScrollBehavior().copyWith(
+                overscroll: false,
+              ),
+              child: ListView(
+                padding: EdgeInsets.zero,
+                physics: const ClampingScrollPhysics(),
+                children: <Widget>[
+                  _ValueRow(
+                    metrics: metrics,
+                    label: 'Hamısı',
+                    chosen: !chosen,
+                    onTap: onAll,
+                  ),
+                  SizedBox(height: metrics.periodGap),
+                  Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: metrics.valueCapsuleInset,
+                    ),
+                    child: SizedBox(
+                      height: control,
+                      child: Row(
+                        children: <Widget>[
+                          _ArrowButton(
+                            side: control,
+                            label: 'Əvvəlki il',
+                            onTap: year > first ? () => onYear(-1) : null,
+                          ),
+                          Expanded(
+                            child: Center(
+                              child: Text(
+                                '$year',
+                                maxLines: 1,
+                                style: metrics.labelStyle.copyWith(
+                                  color: kGlassInk,
+                                  fontWeight: FontWeight.w500,
+                                  height: 1.2,
+                                ),
+                              ),
+                            ),
+                          ),
+                          _ArrowButton(
+                            side: control,
+                            label: 'Növbəti il',
+                            forward: true,
+                            onTap: year < last ? () => onYear(1) : null,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: metrics.periodGap),
+                  Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: metrics.valueCapsuleInset,
+                    ),
+                    child: Column(
+                      children: <Widget>[
+                        for (
+                          int row = 0;
+                          row < DatabaseFilterMetrics.kMonthRows;
+                          row++
+                        ) ...<Widget>[
+                          if (row > 0) SizedBox(height: metrics.monthGap),
+                          Row(
+                            children: <Widget>[
+                              for (
+                                int col = 0;
+                                col < DatabaseFilterMetrics.kMonthColumns;
+                                col++
+                              ) ...<Widget>[
+                                if (col > 0) SizedBox(width: metrics.monthGap),
+                                Expanded(
+                                  child: _monthCell(
+                                    FilterMonth(
+                                      year,
+                                      row *
+                                              DatabaseFilterMetrics
+                                                  .kMonthColumns +
+                                          col +
+                                          1,
+                                    ),
+                                    span,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _monthCell(FilterMonth month, FilterPeriod span) {
+    final bool edge = month == span.from || month == span.to;
+    // Only between two ends: with one of them open the period runs on for
+    // ever, and shading every month on that side would say nothing.
+    final FilterMonth? from = span.from;
+    final FilterMonth? to = span.to;
+    final bool inside =
+        !edge && from != null && to != null && span.contains(month);
+    return _MonthCell(
+      metrics: metrics,
+      month: month,
+      edge: edge,
+      inside: inside,
+      known: months.contains(month),
+      onTap: () => onMonth(month),
+    );
+  }
+}
+
+/// `Yanvar 2026` — a month as the period's fields and the calendar's
+/// voice-over say it.
+String _monthLabel(FilterMonth month) =>
+    '${kAzMonths[month.month - 1]} ${month.year}';
+
+/// One end of a period: the month it is set to, or what it is for while it
+/// is not, and a way to let it go once it is. The end the next month tapped
+/// sets is the darker of the two.
+class _MonthField extends StatelessWidget {
+  const _MonthField({
+    required this.metrics,
+    required this.hint,
+    required this.month,
+    required this.active,
+    required this.onTap,
+    required this.onClear,
+  });
+
+  final DatabaseFilterMetrics metrics;
+
+  /// `Başlanğıc`, `Son`.
+  final String hint;
+
+  final FilterMonth? month;
+  final bool active;
+  final VoidCallback onTap;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) {
+    final double side = metrics.controlSize;
+    final TextStyle style = metrics.labelStyle.copyWith(
+      color: kGlassInk,
+      height: 1.2,
+    );
+    final FilterMonth? month = this.month;
+
+    // The whole capsule answers a tap; the field and its cross are two
+    // things to a screen reader, never one merged label.
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      excludeFromSemantics: true,
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        curve: Curves.easeOut,
+        height: side,
+        decoration: ShapeDecoration(
+          color: active ? kDatabaseFilterControlFill : kDatabaseFilterRowFill,
+          shape: const StadiumBorder(),
+        ),
+        child: Row(
+          children: <Widget>[
+            Expanded(
+              child: Semantics(
+                container: true,
+                button: true,
+                selected: active,
+                label: month == null ? hint : '$hint: ${_monthLabel(month)}',
+                excludeSemantics: true,
+                onTap: onTap,
+                child: Padding(
+                  padding: EdgeInsets.only(left: side * 0.42),
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      month == null ? hint : _monthLabel(month),
+                      maxLines: 1,
+                      softWrap: false,
+                      style: month == null
+                          ? style.copyWith(color: kGlassInkMuted)
+                          : style,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            if (month == null)
+              SizedBox(width: side * 0.42)
+            else
+              Semantics(
+                container: true,
+                button: true,
+                label: '$hint təmizlə',
+                excludeSemantics: true,
+                onTap: onClear,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: onClear,
+                  child: SizedBox.square(
+                    dimension: side,
+                    child: Icon(
+                      Icons.close_rounded,
+                      size: side * 0.45,
+                      color: kGlassInkMuted,
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// One month of the calendar: a capsule as dark as a chosen value at either
+/// end of the period, a paler one between them, and none elsewhere.
+class _MonthCell extends StatefulWidget {
+  const _MonthCell({
+    required this.metrics,
+    required this.month,
+    required this.edge,
+    required this.inside,
+    required this.known,
+    required this.onTap,
+  });
+
+  final DatabaseFilterMetrics metrics;
+  final FilterMonth month;
+
+  /// One of the period's two ends.
+  final bool edge;
+
+  /// Between them.
+  final bool inside;
+
+  /// Whether the table has figures for it.
+  final bool known;
+
+  final VoidCallback onTap;
+
+  @override
+  State<_MonthCell> createState() => _MonthCellState();
+}
+
+class _MonthCellState extends State<_MonthCell> {
+  bool _pressed = false;
+
+  void _press(bool down) {
+    if (_pressed == down) return;
+    setState(() => _pressed = down);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final DatabaseFilterMetrics metrics = widget.metrics;
+    final Color fill = widget.edge
+        ? kDatabaseFilterControlFill
+        : _pressed
+        ? kDatabaseFilterPressFill
+        : widget.inside
+        ? kDatabaseFilterRowFill
+        : kDatabaseFilterRowFill.withValues(alpha: 0);
+
+    return Semantics(
+      button: true,
+      selected: widget.edge,
+      label: _monthLabel(widget.month),
+      excludeSemantics: true,
+      onTap: widget.onTap,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapDown: (_) => _press(true),
+        onTapUp: (_) => _press(false),
+        onTapCancel: () => _press(false),
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 160),
+          curve: Curves.easeOut,
+          height: metrics.monthHeight,
+          padding: EdgeInsets.symmetric(horizontal: metrics.monthGap * 2),
+          decoration: ShapeDecoration(
+            color: fill,
+            shape: const StadiumBorder(),
+          ),
+          child: Center(
+            // `Sentyabr` with the system font turned up is set smaller in
+            // its cell rather than cut.
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                kAzMonths[widget.month.month - 1],
+                maxLines: 1,
+                softWrap: false,
+                style: metrics.labelStyle.copyWith(
+                  color: widget.known ? kGlassInk : kGlassInkMuted,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The calendar's year arrows: the back button's chevron, on the paler
+/// grey, and faded out at the first and last year there is.
+class _ArrowButton extends StatelessWidget {
+  const _ArrowButton({
+    required this.side,
+    required this.label,
+    required this.onTap,
+    this.forward = false,
+  });
+
+  final double side;
+  final String label;
+
+  /// Null at the end of the years.
+  final VoidCallback? onTap;
+
+  /// Pointing right, to the next year.
+  final bool forward;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool enabled = onTap != null;
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      label: label,
+      excludeSemantics: true,
+      onTap: onTap,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: onTap,
+        child: Container(
+          width: side,
+          height: side,
+          decoration: ShapeDecoration(
+            color: enabled
+                ? kDatabaseFilterRowFill
+                : kDatabaseFilterRowFill.withValues(alpha: 0),
+            shape: const CircleBorder(),
+          ),
+          child: CustomPaint(
+            painter: _ChevronPainter(
+              side,
+              forward: forward,
+              color: enabled
+                  ? kGlassInk
+                  : kGlassInkMuted.withValues(alpha: 0.35),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// One end of a span: a figure typed on the number keys, what it is in
 /// (`₼`, `%`) after it while it is empty, and a way to clear it once it is
 /// not.
@@ -1386,16 +2008,23 @@ class _SearchField extends StatelessWidget {
   }
 }
 
-/// The design's chevron: bold, a little narrower than it is tall.
+/// The design's chevron: bold, a little narrower than it is tall. Points
+/// left — back — unless told [forward].
 class _ChevronPainter extends CustomPainter {
-  const _ChevronPainter(this.side);
+  const _ChevronPainter(
+    this.side, {
+    this.forward = false,
+    this.color = kGlassInk,
+  });
 
   final double side;
+  final bool forward;
+  final Color color;
 
   @override
   void paint(Canvas canvas, Size size) {
     final Offset centre = Offset(size.width / 2, size.height / 2);
-    final double w = side * 0.29;
+    final double w = side * 0.29 * (forward ? -1 : 1);
     final double h = side * 0.35;
     final Path path = Path()
       ..moveTo(centre.dx + w * 0.4, centre.dy - h / 2)
@@ -1408,13 +2037,15 @@ class _ChevronPainter extends CustomPainter {
         ..strokeWidth = side * 0.085
         ..strokeCap = StrokeCap.round
         ..strokeJoin = StrokeJoin.round
-        ..color = kGlassInk,
+        ..color = color,
     );
   }
 
   @override
   bool shouldRepaint(covariant _ChevronPainter oldDelegate) =>
-      oldDelegate.side != side;
+      oldDelegate.side != side ||
+      oldDelegate.forward != forward ||
+      oldDelegate.color != color;
 }
 
 /// The design's magnifier: a ring and a short handle.

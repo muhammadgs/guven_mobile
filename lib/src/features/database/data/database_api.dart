@@ -5,6 +5,7 @@ import '../../../core/network/api_exception.dart';
 import '../domain/customer.dart';
 import '../domain/database_overview.dart';
 import '../domain/database_page.dart';
+import '../domain/manager_stat.dart';
 import '../domain/order.dart';
 import '../domain/product.dart';
 import '../domain/sale.dart';
@@ -230,6 +231,29 @@ class DatabaseApi {
       },
     );
     return DatabasePage<TeamMember>.fromJson(payload, TeamMember.fromJson);
+  }
+
+  /// One page of `Menecer statistikası` — a row a manager a month — in the
+  /// bridge's order, the largest month first: `total_amount DESC`, walked on
+  /// 2026-10-05, 34 rows and ~12 KB in all.
+  ///
+  /// [search] is one case-insensitive substring of the manager's name, and
+  /// nothing else — not a month, a year or a figure; `year`, `month` and
+  /// every other parameter are silently ignored. `page_size` goes to 500.
+  Future<DatabasePage<ManagerStat>> managerStatsPage({
+    required int page,
+    required int pageSize,
+    String? search,
+  }) async {
+    final Object? payload = await _get(
+      '/onec-data/manager-stats/',
+      query: <String, String>{
+        'page': '$page',
+        'page_size': '$pageSize',
+        if (search != null && search.isNotEmpty) 'search': search,
+      },
+    );
+    return DatabasePage<ManagerStat>.fromJson(payload, ManagerStat.fromJson);
   }
 
   /// The warehouses' names, out of the catalogue: seven of them on

@@ -21,7 +21,11 @@ import 'widgets/database_glass.dart' show databaseScale;
 /// * the values: a 293pt panel with a 30pt corner; a 37.5pt round back
 ///   button and a search field beside it, 5.5pt apart and 14.25pt in from
 ///   either edge; then `Hamısı` and the values, 15pt type on 21pt lines, a
-///   row 33.5pt tall for every line it needs.
+///   row 33.5pt tall for every line it needs;
+/// * a period — two months, a start and an end — on the values' panel: the
+///   two ends where a span's two fields go, then `Hamısı`, the year between
+///   two arrows and the twelve months, three to a row. The design draws no
+///   such page; it is the span's page with a calendar in place of a list.
 @immutable
 class DatabaseFilterMetrics {
   DatabaseFilterMetrics._({
@@ -312,6 +316,38 @@ class DatabaseFilterMetrics {
     );
     return _placed(valuesWidth, height);
   }
+
+  /// From `Hamısı` to the year, and from the year to the months.
+  static const double kPeriodGap = 8;
+
+  /// Between two months, across and down.
+  static const double kMonthGap = 4;
+
+  /// The calendar's months: three to a row — wide enough for `Sentyabr` at
+  /// the panel's size — and four rows.
+  static const int kMonthColumns = 3;
+  static const int kMonthRows = 12 ~/ kMonthColumns;
+
+  double get periodGap => kPeriodGap * scale;
+  double get monthGap => kMonthGap * scale;
+
+  /// A month's cell: a one-line value's row.
+  double get monthHeight => valueRowMin;
+
+  /// What a period column holds under `Hamısı`: the year between its two
+  /// arrows, and the twelve months.
+  double get periodContentHeight =>
+      periodGap +
+      controlSize +
+      periodGap +
+      kMonthRows * monthHeight +
+      (kMonthRows - 1) * monthGap;
+
+  /// The panel of a column narrowed by a period: the start's field beside
+  /// the back button and the end's under it — where a span's minimum and
+  /// maximum go — then `Hamısı`, the year and the months. Nothing in it
+  /// scrolls unless the system font is turned up on a short phone.
+  Rect get periodPanel => rangePanel(periodContentHeight);
 
   Rect _placed(double width, double height) {
     final double left = origin.dx.clamp(

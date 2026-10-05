@@ -92,3 +92,27 @@ abstract interface class DatabaseFilterValues implements Listenable {
   /// Keeps [value] at the top the next time the list is rebuilt.
   void remember(String value);
 }
+
+/// A filter one of whose columns is narrowed by a run of months — a start
+/// and an end, each a month and a year — rather than by one of its values.
+///
+/// The panel opens such a column onto the two ends and a calendar of months
+/// to set them from, instead of a list.
+abstract interface class DatabasePeriodFilterSource
+    implements DatabaseFilterSource {
+  /// Whether [column] is narrowed by a period.
+  bool takesPeriod(covariant DatabaseFilterColumn column);
+
+  /// The period [column] is narrowed to — [FilterPeriod.any] when it is not.
+  FilterPeriod periodOf(covariant DatabaseFilterColumn column);
+
+  /// [column] narrowed to [period]. An empty period lets go of it.
+  Future<void> setPeriod(
+    covariant DatabaseFilterColumn column,
+    FilterPeriod period,
+  );
+
+  /// The months the rows on the phone fall in: the calendar sets them in
+  /// ink and every other month paler, so a period is not chosen blind.
+  Set<FilterMonth> periodMonthsOf(covariant DatabaseFilterColumn column);
+}

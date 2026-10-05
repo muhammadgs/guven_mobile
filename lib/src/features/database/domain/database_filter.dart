@@ -167,3 +167,91 @@ String filterSearchKey(String text) {
   }
   return out.toString();
 }
+
+/// One month of one year — `07.2026` — which is how 1C files its monthly
+/// figures, and what a [FilterPeriod] is made of.
+@immutable
+class FilterMonth implements Comparable<FilterMonth> {
+  const FilterMonth(this.year, this.month) : assert(month >= 1 && month <= 12);
+
+  final int year;
+
+  /// 1 for January, 12 for December.
+  final int month;
+
+  /// The months since year nought: one more for every month later.
+  int get index => year * 12 + month - 1;
+
+  /// The month after this one, or [count] after it.
+  FilterMonth plus(int count) {
+    final int at = index + count;
+    return FilterMonth(at ~/ 12, at % 12 + 1);
+  }
+
+  bool operator <(FilterMonth other) => index < other.index;
+  bool operator >(FilterMonth other) => index > other.index;
+
+  @override
+  int compareTo(FilterMonth other) => index.compareTo(other.index);
+
+  @override
+  bool operator ==(Object other) =>
+      other is FilterMonth && other.year == year && other.month == month;
+
+  @override
+  int get hashCode => Object.hash(year, month);
+
+  /// `07.2026`, as 1C writes it.
+  @override
+  String toString() => '${month.toString().padLeft(2, '0')}.$year';
+}
+
+/// A run of months a column is narrowed to — `07.2026` to `09.2026` — either
+/// end of which may be left open, both ends included.
+///
+/// The user's rule for a period (2026-10-05): a start and an end, each a
+/// month and a year, rather than a list of every month there is.
+@immutable
+class FilterPeriod {
+  const FilterPeriod({this.from, this.to});
+
+  /// Both ends open: the column is not narrowed.
+  static const FilterPeriod any = FilterPeriod();
+
+  final FilterMonth? from;
+  final FilterMonth? to;
+
+  bool get isEmpty => from == null && to == null;
+  bool get isNotEmpty => !isEmpty;
+
+  /// The period with its ends the right way round: September to July
+  /// means July to September.
+  FilterPeriod get ordered {
+    final FilterMonth? start = from;
+    final FilterMonth? end = to;
+    if (start != null && end != null && start > end) {
+      return FilterPeriod(from: end, to: start);
+    }
+    return this;
+  }
+
+  /// Whether [month] lies in the period, ends included.
+  bool contains(FilterMonth month) {
+    final FilterPeriod span = ordered;
+    final FilterMonth? start = span.from;
+    final FilterMonth? end = span.to;
+    if (start != null && month < start) return false;
+    if (end != null && month > end) return false;
+    return true;
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      other is FilterPeriod && other.from == from && other.to == to;
+
+  @override
+  int get hashCode => Object.hash(from, to);
+
+  @override
+  String toString() => 'FilterPeriod($from, $to)';
+}

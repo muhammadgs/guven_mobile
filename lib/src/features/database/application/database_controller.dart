@@ -6,6 +6,7 @@ import '../data/database_api.dart';
 import '../domain/database_overview.dart';
 import '../domain/database_section.dart';
 import 'customers_controller.dart';
+import 'manager_stats_controller.dart';
 import 'orders_controller.dart';
 import 'products_controller.dart';
 import 'sales_controller.dart';
@@ -76,6 +77,12 @@ class DatabaseController extends ChangeNotifier {
   /// `Komanda`, made and kept the same way.
   TeamController get team => _team ??= TeamController(_api);
 
+  ManagerStatsController? _managerStats;
+
+  /// `Menecer statistikası`, made and kept the same way.
+  ManagerStatsController get managerStats =>
+      _managerStats ??= ManagerStatsController(_api);
+
   void select(DatabaseSection next) {
     if (next == _section) return;
     _section = next;
@@ -118,6 +125,7 @@ class DatabaseController extends ChangeNotifier {
     _products?.dispose();
     _customers?.dispose();
     _team?.dispose();
+    _managerStats?.dispose();
     super.dispose();
   }
 }
