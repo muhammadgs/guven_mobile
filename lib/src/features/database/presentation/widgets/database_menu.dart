@@ -215,7 +215,7 @@ class _DatabaseMenuPanelState extends State<DatabaseMenuPanel>
       type: MaterialType.transparency,
       child: Stack(
         children: <Widget>[
-          _Scrim(flight: morph?.progress),
+          DatabaseScrim(flight: morph?.progress),
           _MainPanel(
             metrics: metrics,
             current: widget.current,
@@ -237,7 +237,8 @@ class _DatabaseMenuPanelState extends State<DatabaseMenuPanel>
   }
 }
 
-/// The page behind the menu, pushed out of focus.
+/// The page behind the menu, pushed out of focus — and behind the
+/// `Satışlar` filter, which the design pushes back the same way.
 ///
 /// Rides the route's own flight, so it comes and goes with the glass. Painted
 /// under the lenses, so they sample an already-softened page, and through an
@@ -245,8 +246,8 @@ class _DatabaseMenuPanelState extends State<DatabaseMenuPanel>
 /// The blur and the tint are animated on the filter and the colour
 /// themselves: an `Opacity` over a `BackdropFilter` would hand it an empty
 /// layer to sample.
-class _Scrim extends StatelessWidget {
-  const _Scrim({required this.flight});
+class DatabaseScrim extends StatelessWidget {
+  const DatabaseScrim({super.key, required this.flight});
 
   final Animation<double>? flight;
 

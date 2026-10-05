@@ -28,6 +28,31 @@ String formatMoney(double value) {
   return '${negative ? '-' : ''}$amount $kManat';
 }
 
+/// A figure to [digits] decimal places, grouped the same way but with no
+/// currency after it: `1234.5` → `1,234.50`. `Satışlar` writes its currency
+/// as a code after the figure (`58.20 AZN`), and its table writes none at all.
+String formatDecimal(double value, {int digits = 2}) {
+  final String fixed = value.abs().toStringAsFixed(digits);
+  final int point = fixed.indexOf('.');
+  final String whole = point < 0 ? fixed : fixed.substring(0, point);
+  final String amount =
+      '${_group(whole)}${point < 0 ? '' : fixed.substring(point)}';
+  final bool negative = value < 0 && double.parse(fixed) != 0;
+  return '${negative ? '-' : ''}$amount';
+}
+
+/// A quantity, as the website writes one: whole numbers bare, anything else
+/// to at most three places with the trailing zeros dropped — `1` and
+/// `1.094`, never `1.000`, since 1C weighs meat to the gram.
+String formatQuantity(double value) {
+  if (value == value.roundToDouble()) return formatCount(value.round());
+  String text = formatDecimal(value, digits: 3);
+  while (text.endsWith('0')) {
+    text = text.substring(0, text.length - 1);
+  }
+  return text.endsWith('.') ? text.substring(0, text.length - 1) : text;
+}
+
 String _group(String digits) {
   final StringBuffer out = StringBuffer();
   for (int i = 0; i < digits.length; i++) {

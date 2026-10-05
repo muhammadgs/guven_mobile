@@ -13,6 +13,9 @@ import 'package:guven_mobile/src/features/database/data/database_api.dart';
 import 'package:guven_mobile/src/features/database/domain/database_metric.dart';
 import 'package:guven_mobile/src/features/database/domain/database_section.dart';
 import 'package:guven_mobile/src/features/database/presentation/database_screen.dart';
+import 'package:guven_mobile/src/features/database/presentation/widgets/customer_card.dart';
+import 'package:guven_mobile/src/features/database/presentation/widgets/order_card.dart';
+import 'package:guven_mobile/src/features/database/presentation/widgets/sale_card.dart';
 import 'package:guven_mobile/src/features/tasks/presentation/widgets/task_tools.dart';
 
 /// The tab as the user meets it: the ten figures written the design's way,
@@ -68,15 +71,15 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Detallar'), findsOneWidget);
 
-    await tester.tap(find.text('Əməliyyatlar'));
+    await tester.tap(find.text('Maliyyə'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Satışlar'));
+    await tester.tap(find.text('Kreditorlar'));
     await tester.pumpAndSettle();
 
-    expect(controller.section, DatabaseSection.sales);
+    expect(controller.section, DatabaseSection.creditors);
     // The menu has gone home, and the page says where the tab is now.
     expect(find.text('Detallar'), findsNothing);
-    expect(find.text('Satışlar'), findsOneWidget);
+    expect(find.text('Kreditorlar'), findsOneWidget);
     expect(find.text('Bu bölmə hazırlanır.'), findsOneWidget);
 
     // And back again, without going back to the network.
@@ -87,6 +90,110 @@ void main() {
 
     expect(controller.section, DatabaseSection.overview);
     expect(find.text('7,224'), findsOneWidget);
+  });
+
+  testWidgets('Satışlar, chosen from the menu, is a list of cards', (
+    WidgetTester tester,
+  ) async {
+    final List<Uri> asked = <Uri>[];
+    final DatabaseController controller = await _pump(tester, (
+      http.Request request,
+    ) {
+      asked.add(request.url);
+      return _answer(request);
+    });
+
+    await tester.tap(find.byType(GlassToolButton));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Əməliyyatlar'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Satışlar'));
+    await tester.pumpAndSettle();
+
+    expect(controller.section, DatabaseSection.sales);
+    expect(find.byType(SaleCard), findsOneWidget);
+    expect(find.text('NT000007303'), findsOneWidget);
+    expect(find.text('Bu bölmə hazırlanır.'), findsNothing);
+
+    final Uri page = asked.lastWhere(
+      (Uri uri) => uri.path.endsWith('/onec-data/sales/'),
+    );
+    expect(page.queryParameters, <String, String>{
+      'page': '1',
+      'page_size': '20',
+    });
+  });
+
+  testWidgets('Sifarişlər, chosen from the menu, is a list of cards', (
+    WidgetTester tester,
+  ) async {
+    final List<Uri> asked = <Uri>[];
+    final DatabaseController controller = await _pump(tester, (
+      http.Request request,
+    ) {
+      asked.add(request.url);
+      return _answer(request);
+    });
+
+    await tester.tap(find.byType(GlassToolButton));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Əməliyyatlar'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Sifarişlər'));
+    await tester.pumpAndSettle();
+
+    expect(controller.section, DatabaseSection.orders);
+    expect(find.byType(OrderCard), findsOneWidget);
+    expect(find.text('NT000007303'), findsOneWidget);
+    expect(find.text('Bu bölmə hazırlanır.'), findsNothing);
+    // The page has a funnel, as `Satışlar` and `Stok` do.
+    expect(find.bySemanticsLabel(RegExp('^Filtr')), findsOneWidget);
+
+    final Uri page = asked.lastWhere(
+      (Uri uri) =>
+          uri.path.endsWith('/orders/') &&
+          uri.queryParameters['page_size'] != '1',
+    );
+    expect(page.queryParameters, <String, String>{
+      'page': '1',
+      'page_size': '20',
+    });
+  });
+
+  testWidgets('Müştərilər, chosen from the menu, is a list of cards', (
+    WidgetTester tester,
+  ) async {
+    final List<Uri> asked = <Uri>[];
+    final DatabaseController controller = await _pump(tester, (
+      http.Request request,
+    ) {
+      asked.add(request.url);
+      return _answer(request);
+    });
+
+    await tester.tap(find.byType(GlassToolButton));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Məlumat'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Müştərilər'));
+    await tester.pumpAndSettle();
+
+    expect(controller.section, DatabaseSection.customers);
+    expect(find.byType(CustomerCard), findsOneWidget);
+    expect(find.text('(İŞÇİ) - FİDAN S.'), findsOneWidget);
+    expect(find.text('Bu bölmə hazırlanır.'), findsNothing);
+    // The page has a funnel, as the other lists do.
+    expect(find.bySemanticsLabel(RegExp('^Filtr')), findsOneWidget);
+
+    final Uri page = asked.lastWhere(
+      (Uri uri) =>
+          uri.path.endsWith('/customers/') &&
+          uri.queryParameters['page_size'] != '1',
+    );
+    expect(page.queryParameters, <String, String>{
+      'page': '1',
+      'page_size': '20',
+    });
   });
 }
 
@@ -126,6 +233,75 @@ Future<DatabaseController> _pump(
 
 Future<http.Response> _answer(http.Request request) async {
   final String path = request.url.path;
+  // A page of `Müştərilər` — not `Əsas panel`'s one-row count of it.
+  if (path.endsWith('/customers/') &&
+      request.url.queryParameters['page_size'] != '1') {
+    return http.Response(
+      jsonEncode(<String, Object?>{
+        'data': <Object?>[
+          <String, Object?>{
+            'id': 1,
+            'code': 'NT0000275',
+            'name': '(İŞÇİ) -  FİDAN S.',
+            'inn': '',
+            'customer_type': 'legal',
+            'payment_deadline_days': 30,
+          },
+        ],
+        'total': 1,
+      }),
+      200,
+      headers: <String, String>{
+        'content-type': 'application/json; charset=utf-8',
+      },
+    );
+  }
+  // A page of `Sifarişlər` — not `Əsas panel`'s one-row count of it.
+  if (path.endsWith('/orders/') &&
+      request.url.queryParameters['page_size'] != '1') {
+    return http.Response(
+      jsonEncode(<String, Object?>{
+        'data': <Object?>[
+          <String, Object?>{
+            'id': 43798,
+            'order_number': 'NT000007303',
+            'order_date': '2026-09-18T00:00:00',
+            'total_amount': 6720.0,
+            'status': 'delivered',
+            'payment_status': 'paid',
+          },
+        ],
+        'total': 1,
+      }),
+      200,
+      headers: <String, String>{
+        'content-type': 'application/json; charset=utf-8',
+      },
+    );
+  }
+  if (path.endsWith('/onec-data/sales/')) {
+    return http.Response(
+      jsonEncode(<String, Object?>{
+        'data': <Object?>[
+          <String, Object?>{
+            'id': 7303,
+            'order_number': 'NT000007303',
+            'order_date': '2026-09-18T00:00:00',
+            'customer': 'FAVORİT PREMİUM MARKETLƏR ŞƏBƏKƏSİ (URP)',
+            'doc_type': 'invoice',
+            'total_amount': '58.20',
+            'is_posted': true,
+            'is_sold': true,
+          },
+        ],
+        'total': 1,
+      }),
+      200,
+      headers: <String, String>{
+        'content-type': 'application/json; charset=utf-8',
+      },
+    );
+  }
   final Object body = path.endsWith('/onec-data/summary/')
       ? <String, Object?>{
           'counts': <String, Object?>{

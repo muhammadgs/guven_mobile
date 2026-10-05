@@ -5,6 +5,12 @@ import '../../auth/application/session_controller.dart';
 import '../data/database_api.dart';
 import '../domain/database_overview.dart';
 import '../domain/database_section.dart';
+import 'customers_controller.dart';
+import 'orders_controller.dart';
+import 'products_controller.dart';
+import 'sales_controller.dart';
+import 'stock_controller.dart';
+import 'team_controller.dart';
 
 /// Drives the `Baza` tab: which page of it is on screen, and `Əsas panel`'s
 /// figures.
@@ -38,6 +44,37 @@ class DatabaseController extends ChangeNotifier {
   String? get error => _error;
 
   bool _disposed = false;
+
+  SalesController? _sales;
+
+  /// `Satışlar`. Made the first time the page is opened, and kept with
+  /// everything it has loaded while the tab lives, like the figures above.
+  SalesController get sales => _sales ??= SalesController(_api);
+
+  StockController? _stock;
+
+  /// `Stok`, made and kept the same way.
+  StockController get stock => _stock ??= StockController(_api);
+
+  OrdersController? _orders;
+
+  /// `Sifarişlər`, made and kept the same way.
+  OrdersController get orders => _orders ??= OrdersController(_api);
+
+  ProductsController? _products;
+
+  /// `Məhsullar`, made and kept the same way.
+  ProductsController get products => _products ??= ProductsController(_api);
+
+  CustomersController? _customers;
+
+  /// `Müştərilər`, made and kept the same way.
+  CustomersController get customers => _customers ??= CustomersController(_api);
+
+  TeamController? _team;
+
+  /// `Komanda`, made and kept the same way.
+  TeamController get team => _team ??= TeamController(_api);
 
   void select(DatabaseSection next) {
     if (next == _section) return;
@@ -75,6 +112,12 @@ class DatabaseController extends ChangeNotifier {
   @override
   void dispose() {
     _disposed = true;
+    _sales?.dispose();
+    _stock?.dispose();
+    _orders?.dispose();
+    _products?.dispose();
+    _customers?.dispose();
+    _team?.dispose();
     super.dispose();
   }
 }
