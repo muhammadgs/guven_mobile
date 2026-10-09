@@ -8,6 +8,8 @@ import '../application/database_filter_source.dart';
 import '../domain/database_metric.dart';
 import '../domain/database_section.dart';
 import 'database_format.dart';
+import 'widgets/bank_accounts_list.dart';
+import 'widgets/cash_desks_list.dart';
 import 'widgets/customers_list.dart';
 import 'widgets/database_filter_panel.dart';
 import 'widgets/database_glass.dart';
@@ -24,8 +26,9 @@ import 'widgets/team_list.dart';
 ///
 /// `Baza` over the name of the page on screen, the menu button under them,
 /// and the page below. `Əsas panel`, `Satışlar`, `Stok`, `Sifarişlər`,
-/// `Məhsullar`, `Müştərilər`, `Komanda` and `Menecer Statistikası` are
-/// built; the rest are in the menu and say so when chosen.
+/// `Məhsullar`, `Müştərilər`, `Komanda`, `Menecer Statistikası`, `Bank
+/// Hesabları` and `Kassalar` are built; the rest are in the menu and say so
+/// when chosen.
 ///
 /// Nothing scrolls except the page: the titles and the button are the fixed
 /// frame, as they are on the task list.
@@ -121,6 +124,8 @@ class _DatabaseScreenState extends State<DatabaseScreen> {
     DatabaseSection.customers => database.customers,
     DatabaseSection.team => database.team,
     DatabaseSection.managerStats => database.managerStats,
+    DatabaseSection.bankAccounts => database.bankAccounts,
+    DatabaseSection.cashDesks => database.cashDesks,
     _ => null,
   };
 
@@ -268,6 +273,18 @@ class _DatabaseScreenState extends State<DatabaseScreen> {
                     controller: database.managerStats,
                     bottomReserve: widget.bottomReserve,
                     // And `Menecer statistikası`' — 363pt on its frame too.
+                    sideInset: 19.5 * s,
+                  ),
+                  DatabaseSection.bankAccounts => BankAccountsList(
+                    controller: database.bankAccounts,
+                    bottomReserve: widget.bottomReserve,
+                    // And `Bank Hesabları`', `Kassalar`' card at its width.
+                    sideInset: 19.5 * s,
+                  ),
+                  DatabaseSection.cashDesks => CashDesksList(
+                    controller: database.cashDesks,
+                    bottomReserve: widget.bottomReserve,
+                    // And `Kassalar`', `Komanda`'s card at `Komanda`'s width.
                     sideInset: 19.5 * s,
                   ),
                   _ => Padding(

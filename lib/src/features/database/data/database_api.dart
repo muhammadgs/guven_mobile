@@ -2,6 +2,8 @@ import '../../../core/json.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_config.dart';
 import '../../../core/network/api_exception.dart';
+import '../domain/bank_account.dart';
+import '../domain/cash_desk.dart';
 import '../domain/customer.dart';
 import '../domain/database_overview.dart';
 import '../domain/database_page.dart';
@@ -254,6 +256,64 @@ class DatabaseApi {
       },
     );
     return DatabasePage<ManagerStat>.fromJson(payload, ManagerStat.fromJson);
+  }
+
+  /// One page of `Kassalar`, the cash desks in 1C's catalogue, in the
+  /// bridge's order — the newest first, `id DESC` — read on 2026-10-05:
+  /// three desks, 746 bytes in all.
+  ///
+  /// [search] is one case-insensitive substring over the desk's code and
+  /// name; nothing else is honoured — not the currency, not the status —
+  /// and whatever else is sent is silently ignored. `page_size` goes to
+  /// 500. There is no answer for one desk on its own.
+  Future<DatabasePage<CashDesk>> cashDesksPage({
+    required int page,
+    required int pageSize,
+    String? search,
+  }) async {
+    final Object? payload = await _get(
+      '/cash-desks/',
+      query: <String, String>{
+        'page': '$page',
+        'page_size': '$pageSize',
+        if (search != null && search.isNotEmpty) 'search': search,
+      },
+    );
+    return DatabasePage<CashDesk>.fromJson(payload, CashDesk.fromJson);
+  }
+
+  /// One page of `Bank Hesabları`, the bank accounts in 1C's catalogue, in
+  /// the bridge's order — by name, read on 2026-10-08: ten accounts, ~3 KB
+  /// in all.
+  ///
+  /// [search] is one case-insensitive substring over the account's code,
+  /// name and number; nothing else is honoured — not the bank, not the
+  /// currency, not the kind or the status — and whatever else is sent is
+  /// silently ignored. `page_size` goes to 500.
+  Future<DatabasePage<BankAccount>> bankAccountsPage({
+    required int page,
+    required int pageSize,
+    String? search,
+  }) async {
+    final Object? payload = await _get(
+      '/bank-accounts/',
+      query: <String, String>{
+        'page': '$page',
+        'page_size': '$pageSize',
+        if (search != null && search.isNotEmpty) 'search': search,
+      },
+    );
+    return DatabasePage<BankAccount>.fromJson(payload, BankAccount.fromJson);
+  }
+
+  /// One account in full: its row, plus what only this answer carries — how
+  /// many payments, what came in and went out, and the balance (~0.16 s).
+  Future<BankAccount> bankAccount(int id) async {
+    final Object? payload = await _get('/bank-accounts/$id');
+    final Map<String, Object?> body = asMap(payload);
+    // Bare, the way the website reads it; a `data` envelope is accepted too.
+    final Object? data = body['data'];
+    return BankAccount.fromJson(data is Map ? asMap(data) : body, knownId: id)!;
   }
 
   /// The warehouses' names, out of the catalogue: seven of them on

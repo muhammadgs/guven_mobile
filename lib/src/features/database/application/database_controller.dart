@@ -5,6 +5,8 @@ import '../../auth/application/session_controller.dart';
 import '../data/database_api.dart';
 import '../domain/database_overview.dart';
 import '../domain/database_section.dart';
+import 'bank_accounts_controller.dart';
+import 'cash_desks_controller.dart';
 import 'customers_controller.dart';
 import 'manager_stats_controller.dart';
 import 'orders_controller.dart';
@@ -83,6 +85,18 @@ class DatabaseController extends ChangeNotifier {
   ManagerStatsController get managerStats =>
       _managerStats ??= ManagerStatsController(_api);
 
+  BankAccountsController? _bankAccounts;
+
+  /// `Bank Hesabları`, made and kept the same way.
+  BankAccountsController get bankAccounts =>
+      _bankAccounts ??= BankAccountsController(_api);
+
+  CashDesksController? _cashDesks;
+
+  /// `Kassalar`, made and kept the same way.
+  CashDesksController get cashDesks =>
+      _cashDesks ??= CashDesksController(_api);
+
   void select(DatabaseSection next) {
     if (next == _section) return;
     _section = next;
@@ -126,6 +140,8 @@ class DatabaseController extends ChangeNotifier {
     _customers?.dispose();
     _team?.dispose();
     _managerStats?.dispose();
+    _bankAccounts?.dispose();
+    _cashDesks?.dispose();
     super.dispose();
   }
 }
