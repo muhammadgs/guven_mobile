@@ -13,6 +13,7 @@ import '../domain/product.dart';
 import '../domain/sale.dart';
 import '../domain/stock_item.dart';
 import '../domain/team_member.dart';
+import '../domain/warehouse.dart';
 
 /// The calls behind the `Baza` tab, all of them to the 1C bridge.
 ///
@@ -314,6 +315,30 @@ class DatabaseApi {
     // Bare, the way the website reads it; a `data` envelope is accepted too.
     final Object? data = body['data'];
     return BankAccount.fromJson(data is Map ? asMap(data) : body, knownId: id)!;
+  }
+
+  /// One page of `Anbarlar`, the warehouses in 1C's catalogue, in the
+  /// bridge's order — by name, byte by byte, so `istehsalat` comes last —
+  /// read on 2026-10-09: seven warehouses, 1.7 KB in all.
+  ///
+  /// [search] is one case-insensitive substring of the name; nothing else
+  /// is honoured — not the kind, not the status — and whatever else is sent
+  /// is silently ignored. `page_size` goes to 500. There is no answer for
+  /// one warehouse on its own.
+  Future<DatabasePage<Warehouse>> warehousesPage({
+    required int page,
+    required int pageSize,
+    String? search,
+  }) async {
+    final Object? payload = await _get(
+      '/warehouses/',
+      query: <String, String>{
+        'page': '$page',
+        'page_size': '$pageSize',
+        if (search != null && search.isNotEmpty) 'search': search,
+      },
+    );
+    return DatabasePage<Warehouse>.fromJson(payload, Warehouse.fromJson);
   }
 
   /// The warehouses' names, out of the catalogue: seven of them on

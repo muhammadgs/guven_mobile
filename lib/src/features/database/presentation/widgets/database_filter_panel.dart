@@ -412,11 +412,6 @@ class _DatabaseFilterPanelState extends State<DatabaseFilterPanel>
   @override
   Widget build(BuildContext context) {
     final GlassMorph? morph = GlassMorph.maybeOf(context);
-    final DatabaseFilterMetrics metrics = DatabaseFilterMetrics.of(
-      context,
-      origin: widget.origin,
-      columnCount: widget.source.filterColumns.length,
-    );
 
     // This route is a *sibling* of the shell, so the one `Material` the
     // signed-in app owns is not above it; `transparency` supplies the text
@@ -433,8 +428,18 @@ class _DatabaseFilterPanelState extends State<DatabaseFilterPanel>
           DatabaseScrim(flight: morph?.progress),
           ListenableBuilder(
             listenable: Listenable.merge(<Listenable>[widget.source, _values]),
-            builder: (BuildContext context, _) =>
-                _panel(context, metrics, morph),
+            builder: (BuildContext context, _) => _panel(
+              context,
+              // Measured here, not once for the route: a page whose columns
+              // come with its rows — `Anbarlar`' `Kod`, listed only once a
+              // warehouse has a code — keeps its glass the size of its list.
+              DatabaseFilterMetrics.of(
+                context,
+                origin: widget.origin,
+                columnCount: widget.source.filterColumns.length,
+              ),
+              morph,
+            ),
           ),
         ],
       ),

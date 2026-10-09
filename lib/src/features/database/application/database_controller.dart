@@ -14,6 +14,7 @@ import 'products_controller.dart';
 import 'sales_controller.dart';
 import 'stock_controller.dart';
 import 'team_controller.dart';
+import 'warehouses_controller.dart';
 
 /// Drives the `Baza` tab: which page of it is on screen, and `Əsas panel`'s
 /// figures.
@@ -97,6 +98,12 @@ class DatabaseController extends ChangeNotifier {
   CashDesksController get cashDesks =>
       _cashDesks ??= CashDesksController(_api);
 
+  WarehousesController? _warehouses;
+
+  /// `Anbarlar`, made and kept the same way.
+  WarehousesController get warehouses =>
+      _warehouses ??= WarehousesController(_api);
+
   void select(DatabaseSection next) {
     if (next == _section) return;
     _section = next;
@@ -142,6 +149,7 @@ class DatabaseController extends ChangeNotifier {
     _managerStats?.dispose();
     _bankAccounts?.dispose();
     _cashDesks?.dispose();
+    _warehouses?.dispose();
     super.dispose();
   }
 }

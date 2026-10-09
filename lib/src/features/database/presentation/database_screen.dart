@@ -21,14 +21,15 @@ import 'widgets/products_list.dart';
 import 'widgets/sales_list.dart';
 import 'widgets/stock_list.dart';
 import 'widgets/team_list.dart';
+import 'widgets/warehouses_list.dart';
 
 /// Baza — the company's 1C data, one page at a time.
 ///
 /// `Baza` over the name of the page on screen, the menu button under them,
 /// and the page below. `Əsas panel`, `Satışlar`, `Stok`, `Sifarişlər`,
 /// `Məhsullar`, `Müştərilər`, `Komanda`, `Menecer Statistikası`, `Bank
-/// Hesabları` and `Kassalar` are built; the rest are in the menu and say so
-/// when chosen.
+/// Hesabları`, `Kassalar` and `Anbarlar` are built; the rest are in the menu
+/// and say so when chosen.
 ///
 /// Nothing scrolls except the page: the titles and the button are the fixed
 /// frame, as they are on the task list.
@@ -126,6 +127,7 @@ class _DatabaseScreenState extends State<DatabaseScreen> {
     DatabaseSection.managerStats => database.managerStats,
     DatabaseSection.bankAccounts => database.bankAccounts,
     DatabaseSection.cashDesks => database.cashDesks,
+    DatabaseSection.warehouses => database.warehouses,
     _ => null,
   };
 
@@ -285,6 +287,12 @@ class _DatabaseScreenState extends State<DatabaseScreen> {
                     controller: database.cashDesks,
                     bottomReserve: widget.bottomReserve,
                     // And `Kassalar`', `Komanda`'s card at `Komanda`'s width.
+                    sideInset: 19.5 * s,
+                  ),
+                  DatabaseSection.warehouses => WarehousesList(
+                    controller: database.warehouses,
+                    bottomReserve: widget.bottomReserve,
+                    // And `Anbarlar`', `Kassalar`' card.
                     sideInset: 19.5 * s,
                   ),
                   _ => Padding(
