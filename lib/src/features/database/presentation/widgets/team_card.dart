@@ -121,7 +121,7 @@ class TeamCard extends StatelessWidget {
             ),
             SizedBox(height: kCodeGap * s),
             // Every line it needs, and never one word on the last.
-            _Name(
+            DatabaseCardName(
               text: _given(member.name) ?? kUnknownValue,
               style: nameStyle(s),
             ),
@@ -141,78 +141,6 @@ class TeamCard extends StatelessWidget {
     if (text == null) return null;
     final String tidy = tidySpaces(text);
     return tidy.isEmpty ? null : tidy;
-  }
-}
-
-/// A name that needs more than one line, with no word left alone on its
-/// last.
-///
-/// Most names on the register are a surname, a name and a patronymic with
-/// `oğlu` or `qızı`, and filled line by line they leave that last word on a
-/// line of its own: `Məhərrəmova Pərvanə Ələstun / qızı`. The design breaks
-/// it `Məhərrəmova Pərvanə / Ələstun qızı`. So when the last line would be
-/// one word, the line before gives it its own last word — set a hair
-/// narrower than that line — as long as that costs no extra line and leaves
-/// a word behind.
-class _Name extends StatelessWidget {
-  const _Name({required this.text, required this.style});
-
-  final String text;
-  final TextStyle style;
-
-  @override
-  Widget build(BuildContext context) {
-    final TextScaler scaler = MediaQuery.textScalerOf(context);
-    final TextDirection direction = Directionality.of(context);
-    return LayoutBuilder(
-      builder: (BuildContext context, BoxConstraints constraints) {
-        final double room = constraints.maxWidth;
-        final double width = room.isFinite
-            ? _width(room, scaler, direction)
-            : room;
-        return Align(
-          alignment: Alignment.centerLeft,
-          child: SizedBox(
-            width: width,
-            child: Text(text, style: style),
-          ),
-        );
-      },
-    );
-  }
-
-  /// [room], or the narrower width that brings a lone last word company.
-  double _width(double room, TextScaler scaler, TextDirection direction) {
-    final TextPainter painter = TextPainter(
-      text: TextSpan(text: text, style: style),
-      textDirection: direction,
-      textScaler: scaler,
-    )..layout(maxWidth: room);
-    try {
-      final List<LineMetrics> lines = painter.computeLineMetrics();
-      if (lines.length < 2) return room;
-
-      String line(int index) {
-        final TextRange range = painter.getLineBoundary(
-          painter.getPositionForOffset(
-            Offset(0, lines[index].baseline - lines[index].ascent / 2),
-          ),
-        );
-        return text.substring(range.start, range.end).trim();
-      }
-
-      // The last line already has company, or the one before has only the
-      // word it would give away.
-      if (line(lines.length - 1).contains(' ')) return room;
-      if (!line(lines.length - 2).contains(' ')) return room;
-
-      final double narrower = lines[lines.length - 2].width - 0.5;
-      painter.layout(maxWidth: narrower);
-      if (painter.computeLineMetrics().length != lines.length) return room;
-      return narrower;
-    } finally {
-      painter.dispose();
-    }
   }
 }
 
@@ -246,10 +174,11 @@ class _Pair extends StatelessWidget {
         child: Text.rich(
           TextSpan(
             text: '$label ',
+            style: databaseCardLabelStyle(14 * scale),
             children: <InlineSpan>[
               TextSpan(
                 text: value,
-                style: color == null ? null : body.copyWith(color: color),
+                style: color == null ? body : body.copyWith(color: color),
               ),
             ],
           ),

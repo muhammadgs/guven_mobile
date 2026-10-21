@@ -88,6 +88,7 @@ class ManagerStatCard extends StatelessWidget {
               value: stat.periodLabel ?? kUnknownValue,
               valueStyle: TextStyle(
                 fontFamily: kDatabaseFigureFont,
+                fontWeight: FontWeight.w400,
                 fontSize: kPeriod * s,
                 height: 1.2,
                 letterSpacing: 0,
@@ -138,11 +139,13 @@ class _Pair extends StatelessWidget {
   final String value;
   final double scale;
 
-  /// The value's own face — the month's figures — or null for the label's.
+  /// The value's own face — the month's figures — or null for the rows'
+  /// regular Poppins. Either way the label's weight is not passed on.
   final TextStyle? valueStyle;
 
   @override
   Widget build(BuildContext context) {
+    final TextStyle body = databaseCardStyle(14 * scale);
     return Align(
       alignment: Alignment.centerLeft,
       // An amount too long for the card is set smaller, never cut.
@@ -152,11 +155,14 @@ class _Pair extends StatelessWidget {
         child: Text.rich(
           TextSpan(
             text: '$label ',
-            children: <InlineSpan>[TextSpan(text: value, style: valueStyle)],
+            style: databaseCardLabelStyle(14 * scale),
+            children: <InlineSpan>[
+              TextSpan(text: value, style: valueStyle ?? body),
+            ],
           ),
           maxLines: 1,
           softWrap: false,
-          style: databaseCardStyle(14 * scale),
+          style: body,
         ),
       ),
     );

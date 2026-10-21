@@ -7,12 +7,14 @@ import '../domain/cash_desk.dart';
 import '../domain/customer.dart';
 import '../domain/database_overview.dart';
 import '../domain/database_page.dart';
+import '../domain/debt.dart';
 import '../domain/manager_stat.dart';
 import '../domain/order.dart';
 import '../domain/product.dart';
 import '../domain/sale.dart';
 import '../domain/stock_item.dart';
 import '../domain/team_member.dart';
+import '../domain/unit_of_measure.dart';
 import '../domain/warehouse.dart';
 
 /// The calls behind the `Baza` tab, all of them to the 1C bridge.
@@ -339,6 +341,58 @@ class DatabaseApi {
       },
     );
     return DatabasePage<Warehouse>.fromJson(payload, Warehouse.fromJson);
+  }
+
+  /// One page of `Ölçü Vahidləri`, the units of measure in 1C's catalogue,
+  /// in the bridge's order — by name, byte by byte, so `kq` comes after
+  /// `Xidmət` and `əd` last — read on 2026-10-10: 32 units, 6.8 KB in all.
+  ///
+  /// [search] is one case-insensitive substring over the unit's code and
+  /// name; nothing else is honoured — not the international code — and
+  /// whatever else is sent is silently ignored. `page_size` goes to 500.
+  /// There is no answer for one unit on its own.
+  Future<DatabasePage<UnitOfMeasure>> unitsOfMeasurePage({
+    required int page,
+    required int pageSize,
+    String? search,
+  }) async {
+    final Object? payload = await _get(
+      '/units-of-measure/',
+      query: <String, String>{
+        'page': '$page',
+        'page_size': '$pageSize',
+        if (search != null && search.isNotEmpty) 'search': search,
+      },
+    );
+    return DatabasePage<UnitOfMeasure>.fromJson(
+      payload,
+      UnitOfMeasure.fromJson,
+    );
+  }
+
+  /// One page of `Kreditorlar` or `Debitorlar` — [kind] says which — in the
+  /// bridge's order: the largest debt first, `total_debt DESC`. Read on
+  /// 2026-10-20: 88 creditors (~30 KB in all) and 120 debtors (~40 KB).
+  ///
+  /// [search] is one case-insensitive substring over the counterparty and
+  /// the contract; nothing else is honoured — not the organisation, not an
+  /// amount, not `is_paid` — and whatever else is sent is silently ignored.
+  /// `page_size` goes to 500. There is no answer for one row on its own.
+  Future<DatabasePage<Debt>> debtsPage(
+    DebtKind kind, {
+    required int page,
+    required int pageSize,
+    String? search,
+  }) async {
+    final Object? payload = await _get(
+      '/onec-data/${kind.endpoint}/',
+      query: <String, String>{
+        'page': '$page',
+        'page_size': '$pageSize',
+        if (search != null && search.isNotEmpty) 'search': search,
+      },
+    );
+    return DatabasePage<Debt>.fromJson(payload, Debt.fromJson);
   }
 
   /// The warehouses' names, out of the catalogue: seven of them on

@@ -225,7 +225,7 @@ class _Body extends StatelessWidget {
           label: 'Kod/ Vöen:',
           gap: CustomerCard.kCodeLabelGap * s,
           value: customer.taxIdOrCode ?? kUnknownValue,
-          labelStyle: body,
+          labelStyle: databaseCardLabelStyle(14 * s),
           valueStyle: figure,
           t: t,
           fade: fade,
@@ -238,7 +238,7 @@ class _Body extends StatelessWidget {
           label: 'Növ:\u00A0',
           gap: 0,
           value: customer.typeLabel ?? kUnknownValue,
-          labelStyle: body,
+          labelStyle: databaseCardLabelStyle(14 * s),
           valueStyle: body,
           t: t,
           fade: fade,
@@ -402,10 +402,11 @@ class _Pair extends StatelessWidget {
         child: Text.rich(
           TextSpan(
             text: '$label ',
+            style: databaseCardLabelStyle(14 * scale),
             children: <InlineSpan>[
               TextSpan(
                 text: value,
-                style: pending ? body.copyWith(color: kGlassInkMuted) : null,
+                style: pending ? body.copyWith(color: kGlassInkMuted) : body,
               ),
             ],
           ),

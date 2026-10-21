@@ -73,9 +73,19 @@ class StockCard extends StatelessWidget {
               child: FittedBox(
                 fit: BoxFit.scaleDown,
                 alignment: Alignment.centerLeft,
-                child: Text(
-                  'Miqdar: '
-                  '${quantity == null ? kUnknownValue : formatQuantity(quantity)}',
+                child: Text.rich(
+                  TextSpan(
+                    text: 'Miqdar: ',
+                    style: databaseCardLabelStyle(14 * s),
+                    children: <InlineSpan>[
+                      TextSpan(
+                        text: quantity == null
+                            ? kUnknownValue
+                            : formatQuantity(quantity),
+                        style: body,
+                      ),
+                    ],
+                  ),
                   maxLines: 1,
                   softWrap: false,
                   style: body,

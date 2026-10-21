@@ -15,21 +15,24 @@ import 'widgets/database_filter_panel.dart';
 import 'widgets/database_glass.dart';
 import 'widgets/database_menu.dart';
 import 'widgets/database_overview_row.dart';
+import 'widgets/debts_list.dart';
 import 'widgets/manager_stats_list.dart';
 import 'widgets/orders_list.dart';
 import 'widgets/products_list.dart';
 import 'widgets/sales_list.dart';
 import 'widgets/stock_list.dart';
 import 'widgets/team_list.dart';
+import 'widgets/units_of_measure_list.dart';
 import 'widgets/warehouses_list.dart';
 
 /// Baza — the company's 1C data, one page at a time.
 ///
 /// `Baza` over the name of the page on screen, the menu button under them,
 /// and the page below. `Əsas panel`, `Satışlar`, `Stok`, `Sifarişlər`,
-/// `Məhsullar`, `Müştərilər`, `Komanda`, `Menecer Statistikası`, `Bank
-/// Hesabları`, `Kassalar` and `Anbarlar` are built; the rest are in the menu
-/// and say so when chosen.
+/// `Məhsullar`, `Müştərilər`, `Komanda`, `Kreditorlar`, `Debitorlar`,
+/// `Menecer Statistikası`, `Bank Hesabları`, `Kassalar`, `Anbarlar` and
+/// `Ölçü Vahidləri` are built; the rest are in the menu and say so when
+/// chosen.
 ///
 /// Nothing scrolls except the page: the titles and the button are the fixed
 /// frame, as they are on the task list.
@@ -124,10 +127,13 @@ class _DatabaseScreenState extends State<DatabaseScreen> {
     DatabaseSection.products => database.products,
     DatabaseSection.customers => database.customers,
     DatabaseSection.team => database.team,
+    DatabaseSection.creditors => database.creditors,
+    DatabaseSection.debitors => database.debitors,
     DatabaseSection.managerStats => database.managerStats,
     DatabaseSection.bankAccounts => database.bankAccounts,
     DatabaseSection.cashDesks => database.cashDesks,
     DatabaseSection.warehouses => database.warehouses,
+    DatabaseSection.unitsOfMeasure => database.unitsOfMeasure,
     _ => null,
   };
 
@@ -271,6 +277,26 @@ class _DatabaseScreenState extends State<DatabaseScreen> {
                     // And `Komanda`'s.
                     sideInset: 19.5 * s,
                   ),
+                  DatabaseSection.creditors => DebtsList(
+                    // Two pages of one widget: the key keeps one list's
+                    // scroll from carrying over into the other's.
+                    key: const ValueKey<DatabaseSection>(
+                      DatabaseSection.creditors,
+                    ),
+                    controller: database.creditors,
+                    bottomReserve: widget.bottomReserve,
+                    // And `Kreditorlar`' — 363pt on its frame too.
+                    sideInset: 19.5 * s,
+                  ),
+                  DatabaseSection.debitors => DebtsList(
+                    key: const ValueKey<DatabaseSection>(
+                      DatabaseSection.debitors,
+                    ),
+                    controller: database.debitors,
+                    bottomReserve: widget.bottomReserve,
+                    // And `Debitorlar`', the same card.
+                    sideInset: 19.5 * s,
+                  ),
                   DatabaseSection.managerStats => ManagerStatsList(
                     controller: database.managerStats,
                     bottomReserve: widget.bottomReserve,
@@ -293,6 +319,12 @@ class _DatabaseScreenState extends State<DatabaseScreen> {
                     controller: database.warehouses,
                     bottomReserve: widget.bottomReserve,
                     // And `Anbarlar`', `Kassalar`' card.
+                    sideInset: 19.5 * s,
+                  ),
+                  DatabaseSection.unitsOfMeasure => UnitsOfMeasureList(
+                    controller: database.unitsOfMeasure,
+                    bottomReserve: widget.bottomReserve,
+                    // And `Ölçü Vahidləri`' one card, 363pt on its frame too.
                     sideInset: 19.5 * s,
                   ),
                   _ => Padding(

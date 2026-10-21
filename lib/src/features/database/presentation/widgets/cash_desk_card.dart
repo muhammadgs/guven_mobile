@@ -157,10 +157,11 @@ class _Pair extends StatelessWidget {
         child: Text.rich(
           TextSpan(
             text: '$label ',
+            style: databaseCardLabelStyle(14 * scale),
             children: <InlineSpan>[
               TextSpan(
                 text: value,
-                style: color == null ? null : body.copyWith(color: color),
+                style: color == null ? body : body.copyWith(color: color),
               ),
             ],
           ),

@@ -73,13 +73,13 @@ void main() {
 
     await tester.tap(find.text('Maliyyə'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Kreditorlar'));
+    await tester.tap(find.text('Menecer Borcları'));
     await tester.pumpAndSettle();
 
-    expect(controller.section, DatabaseSection.creditors);
+    expect(controller.section, DatabaseSection.managerDebts);
     // The menu has gone home, and the page says where the tab is now.
     expect(find.text('Detallar'), findsNothing);
-    expect(find.text('Kreditorlar'), findsOneWidget);
+    expect(find.text('Menecer Borcları'), findsOneWidget);
     expect(find.text('Bu bölmə hazırlanır.'), findsOneWidget);
 
     // And back again, without going back to the network.

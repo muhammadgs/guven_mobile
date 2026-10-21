@@ -180,10 +180,16 @@ void main() {
         tester.getRect(inCard('NT0000101')).left - label.right,
         moreOrLessEquals(16.8, epsilon: 0.01),
       );
+      // The label's own space is all there is between them: 33.4pt from the
+      // edge in the design's regular weight, a little more in the SemiBold
+      // every label has had since 2026-10-20.
+      final Rect kind = tester.getRect(inCard('Növ:\u00A0'));
+      expect(kind.left - card.left, moreOrLessEquals(23, epsilon: 0.01));
       expect(
-        tester.getRect(inCard('Hüquqi')).left - card.left,
-        moreOrLessEquals(23 + 33.4, epsilon: 0.1),
+        tester.getRect(inCard('Hüquqi')).left - kind.right,
+        moreOrLessEquals(0, epsilon: 0.1),
       );
+      expect(kind.width, greaterThan(33.4));
       expect(bridge.details, <int>[2]);
 
       // Shut again, and opened again: asked again, in case 1C has changed.

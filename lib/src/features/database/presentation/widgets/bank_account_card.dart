@@ -187,6 +187,7 @@ class _Body extends StatelessWidget {
     final double fade = databaseCardFade(t);
     final bool opening = t > 0;
     final TextStyle body = databaseCardStyle(14 * s);
+    final TextStyle label = databaseCardLabelStyle(14 * s);
     final BankAccount account = this.account;
     final String? error = this.error;
     final bool? active = account.active;
@@ -239,7 +240,7 @@ class _Body extends StatelessWidget {
           top: BankAccountCard.kNameLabelTop * s,
           shut: BankAccountCard.kNameBlockShut * s,
           open: BankAccountCard.kNameBlockOpen * s,
-          style: body,
+          style: label,
           t: t,
           fade: fade,
         ),
@@ -255,6 +256,7 @@ class _Body extends StatelessWidget {
           label: 'Bank: ',
           value: _given(account.bankName) ?? kUnknownValue,
           style: body,
+          labelStyle: label,
           t: t,
           fade: fade,
         ),
@@ -263,7 +265,7 @@ class _Body extends StatelessWidget {
           top: BankAccountCard.kNumberLabelTop * s,
           shut: BankAccountCard.kNumberBlockShut * s,
           open: BankAccountCard.kNumberBlockOpen * s,
-          style: body,
+          style: label,
           t: t,
           fade: fade,
         ),
@@ -273,6 +275,7 @@ class _Body extends StatelessWidget {
           label: 'Valyuta: ',
           value: account.currency,
           style: body,
+          labelStyle: label,
           t: t,
           fade: fade,
         ),
@@ -423,6 +426,7 @@ class _LabelledLine extends StatelessWidget {
     required this.label,
     required this.value,
     required this.style,
+    required this.labelStyle,
     required this.t,
     required this.fade,
   });
@@ -430,6 +434,7 @@ class _LabelledLine extends StatelessWidget {
   final String label;
   final String value;
   final TextStyle style;
+  final TextStyle labelStyle;
   final double t;
   final double fade;
 
@@ -447,7 +452,12 @@ class _LabelledLine extends StatelessWidget {
             widthFactor: t,
             child: Opacity(
               opacity: fade,
-              child: Text(label, maxLines: 1, softWrap: false, style: style),
+              child: Text(
+                label,
+                maxLines: 1,
+                softWrap: false,
+                style: labelStyle,
+              ),
             ),
           ),
         ),
@@ -514,10 +524,11 @@ class _Pair extends StatelessWidget {
         child: Text.rich(
           TextSpan(
             text: '$label ',
+            style: databaseCardLabelStyle(style.fontSize!),
             children: <InlineSpan>[
               TextSpan(
                 text: value,
-                style: color == null ? null : style.copyWith(color: color),
+                style: color == null ? style : style.copyWith(color: color),
               ),
             ],
           ),

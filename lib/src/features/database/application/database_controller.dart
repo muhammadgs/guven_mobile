@@ -5,15 +5,18 @@ import '../../auth/application/session_controller.dart';
 import '../data/database_api.dart';
 import '../domain/database_overview.dart';
 import '../domain/database_section.dart';
+import '../domain/debt.dart';
 import 'bank_accounts_controller.dart';
 import 'cash_desks_controller.dart';
 import 'customers_controller.dart';
+import 'debts_controller.dart';
 import 'manager_stats_controller.dart';
 import 'orders_controller.dart';
 import 'products_controller.dart';
 import 'sales_controller.dart';
 import 'stock_controller.dart';
 import 'team_controller.dart';
+import 'units_of_measure_controller.dart';
 import 'warehouses_controller.dart';
 
 /// Drives the `Baza` tab: which page of it is on screen, and `Əsas panel`'s
@@ -80,6 +83,18 @@ class DatabaseController extends ChangeNotifier {
   /// `Komanda`, made and kept the same way.
   TeamController get team => _team ??= TeamController(_api);
 
+  DebtsController? _creditors;
+
+  /// `Kreditorlar`, made and kept the same way.
+  DebtsController get creditors =>
+      _creditors ??= DebtsController(_api, DebtKind.creditors);
+
+  DebtsController? _debitors;
+
+  /// `Debitorlar`, made and kept the same way.
+  DebtsController get debitors =>
+      _debitors ??= DebtsController(_api, DebtKind.debitors);
+
   ManagerStatsController? _managerStats;
 
   /// `Menecer statistikası`, made and kept the same way.
@@ -95,14 +110,19 @@ class DatabaseController extends ChangeNotifier {
   CashDesksController? _cashDesks;
 
   /// `Kassalar`, made and kept the same way.
-  CashDesksController get cashDesks =>
-      _cashDesks ??= CashDesksController(_api);
+  CashDesksController get cashDesks => _cashDesks ??= CashDesksController(_api);
 
   WarehousesController? _warehouses;
 
   /// `Anbarlar`, made and kept the same way.
   WarehousesController get warehouses =>
       _warehouses ??= WarehousesController(_api);
+
+  UnitsOfMeasureController? _unitsOfMeasure;
+
+  /// `Ölçü Vahidləri`, made and kept the same way.
+  UnitsOfMeasureController get unitsOfMeasure =>
+      _unitsOfMeasure ??= UnitsOfMeasureController(_api);
 
   void select(DatabaseSection next) {
     if (next == _section) return;
@@ -146,10 +166,13 @@ class DatabaseController extends ChangeNotifier {
     _products?.dispose();
     _customers?.dispose();
     _team?.dispose();
+    _creditors?.dispose();
+    _debitors?.dispose();
     _managerStats?.dispose();
     _bankAccounts?.dispose();
     _cashDesks?.dispose();
     _warehouses?.dispose();
+    _unitsOfMeasure?.dispose();
     super.dispose();
   }
 }

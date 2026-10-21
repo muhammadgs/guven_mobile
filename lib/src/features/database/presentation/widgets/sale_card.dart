@@ -147,8 +147,12 @@ class _Body extends StatelessWidget {
     final TextStyle body = databaseCardStyle(14 * s);
     final TextStyle name = databaseCardNameStyle(s);
 
-    Widget heading(String text) =>
-        Text(text, maxLines: 1, softWrap: false, style: body);
+    Widget heading(String text) => Text(
+      text,
+      maxLines: 1,
+      softWrap: false,
+      style: databaseCardLabelStyle(14 * s),
+    );
 
     // A row that came without its organisation has it fetched when the card
     // opens; until then the line is held open, empty, rather than saying `—`

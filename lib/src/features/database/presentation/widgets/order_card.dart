@@ -221,7 +221,10 @@ class _Body extends StatelessWidget {
             t: t,
             fade: fade,
             children: <Widget>[
-              _Line(text: 'Cəmi məbləğ:', style: databaseCardStyle(14 * s)),
+              _Line(
+                text: 'Cəmi məbləğ:',
+                style: databaseCardLabelStyle(14 * s),
+              ),
               SizedBox(height: OrderCard.kLabelAmountGap * s),
             ],
           ),
@@ -339,7 +342,7 @@ class _Figure extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
-        _Line(text: heading, style: databaseCardStyle(14 * s)),
+        _Line(text: heading, style: databaseCardLabelStyle(14 * s)),
         SizedBox(height: OrderCard.kFigureHeadingGap * s),
         _Line(text: value, style: databaseCardStyle(OrderCard.kFigureSize * s)),
       ],

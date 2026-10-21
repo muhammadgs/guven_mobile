@@ -186,7 +186,8 @@ class _Body extends StatelessWidget {
     final TextStyle body = databaseCardStyle(14 * s);
     final String? article = _article(product);
 
-    Widget heading(String text) => _Line(text: text, style: body);
+    Widget heading(String text) =>
+        _Line(text: text, style: databaseCardLabelStyle(14 * s));
     Widget gap(double shut, double open) =>
         SizedBox(height: lerpDouble(shut, open, t)! * s);
 
@@ -360,6 +361,7 @@ class _Pair extends StatelessWidget {
         child: Text.rich(
           TextSpan(
             text: '$label  ',
+            style: databaseCardLabelStyle(14 * scale),
             children: <InlineSpan>[
               TextSpan(
                 text: value,
