@@ -40,4 +40,21 @@ void main() {
       expect(formatMoney(-0.001), '0.00 ₼');
     });
   });
+
+  group('shares', () {
+    test('are written to two places at most, the trailing zeros dropped', () {
+      expect(formatPercentHundredths(9672), '96.72%');
+      expect(formatPercentHundredths(9899), '98.99%');
+      expect(formatPercentHundredths(9670), '96.7%');
+      expect(formatPercentHundredths(8800), '88%');
+      expect(formatPercentHundredths(10000), '100%');
+      expect(formatPercentHundredths(5), '0.05%');
+      expect(formatPercentHundredths(0), '0%');
+    });
+
+    test('keep their sign, and group a large one', () {
+      expect(formatPercentHundredths(-1234), '-12.34%');
+      expect(formatPercentHundredths(123456), '1,234.56%');
+    });
+  });
 }

@@ -8,6 +8,7 @@ import '../domain/customer.dart';
 import '../domain/database_overview.dart';
 import '../domain/database_page.dart';
 import '../domain/debt.dart';
+import '../domain/manager_debt.dart';
 import '../domain/manager_stat.dart';
 import '../domain/order.dart';
 import '../domain/product.dart';
@@ -393,6 +394,29 @@ class DatabaseApi {
       },
     );
     return DatabasePage<Debt>.fromJson(payload, Debt.fromJson);
+  }
+
+  /// One page of `Menecer Borcları` — a row a manager — in the bridge's
+  /// order: the largest debt first, `total_debet DESC`, the managers owed
+  /// nothing last. Read on 2026-10-21: 13 rows, 4.6 KB in all.
+  ///
+  /// [search] is one case-insensitive substring of the manager's name, and
+  /// nothing else. `page_size` goes to 500. There is no answer for one row
+  /// on its own.
+  Future<DatabasePage<ManagerDebt>> managerDebtsPage({
+    required int page,
+    required int pageSize,
+    String? search,
+  }) async {
+    final Object? payload = await _get(
+      '/onec-data/manager-debt-stats/',
+      query: <String, String>{
+        'page': '$page',
+        'page_size': '$pageSize',
+        if (search != null && search.isNotEmpty) 'search': search,
+      },
+    );
+    return DatabasePage<ManagerDebt>.fromJson(payload, ManagerDebt.fromJson);
   }
 
   /// The warehouses' names, out of the catalogue: seven of them on

@@ -53,6 +53,20 @@ String formatQuantity(double value) {
   return text.endsWith('.') ? text.substring(0, text.length - 1) : text;
 }
 
+/// A share given in hundredths of a percent, to at most two places with the
+/// trailing zeros dropped: `9672` → `96.72%`, `9670` → `96.7%`, `10000` →
+/// `100%`. Nothing is rounded here — the figure is already what is shown.
+String formatPercentHundredths(int hundredths) {
+  final int whole = hundredths.abs() ~/ 100;
+  String fraction = (hundredths.abs() % 100).toString().padLeft(2, '0');
+  while (fraction.endsWith('0')) {
+    fraction = fraction.substring(0, fraction.length - 1);
+  }
+  final String sign = hundredths < 0 ? '-' : '';
+  final String digits = _group(whole.toString());
+  return fraction.isEmpty ? '$sign$digits%' : '$sign$digits.$fraction%';
+}
+
 String _group(String digits) {
   final StringBuffer out = StringBuffer();
   for (int i = 0; i < digits.length; i++) {

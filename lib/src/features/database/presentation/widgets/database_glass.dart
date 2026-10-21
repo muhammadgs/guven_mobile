@@ -83,6 +83,13 @@ const Color kSaleDone = Color(0xFF00B506);
 /// `Postlanmayıb`, `Satılmayıb` — it has not.
 const Color kSalePending = Color(0xFFD80206);
 
+/// Between [kSaleDone] and [kSalePending]: `Menecer Borcları`' share of the
+/// sales collected from 40% up to 70% — the website's amber grade. Its own
+/// amber (`F59E0B`) is about 1.8:1 against a card's yellow and all but
+/// vanishes; this is the same amber a step darker, which reads as well as
+/// the green does.
+const Color kShareMiddling = Color(0xFFD97706);
+
 /// An order on its way — `Yeni`, `İcradadır`, `Qismən`: the website's own
 /// blue for them (`--accent`), between [kSaleDone]'s arrived and
 /// [kSalePending]'s stopped. `Sifarişlər`' design draws only the green.

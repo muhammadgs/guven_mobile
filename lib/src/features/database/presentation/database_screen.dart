@@ -16,6 +16,7 @@ import 'widgets/database_glass.dart';
 import 'widgets/database_menu.dart';
 import 'widgets/database_overview_row.dart';
 import 'widgets/debts_list.dart';
+import 'widgets/manager_debts_list.dart';
 import 'widgets/manager_stats_list.dart';
 import 'widgets/orders_list.dart';
 import 'widgets/products_list.dart';
@@ -30,9 +31,9 @@ import 'widgets/warehouses_list.dart';
 /// `Baza` over the name of the page on screen, the menu button under them,
 /// and the page below. `Əsas panel`, `Satışlar`, `Stok`, `Sifarişlər`,
 /// `Məhsullar`, `Müştərilər`, `Komanda`, `Kreditorlar`, `Debitorlar`,
-/// `Menecer Statistikası`, `Bank Hesabları`, `Kassalar`, `Anbarlar` and
-/// `Ölçü Vahidləri` are built; the rest are in the menu and say so when
-/// chosen.
+/// `Menecer Borcları`, `Menecer Statistikası`, `Bank Hesabları`,
+/// `Kassalar`, `Anbarlar` and `Ölçü Vahidləri` are built; the rest are in
+/// the menu and say so when chosen.
 ///
 /// Nothing scrolls except the page: the titles and the button are the fixed
 /// frame, as they are on the task list.
@@ -129,6 +130,7 @@ class _DatabaseScreenState extends State<DatabaseScreen> {
     DatabaseSection.team => database.team,
     DatabaseSection.creditors => database.creditors,
     DatabaseSection.debitors => database.debitors,
+    DatabaseSection.managerDebts => database.managerDebts,
     DatabaseSection.managerStats => database.managerStats,
     DatabaseSection.bankAccounts => database.bankAccounts,
     DatabaseSection.cashDesks => database.cashDesks,
@@ -295,6 +297,12 @@ class _DatabaseScreenState extends State<DatabaseScreen> {
                     controller: database.debitors,
                     bottomReserve: widget.bottomReserve,
                     // And `Debitorlar`', the same card.
+                    sideInset: 19.5 * s,
+                  ),
+                  DatabaseSection.managerDebts => ManagerDebtsList(
+                    controller: database.managerDebts,
+                    bottomReserve: widget.bottomReserve,
+                    // And `Menecer borcları`' — 363pt on its frame too.
                     sideInset: 19.5 * s,
                   ),
                   DatabaseSection.managerStats => ManagerStatsList(
