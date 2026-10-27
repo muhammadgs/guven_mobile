@@ -67,14 +67,22 @@ class FilterRange {
   /// A hair either side is let in: a `15.6` typed has to hold the
   /// `15.600000000000001` a sum in 1C can leave.
   bool contains(double value) {
-    const double hair = 1e-9;
     final FilterRange span = ordered;
     final double? low = span.min;
     final double? high = span.max;
-    if (low != null && value < low - hair) return false;
-    if (high != null && value > high + hair) return false;
+    if (low != null && value < low - _hair) return false;
+    if (high != null && value > high + _hair) return false;
     return true;
   }
+
+  /// Whether [value] lies under the span's lower end — so, in a list that
+  /// runs from the largest figure down, everything after it does too.
+  bool isBelow(double value) {
+    final double? low = ordered.min;
+    return low != null && value < low - _hair;
+  }
+
+  static const double _hair = 1e-9;
 
   @override
   bool operator ==(Object other) =>

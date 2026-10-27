@@ -8,6 +8,7 @@ import '../domain/customer.dart';
 import '../domain/database_overview.dart';
 import '../domain/database_page.dart';
 import '../domain/debt.dart';
+import '../domain/debt_allocation.dart';
 import '../domain/manager_debt.dart';
 import '../domain/manager_stat.dart';
 import '../domain/order.dart';
@@ -417,6 +418,30 @@ class DatabaseApi {
       },
     );
     return DatabasePage<ManagerDebt>.fromJson(payload, ManagerDebt.fromJson);
+  }
+
+  /// One page of `Borc Bölgüsü`: what each sale has brought in, filed to the
+  /// manager who signed it — the largest amount first, ties the newest row
+  /// first (read live 2026-10-22, 5,989 rows). [search] is one substring of
+  /// the manager or the sale's guid; nothing else narrows it. The page
+  /// goes up to 500 rows.
+  Future<DatabasePage<DebtAllocation>> debtAllocationsPage({
+    required int page,
+    required int pageSize,
+    String? search,
+  }) async {
+    final Object? payload = await _get(
+      '/onec-data/manager-debt-allocations/',
+      query: <String, String>{
+        'page': '$page',
+        'page_size': '$pageSize',
+        if (search != null && search.isNotEmpty) 'search': search,
+      },
+    );
+    return DatabasePage<DebtAllocation>.fromJson(
+      payload,
+      DebtAllocation.fromJson,
+    );
   }
 
   /// The warehouses' names, out of the catalogue: seven of them on

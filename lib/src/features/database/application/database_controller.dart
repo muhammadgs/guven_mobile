@@ -9,6 +9,7 @@ import '../domain/debt.dart';
 import 'bank_accounts_controller.dart';
 import 'cash_desks_controller.dart';
 import 'customers_controller.dart';
+import 'debt_allocations_controller.dart';
 import 'debts_controller.dart';
 import 'manager_debts_controller.dart';
 import 'manager_stats_controller.dart';
@@ -102,6 +103,12 @@ class DatabaseController extends ChangeNotifier {
   ManagerDebtsController get managerDebts =>
       _managerDebts ??= ManagerDebtsController(_api);
 
+  DebtAllocationsController? _debtAllocations;
+
+  /// `Borc Bölgüsü`, made and kept the same way.
+  DebtAllocationsController get debtAllocations =>
+      _debtAllocations ??= DebtAllocationsController(_api);
+
   ManagerStatsController? _managerStats;
 
   /// `Menecer statistikası`, made and kept the same way.
@@ -176,6 +183,7 @@ class DatabaseController extends ChangeNotifier {
     _creditors?.dispose();
     _debitors?.dispose();
     _managerDebts?.dispose();
+    _debtAllocations?.dispose();
     _managerStats?.dispose();
     _bankAccounts?.dispose();
     _cashDesks?.dispose();

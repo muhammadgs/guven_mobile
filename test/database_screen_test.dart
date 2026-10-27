@@ -14,6 +14,7 @@ import 'package:guven_mobile/src/features/database/domain/database_metric.dart';
 import 'package:guven_mobile/src/features/database/domain/database_section.dart';
 import 'package:guven_mobile/src/features/database/presentation/database_screen.dart';
 import 'package:guven_mobile/src/features/database/presentation/widgets/customer_card.dart';
+import 'package:guven_mobile/src/features/database/presentation/widgets/debt_allocation_card.dart';
 import 'package:guven_mobile/src/features/database/presentation/widgets/order_card.dart';
 import 'package:guven_mobile/src/features/database/presentation/widgets/sale_card.dart';
 import 'package:guven_mobile/src/features/tasks/presentation/widgets/task_tools.dart';
@@ -80,10 +81,14 @@ void main() {
     // The menu has gone home, and the page says where the tab is now.
     expect(find.text('Detallar'), findsNothing);
     expect(find.text('Borc Bölgüsü'), findsOneWidget);
-    expect(find.text('Bu bölmə hazırlanır.'), findsOneWidget);
+    // The last page of the menu to be built: every page is a page now.
+    expect(find.byType(DebtAllocationCard), findsOneWidget);
+    expect(find.text('Mühasib-istehsal'), findsOneWidget);
+    expect(find.bySemanticsLabel(RegExp('^Filtr')), findsOneWidget);
 
-    // And back again, without going back to the network.
-    await tester.tap(find.byType(GlassToolButton));
+    // And back again, without going back to the network — through the menu
+    // button, the first of the page's two.
+    await tester.tap(find.byType(GlassToolButton).first);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Əsas panel'));
     await tester.pumpAndSettle();
@@ -113,7 +118,6 @@ void main() {
     expect(controller.section, DatabaseSection.sales);
     expect(find.byType(SaleCard), findsOneWidget);
     expect(find.text('NT000007303'), findsOneWidget);
-    expect(find.text('Bu bölmə hazırlanır.'), findsNothing);
 
     final Uri page = asked.lastWhere(
       (Uri uri) => uri.path.endsWith('/onec-data/sales/'),
@@ -145,7 +149,6 @@ void main() {
     expect(controller.section, DatabaseSection.orders);
     expect(find.byType(OrderCard), findsOneWidget);
     expect(find.text('NT000007303'), findsOneWidget);
-    expect(find.text('Bu bölmə hazırlanır.'), findsNothing);
     // The page has a funnel, as `Satışlar` and `Stok` do.
     expect(find.bySemanticsLabel(RegExp('^Filtr')), findsOneWidget);
 
@@ -181,7 +184,6 @@ void main() {
     expect(controller.section, DatabaseSection.customers);
     expect(find.byType(CustomerCard), findsOneWidget);
     expect(find.text('(İŞÇİ) - FİDAN S.'), findsOneWidget);
-    expect(find.text('Bu bölmə hazırlanır.'), findsNothing);
     // The page has a funnel, as the other lists do.
     expect(find.bySemanticsLabel(RegExp('^Filtr')), findsOneWidget);
 
@@ -233,6 +235,26 @@ Future<DatabaseController> _pump(
 
 Future<http.Response> _answer(http.Request request) async {
   final String path = request.url.path;
+  if (path.endsWith('/onec-data/manager-debt-allocations/')) {
+    return http.Response(
+      jsonEncode(<String, Object?>{
+        'data': <Object?>[
+          <String, Object?>{
+            'id': 532,
+            'sale_id': '491b97c3-c23e-11f1-ac09-bc24113ee005',
+            'sale_date': '2026-10-07',
+            'manager': 'Mühasib-istehsal',
+            'allocated': 36398.15,
+          },
+        ],
+        'total': 1,
+      }),
+      200,
+      headers: <String, String>{
+        'content-type': 'application/json; charset=utf-8',
+      },
+    );
+  }
   // A page of `Müştərilər` — not `Əsas panel`'s one-row count of it.
   if (path.endsWith('/customers/') &&
       request.url.queryParameters['page_size'] != '1') {

@@ -15,6 +15,7 @@ import 'widgets/database_filter_panel.dart';
 import 'widgets/database_glass.dart';
 import 'widgets/database_menu.dart';
 import 'widgets/database_overview_row.dart';
+import 'widgets/debt_allocations_list.dart';
 import 'widgets/debts_list.dart';
 import 'widgets/manager_debts_list.dart';
 import 'widgets/manager_stats_list.dart';
@@ -29,11 +30,8 @@ import 'widgets/warehouses_list.dart';
 /// Baza — the company's 1C data, one page at a time.
 ///
 /// `Baza` over the name of the page on screen, the menu button under them,
-/// and the page below. `Əsas panel`, `Satışlar`, `Stok`, `Sifarişlər`,
-/// `Məhsullar`, `Müştərilər`, `Komanda`, `Kreditorlar`, `Debitorlar`,
-/// `Menecer Borcları`, `Menecer Statistikası`, `Bank Hesabları`,
-/// `Kassalar`, `Anbarlar` and `Ölçü Vahidləri` are built; the rest are in
-/// the menu and say so when chosen.
+/// and the page below: `Əsas panel`, or one of the fifteen pages the menu
+/// files under its five headings, every one of them built.
 ///
 /// Nothing scrolls except the page: the titles and the button are the fixed
 /// frame, as they are on the task list.
@@ -131,6 +129,7 @@ class _DatabaseScreenState extends State<DatabaseScreen> {
     DatabaseSection.creditors => database.creditors,
     DatabaseSection.debitors => database.debitors,
     DatabaseSection.managerDebts => database.managerDebts,
+    DatabaseSection.debtAllocation => database.debtAllocations,
     DatabaseSection.managerStats => database.managerStats,
     DatabaseSection.bankAccounts => database.bankAccounts,
     DatabaseSection.cashDesks => database.cashDesks,
@@ -335,9 +334,11 @@ class _DatabaseScreenState extends State<DatabaseScreen> {
                     // And `Ölçü Vahidləri`' one card, 363pt on its frame too.
                     sideInset: 19.5 * s,
                   ),
-                  _ => Padding(
-                    padding: EdgeInsets.symmetric(horizontal: margin),
-                    child: _NotBuiltYet(bottomReserve: widget.bottomReserve),
+                  DatabaseSection.debtAllocation => DebtAllocationsList(
+                    controller: database.debtAllocations,
+                    bottomReserve: widget.bottomReserve,
+                    // And `Borc Bölgüsü`', the other `Maliyyə` cards' width.
+                    sideInset: 19.5 * s,
                   ),
                 },
               ),
@@ -549,32 +550,6 @@ class _Failure extends StatelessWidget {
           ),
           TextButton(onPressed: onRetry, child: const Text('Yenidən cəhd et')),
         ],
-      ),
-    );
-  }
-}
-
-/// Every page but `Əsas panel`, until its own design lands.
-class _NotBuiltYet extends StatelessWidget {
-  const _NotBuiltYet({required this.bottomReserve});
-
-  final double bottomReserve;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: bottomReserve),
-      child: Center(
-        child: Text(
-          'Bu bölmə hazırlanır.',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: kGlassInkMuted,
-            fontFamily: 'Poppins',
-            fontSize: scaled(context, 14),
-            height: 1.3,
-          ),
-        ),
       ),
     );
   }
