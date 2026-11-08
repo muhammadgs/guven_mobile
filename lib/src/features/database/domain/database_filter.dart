@@ -139,11 +139,10 @@ int filterDayOf(DateTime date) =>
     Duration.millisecondsPerDay;
 
 /// The day [filterDayOf] counted.
-DateTime filterDayDate(int day) =>
-    DateTime.fromMillisecondsSinceEpoch(
-      day * Duration.millisecondsPerDay,
-      isUtc: true,
-    );
+DateTime filterDayDate(int day) => DateTime.fromMillisecondsSinceEpoch(
+  day * Duration.millisecondsPerDay,
+  isUtc: true,
+);
 
 /// [day] as a day field shows it: `01.06.2026`.
 String writeFilterDay(int day) {
@@ -157,10 +156,7 @@ String writeFilterDay(int day) {
 /// [filterDayOf] counts it. Null for nothing, for a year not typed out yet,
 /// and for a day the calendar has not got: `31.02`.
 int? parseFilterDay(String text, {DateTime? today}) {
-  final List<String> parts = text
-      .trim()
-      .split(RegExp(r'[.\-/ ]'))
-      .toList();
+  final List<String> parts = text.trim().split(RegExp(r'[.\-/ ]')).toList();
   if (parts.length == 3 && parts.last.isEmpty) parts.removeLast();
   if (parts.length < 2 || parts.length > 3) return null;
   final int? day = int.tryParse(parts[0]);
@@ -319,4 +315,79 @@ class FilterPeriod {
 
   @override
   String toString() => 'FilterPeriod($from, $to)';
+}
+
+/// What is typed into a page's quick search bar, beside its funnel: a few
+/// letters the page's own headline — `Satışlar`' customer, `Məhsullar`'
+/// product — must hold somewhere (2026-11-08).
+///
+/// Unlike a filter column, which keeps one whole value, this is a piece of
+/// one, compared through [filterSearchKey]: `hollywood` finds
+/// `QASIMOV ƏLİYAR ƏRƏSTUN OĞLU - HOLLYWOOD`, and `sebeke` finds `ŞƏBƏKƏSİ`.
+@immutable
+class QuickSearch {
+  factory QuickSearch(String typed) {
+    final String text = tidySpaces(typed);
+    if (text.isEmpty) return none;
+    return QuickSearch._(text, filterSearchKey(text), _bridgeTextOf(text));
+  }
+
+  const QuickSearch._(this.text, this._key, this.bridgeText);
+
+  /// Nothing typed.
+  static const QuickSearch none = QuickSearch._('', '', null);
+
+  /// What was typed, its spacing tidied.
+  final String text;
+
+  final String _key;
+
+  bool get isEmpty => text.isEmpty;
+  bool get isNotEmpty => !isEmpty;
+
+  /// What is sent to the bridge as `search`, or null for nothing worth
+  /// sending — the whole table is then read and checked on the phone.
+  ///
+  /// The bridge's own `search` is a substring too, over the headline among
+  /// a field or two more, so it narrows the answer to a few rows and
+  /// [matches] keeps the ones whose headline it was. But it does not fold
+  /// `ə` into `e` (measured 2026-11-08: `sebeke` finds nothing on
+  /// `Satışlar`), so a text typed without Azerbaijani letters is not sent
+  /// whole: only its longest run of letters that are written the same
+  /// either way — `hollywood` sends `llyw`, `favorit` sends `fav`.
+  final String? bridgeText;
+
+  /// Whether the bridge is sent less than was typed, or nothing: what it
+  /// answers is mostly rows the phone throws away.
+  bool get scans => isNotEmpty && bridgeText != text;
+
+  /// The letters a keyboard without Azerbaijani ones types in their place:
+  /// `ə`, `ö`, `ü`, `ş`, `ç`, `ğ`, `ı` and `İ`.
+  static const String _standIns = 'eoucsgiEOUCSGI';
+
+  static String? _bridgeTextOf(String text) {
+    // Typed with the letters themselves: sent as typed.
+    if (text.runes.any((int rune) => rune > 0x7F)) return text;
+    String best = '';
+    for (final String run in text.split(RegExp('[$_standIns]'))) {
+      if (run.trim().length > best.trim().length) best = run;
+    }
+    if (best.length == text.length) return text;
+    best = best.trim();
+    // A letter or two finds most of the table: reading it is no slower.
+    return best.length < 2 ? null : best;
+  }
+
+  /// Whether [field] holds what was typed — always, for nothing typed.
+  bool matches(String? field) =>
+      isEmpty || (field != null && filterSearchKey(field).contains(_key));
+
+  @override
+  bool operator ==(Object other) => other is QuickSearch && other.text == text;
+
+  @override
+  int get hashCode => text.hashCode;
+
+  @override
+  String toString() => 'QuickSearch($text)';
 }

@@ -116,3 +116,21 @@ abstract interface class DatabasePeriodFilterSource
   /// ink and every other month paler, so a period is not chosen blind.
   Set<FilterMonth> periodMonthsOf(covariant DatabaseFilterColumn column);
 }
+
+/// A `Baza` list with a quick search bar beside its funnel: a few letters
+/// typed narrow it to the rows whose headline holds them, searched for in
+/// the whole of the 1C table like a filter.
+///
+/// It stands apart from the filter's columns — it is not counted on the
+/// funnel, and `Sıfırla` leaves it alone — but the two narrow together.
+abstract interface class DatabaseQuickSearchSource implements Listenable {
+  /// What the empty bar says: the headline's name, `Müştəri`.
+  String get quickSearchHint;
+
+  /// What is typed, its spacing tidied — empty for nothing.
+  String get quickSearch;
+
+  /// Narrows the list to rows whose headline holds [text]; an empty one
+  /// lets go. Completes once the first answer has settled.
+  Future<void> setQuickSearch(String text);
+}

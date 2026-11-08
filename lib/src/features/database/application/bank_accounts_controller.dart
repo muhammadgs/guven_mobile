@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import '../../../core/network/api_exception.dart';
 import '../data/database_api.dart';
+import '../domain/database_filter.dart';
 import '../domain/bank_account.dart';
 import '../domain/bank_accounts_filter.dart';
 import 'bank_accounts_filter_values.dart';
@@ -55,7 +56,10 @@ abstract interface class BankAccountsRows implements DatabaseRows<BankAccount> {
 /// ([filtered]) with its own open cards and its own place in the scroll, so
 /// letting go of it puts the reader back exactly where they were.
 class BankAccountsController extends DatabaseListController<BankAccount>
-    implements BankAccountsRows, DatabaseFilterSource {
+    implements
+        BankAccountsRows,
+        DatabaseFilterSource,
+        DatabaseQuickSearchSource {
   /// [pageSize] is the seam the tests reach through.
   BankAccountsController(this._api, {int pageSize = kBankAccountsPageSize})
     : super(_api.bankAccountsPage, idOf: _idOf, pageSize: pageSize);
@@ -293,8 +297,31 @@ class BankAccountsController extends DatabaseListController<BankAccount>
   Future<void> setFilter(BankAccountsFilter next) {
     if (next == _filter) return _view?.ready ?? Future<void>.value();
     _filter = next;
+    return _narrow();
+  }
+
+  QuickSearch _quick = QuickSearch.none;
+
+  /// The headline's name, under what is typed.
+  @override
+  String get quickSearchHint => BankAccountsColumn.name.label;
+
+  @override
+  String get quickSearch => _quick.text;
+
+  @override
+  Future<void> setQuickSearch(String text) {
+    final QuickSearch next = QuickSearch(text);
+    if (next == _quick) return _view?.ready ?? Future<void>.value();
+    _quick = next;
+    return _narrow();
+  }
+
+  /// The filter and the quick search, asked together — or let go together,
+  /// putting the reader back where they were, once neither narrows.
+  Future<void> _narrow() {
     _view?._close();
-    if (next.isEmpty) {
+    if (_filter.isEmpty && _quick.isEmpty) {
       _view = null;
       _filteredExpanded.clear();
       notify();
@@ -325,6 +352,7 @@ class BankAccountsController extends DatabaseListController<BankAccount>
       _filter,
       ++_viewSerial,
       fresh: fresh,
+      quick: _quick,
     );
     _view = view;
     view._ready = view._start();
@@ -407,6 +435,7 @@ class BankAccountsFilterView
     this.filter,
     this.serial, {
     required this.fresh,
+    required this.quick,
   }) : _scanSize = _owner.pageSize;
 
   final BankAccountsController _owner;
@@ -418,6 +447,9 @@ class BankAccountsFilterView
 
   /// Set by a pull: nothing read before it is trusted.
   final bool fresh;
+
+  /// What the quick search bar holds: the name must hold it too.
+  final QuickSearch quick;
 
   final List<BankAccount> _matches = <BankAccount>[];
 
@@ -472,6 +504,7 @@ class BankAccountsFilterView
   @override
   bool get scans {
     final BankAccountsColumn? searched = filter.searchColumn;
+    if (quick.scans || (quick.isNotEmpty && searched != null)) return true;
     for (final BankAccountsColumn column in filter.columns) {
       if (column != searched) return true;
     }
@@ -488,7 +521,7 @@ class BankAccountsFilterView
     try {
       final BankAccountsColumn? searched = filter.searchColumn;
       final String? search = searched == null
-          ? null
+          ? quick.bridgeText
           : filter.valueOf(searched)!.trim();
       _feed = _owner._feedFor(
         search == null || search.isEmpty ? null : search,
@@ -521,7 +554,9 @@ class BankAccountsFilterView
     final List<BankAccount> all = feed.rows;
     while (_examined < all.length) {
       final BankAccount account = all[_examined++];
-      if (filter.matches(account)) _matches.add(account);
+      if (filter.matches(account) && quick.matches(account.name)) {
+        _matches.add(account);
+      }
     }
   }
 

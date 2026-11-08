@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import '../../../core/network/api_exception.dart';
 import '../data/database_api.dart';
+import '../domain/database_filter.dart';
 import '../domain/stock_filter.dart';
 import '../domain/stock_item.dart';
 import 'database_feed.dart';
@@ -33,7 +34,7 @@ const int kStockFeedMemory = 8;
 /// ([filtered]) found in the whole of the table rather than in the pages read
 /// so far, so letting go of it puts the reader back exactly where they were.
 class StockController extends DatabaseListController<StockItem>
-    implements DatabaseFilterSource {
+    implements DatabaseFilterSource, DatabaseQuickSearchSource {
   /// [pageSize] is the seam the tests reach through.
   StockController(this._api, {int pageSize = kStockPageSize})
     : super(_api.stockPage, idOf: _idOf, pageSize: pageSize);
@@ -108,8 +109,31 @@ class StockController extends DatabaseListController<StockItem>
   Future<void> setFilter(StockFilter next) {
     if (next == _filter) return _view?.ready ?? Future<void>.value();
     _filter = next;
+    return _narrow();
+  }
+
+  QuickSearch _quick = QuickSearch.none;
+
+  /// The headline's name, under what is typed.
+  @override
+  String get quickSearchHint => StockColumn.product.label;
+
+  @override
+  String get quickSearch => _quick.text;
+
+  @override
+  Future<void> setQuickSearch(String text) {
+    final QuickSearch next = QuickSearch(text);
+    if (next == _quick) return _view?.ready ?? Future<void>.value();
+    _quick = next;
+    return _narrow();
+  }
+
+  /// The filter and the quick search, asked together — or let go together,
+  /// putting the reader back where they were, once neither narrows.
+  Future<void> _narrow() {
     _view?._close();
-    if (next.isEmpty) {
+    if (_filter.isEmpty && _quick.isEmpty) {
       _view = null;
       notify();
       return Future<void>.value();
@@ -139,6 +163,7 @@ class StockController extends DatabaseListController<StockItem>
       _filter,
       ++_viewSerial,
       fresh: fresh,
+      quick: _quick,
     );
     _view = view;
     view._ready = view._start();
@@ -232,6 +257,7 @@ class StockFilterView implements DatabaseFilteredRows<StockItem> {
     this.filter,
     this.serial, {
     required this.fresh,
+    required this.quick,
   }) : _scanSize = _owner.pageSize;
 
   final StockController _owner;
@@ -243,6 +269,9 @@ class StockFilterView implements DatabaseFilteredRows<StockItem> {
 
   /// Set by a pull: nothing read before it is trusted.
   final bool fresh;
+
+  /// What the quick search bar holds: the product must hold it too.
+  final QuickSearch quick;
 
   final List<StockItem> _matches = <StockItem>[];
 
@@ -299,6 +328,7 @@ class StockFilterView implements DatabaseFilteredRows<StockItem> {
   @override
   bool get scans {
     final StockColumn? searched = filter.searchColumn;
+    if (quick.scans || (quick.isNotEmpty && searched != null)) return true;
     for (final StockColumn column in filter.columns) {
       if (column != searched) return true;
     }
@@ -321,7 +351,7 @@ class StockFilterView implements DatabaseFilteredRows<StockItem> {
     try {
       final StockColumn? searched = filter.searchColumn;
       final String? search = searched == null
-          ? null
+          ? quick.bridgeText
           : filter.valueOf(searched)!.trim();
       _feed = _owner._feedFor(search, fresh: fresh);
       _sync();
@@ -362,7 +392,9 @@ class StockFilterView implements DatabaseFilteredRows<StockItem> {
         return;
       }
       _examined++;
-      if (filter.matches(item)) _matches.add(item);
+      if (filter.matches(item) && quick.matches(item.product)) {
+        _matches.add(item);
+      }
     }
   }
 

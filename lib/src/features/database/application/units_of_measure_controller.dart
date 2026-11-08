@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import '../../../core/network/api_exception.dart';
 import '../data/database_api.dart';
+import '../domain/database_filter.dart';
 import '../domain/unit_of_measure.dart';
 import '../domain/units_of_measure_filter.dart';
 import 'units_of_measure_filter_values.dart';
@@ -39,7 +40,7 @@ const int kUnitsOfMeasureFeedMemory = 8;
 /// ([filtered]) with its own place in the scroll, so letting go of it puts
 /// the reader back exactly where they were.
 class UnitsOfMeasureController extends DatabaseListController<UnitOfMeasure>
-    implements DatabaseFilterSource {
+    implements DatabaseFilterSource, DatabaseQuickSearchSource {
   /// [pageSize] is the seam the tests reach through.
   UnitsOfMeasureController(this._api, {int pageSize = kUnitsOfMeasurePageSize})
     : super(_api.unitsOfMeasurePage, idOf: _idOf, pageSize: pageSize);
@@ -173,8 +174,31 @@ class UnitsOfMeasureController extends DatabaseListController<UnitOfMeasure>
   Future<void> setFilter(UnitsOfMeasureFilter next) {
     if (next == _filter) return _view?.ready ?? Future<void>.value();
     _filter = next;
+    return _narrow();
+  }
+
+  QuickSearch _quick = QuickSearch.none;
+
+  /// The headline's name, under what is typed.
+  @override
+  String get quickSearchHint => UnitsOfMeasureColumn.name.label;
+
+  @override
+  String get quickSearch => _quick.text;
+
+  @override
+  Future<void> setQuickSearch(String text) {
+    final QuickSearch next = QuickSearch(text);
+    if (next == _quick) return _view?.ready ?? Future<void>.value();
+    _quick = next;
+    return _narrow();
+  }
+
+  /// The filter and the quick search, asked together — or let go together,
+  /// putting the reader back where they were, once neither narrows.
+  Future<void> _narrow() {
     _view?._close();
-    if (next.isEmpty) {
+    if (_filter.isEmpty && _quick.isEmpty) {
       _view = null;
       notify();
       return Future<void>.value();
@@ -204,6 +228,7 @@ class UnitsOfMeasureController extends DatabaseListController<UnitOfMeasure>
       _filter,
       ++_viewSerial,
       fresh: fresh,
+      quick: _quick,
     );
     _view = view;
     view._ready = view._start();
@@ -285,6 +310,7 @@ class UnitsOfMeasureFilterView implements DatabaseFilteredRows<UnitOfMeasure> {
     this.filter,
     this.serial, {
     required this.fresh,
+    required this.quick,
   }) : _scanSize = _owner.pageSize;
 
   final UnitsOfMeasureController _owner;
@@ -296,6 +322,9 @@ class UnitsOfMeasureFilterView implements DatabaseFilteredRows<UnitOfMeasure> {
 
   /// Set by a pull: nothing read before it is trusted.
   final bool fresh;
+
+  /// What the quick search bar holds: the name must hold it too.
+  final QuickSearch quick;
 
   final List<UnitOfMeasure> _matches = <UnitOfMeasure>[];
 
@@ -350,6 +379,7 @@ class UnitsOfMeasureFilterView implements DatabaseFilteredRows<UnitOfMeasure> {
   @override
   bool get scans {
     final UnitsOfMeasureColumn? searched = filter.searchColumn;
+    if (quick.scans || (quick.isNotEmpty && searched != null)) return true;
     for (final UnitsOfMeasureColumn column in filter.columns) {
       if (column != searched) return true;
     }
@@ -366,7 +396,7 @@ class UnitsOfMeasureFilterView implements DatabaseFilteredRows<UnitOfMeasure> {
     try {
       final UnitsOfMeasureColumn? searched = filter.searchColumn;
       final String? search = searched == null
-          ? null
+          ? quick.bridgeText
           : filter.valueOf(searched)!.trim();
       _feed = _owner._feedFor(
         search == null || search.isEmpty ? null : search,
@@ -399,7 +429,7 @@ class UnitsOfMeasureFilterView implements DatabaseFilteredRows<UnitOfMeasure> {
     final List<UnitOfMeasure> all = feed.rows;
     while (_examined < all.length) {
       final UnitOfMeasure unit = all[_examined++];
-      if (filter.matches(unit)) _matches.add(unit);
+      if (filter.matches(unit) && quick.matches(unit.name)) _matches.add(unit);
     }
   }
 

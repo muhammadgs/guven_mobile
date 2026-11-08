@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import '../../../core/network/api_exception.dart';
 import '../data/database_api.dart';
+import '../domain/database_filter.dart';
 import '../domain/database_page.dart';
 import '../domain/sale.dart';
 import '../domain/sales_filter.dart';
@@ -65,7 +66,7 @@ abstract interface class SalesRows implements DatabaseRows<Sale> {
 /// exactly where they were, and a document found four thousand rows down
 /// goes back there with it.
 class SalesController extends DatabaseListController<Sale>
-    implements SalesRows, DatabaseFilterSource {
+    implements SalesRows, DatabaseFilterSource, DatabaseQuickSearchSource {
   /// [pageSize] is the seam the tests reach through.
   SalesController(this._api, {int pageSize = kSalesPageSize})
     : super(_api.salesPage, idOf: _idOf, pageSize: pageSize);
@@ -236,8 +237,31 @@ class SalesController extends DatabaseListController<Sale>
   Future<void> setFilter(SalesFilter next) {
     if (next == _filter) return _view?.ready ?? Future<void>.value();
     _filter = next;
+    return _narrow();
+  }
+
+  QuickSearch _quick = QuickSearch.none;
+
+  /// The headline's name, under what is typed.
+  @override
+  String get quickSearchHint => SalesColumn.customer.label;
+
+  @override
+  String get quickSearch => _quick.text;
+
+  @override
+  Future<void> setQuickSearch(String text) {
+    final QuickSearch next = QuickSearch(text);
+    if (next == _quick) return _view?.ready ?? Future<void>.value();
+    _quick = next;
+    return _narrow();
+  }
+
+  /// The filter and the quick search, asked together — or let go together,
+  /// putting the reader back where they were, once neither narrows.
+  Future<void> _narrow() {
     _view?._close();
-    if (next.isEmpty) {
+    if (_filter.isEmpty && _quick.isEmpty) {
       _view = null;
       _filteredExpanded.clear();
       notify();
@@ -268,6 +292,7 @@ class SalesController extends DatabaseListController<Sale>
       _filter,
       ++_viewSerial,
       fresh: fresh,
+      quick: _quick,
     );
     _view = view;
     view._ready = view._start();
@@ -527,6 +552,7 @@ class SalesFilterView implements SalesRows, DatabaseFilteredRows<Sale> {
     this.filter,
     this.serial, {
     required this.fresh,
+    required this.quick,
   }) : _scanSize = _owner.pageSize;
 
   final SalesController _owner;
@@ -538,6 +564,9 @@ class SalesFilterView implements SalesRows, DatabaseFilteredRows<Sale> {
 
   /// Set by a pull: nothing read before it is trusted.
   final bool fresh;
+
+  /// What the quick search bar holds: the customer must hold it too.
+  final QuickSearch quick;
 
   final List<Sale> _matches = <Sale>[];
 
@@ -596,6 +625,7 @@ class SalesFilterView implements SalesRows, DatabaseFilteredRows<Sale> {
 
   @override
   bool get scans {
+    if (quick.scans || (quick.isNotEmpty && _searched != null)) return true;
     for (final SalesColumn column in filter.columns) {
       if (column != _searched && column != SalesColumn.date) return true;
     }
@@ -622,7 +652,9 @@ class SalesFilterView implements SalesRows, DatabaseFilteredRows<Sale> {
       final SalesColumn? searched = await _chooseSearch();
       if (_closed) return;
       _searched = searched;
-      final String? search = searched == null ? null : filter.valueOf(searched);
+      final String? search = searched == null
+          ? quick.bridgeText
+          : filter.valueOf(searched);
 
       DatabaseFeed<Sale> feed = _owner._feedFor(search, 0);
       final String? date = filter.valueOf(SalesColumn.date);
@@ -715,7 +747,9 @@ class SalesFilterView implements SalesRows, DatabaseFilteredRows<Sale> {
         return;
       }
       _examined++;
-      if (filter.matches(sale)) _matches.add(sale);
+      if (filter.matches(sale) && quick.matches(sale.customer)) {
+        _matches.add(sale);
+      }
     }
   }
 

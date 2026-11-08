@@ -1611,8 +1611,10 @@ class _FigureField extends StatelessWidget {
                         signed: signed,
                       ),
                 inputFormatters: <TextInputFormatter>[
-                  if (day) const DayFieldFormatter()
-                  else _FigureFormatter(signed: signed),
+                  if (day)
+                    const DayFieldFormatter()
+                  else
+                    _FigureFormatter(signed: signed),
                 ],
                 textInputAction: action,
                 autocorrect: false,
@@ -1999,7 +2001,7 @@ class _SearchField extends StatelessWidget {
           children: <Widget>[
             SizedBox(width: side * 0.24),
             CustomPaint(
-              painter: _MagnifierPainter(side),
+              painter: DatabaseMagnifierPainter(side),
               size: Size.square(side * 0.48),
             ),
             SizedBox(width: side * 0.18),
@@ -2105,9 +2107,10 @@ class _ChevronPainter extends CustomPainter {
       oldDelegate.color != color;
 }
 
-/// The design's magnifier: a ring and a short handle.
-class _MagnifierPainter extends CustomPainter {
-  const _MagnifierPainter(this.side);
+/// The design's magnifier: a ring and a short handle. The quick search bar
+/// beside the funnel wears it too.
+class DatabaseMagnifierPainter extends CustomPainter {
+  const DatabaseMagnifierPainter(this.side);
 
   final double side;
 
@@ -2128,6 +2131,6 @@ class _MagnifierPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _MagnifierPainter oldDelegate) =>
+  bool shouldRepaint(covariant DatabaseMagnifierPainter oldDelegate) =>
       oldDelegate.side != side;
 }

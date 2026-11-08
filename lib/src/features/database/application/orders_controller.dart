@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import '../../../core/network/api_exception.dart';
 import '../data/database_api.dart';
+import '../domain/database_filter.dart';
 import '../domain/order.dart';
 import '../domain/orders_filter.dart';
 import 'database_feed.dart';
@@ -53,7 +54,7 @@ abstract interface class OrdersRows implements DatabaseRows<Order> {
 /// ([filtered]) with its own open cards and its own place in the scroll, so
 /// letting go of it puts the reader back exactly where they were.
 class OrdersController extends DatabaseListController<Order>
-    implements OrdersRows, DatabaseFilterSource {
+    implements OrdersRows, DatabaseFilterSource, DatabaseQuickSearchSource {
   /// [pageSize] is the seam the tests reach through.
   OrdersController(this._api, {int pageSize = kOrdersPageSize})
     : super(_api.ordersPage, idOf: _idOf, pageSize: pageSize);
@@ -272,8 +273,31 @@ class OrdersController extends DatabaseListController<Order>
   Future<void> setFilter(OrdersFilter next) {
     if (next == _filter) return _view?.ready ?? Future<void>.value();
     _filter = next;
+    return _narrow();
+  }
+
+  QuickSearch _quick = QuickSearch.none;
+
+  /// The headline's name, under what is typed.
+  @override
+  String get quickSearchHint => OrdersColumn.number.label;
+
+  @override
+  String get quickSearch => _quick.text;
+
+  @override
+  Future<void> setQuickSearch(String text) {
+    final QuickSearch next = QuickSearch(text);
+    if (next == _quick) return _view?.ready ?? Future<void>.value();
+    _quick = next;
+    return _narrow();
+  }
+
+  /// The filter and the quick search, asked together — or let go together,
+  /// putting the reader back where they were, once neither narrows.
+  Future<void> _narrow() {
     _view?._close();
-    if (next.isEmpty) {
+    if (_filter.isEmpty && _quick.isEmpty) {
       _view = null;
       _filteredExpanded.clear();
       notify();
@@ -304,6 +328,7 @@ class OrdersController extends DatabaseListController<Order>
       _filter,
       ++_viewSerial,
       fresh: fresh,
+      quick: _quick,
     );
     _view = view;
     view._ready = view._start();
@@ -408,6 +433,7 @@ class OrdersFilterView implements OrdersRows, DatabaseFilteredRows<Order> {
     this.filter,
     this.serial, {
     required this.fresh,
+    required this.quick,
   }) : _scanSize = _owner.pageSize;
 
   final OrdersController _owner;
@@ -419,6 +445,9 @@ class OrdersFilterView implements OrdersRows, DatabaseFilteredRows<Order> {
 
   /// Set by a pull: nothing read before it is trusted.
   final bool fresh;
+
+  /// What the quick search bar holds: the number must hold it too.
+  final QuickSearch quick;
 
   final List<Order> _matches = <Order>[];
 
@@ -470,6 +499,9 @@ class OrdersFilterView implements OrdersRows, DatabaseFilteredRows<Order> {
 
   @override
   bool get scans {
+    if (quick.scans || (quick.isNotEmpty && filter.has(OrdersColumn.number))) {
+      return true;
+    }
     for (final OrdersColumn column in filter.columns) {
       if (column != OrdersColumn.number && column != OrdersColumn.status) {
         return true;
@@ -486,7 +518,8 @@ class OrdersFilterView implements OrdersRows, DatabaseFilteredRows<Order> {
 
   Future<void> _start() async {
     try {
-      final String? search = filter.valueOf(OrdersColumn.number)?.trim();
+      final String? search =
+          (filter.valueOf(OrdersColumn.number) ?? quick.bridgeText)?.trim();
       _feed = _owner._feedFor(
         search == null || search.isEmpty ? null : search,
         filter.valueOf(OrdersColumn.status),
@@ -519,7 +552,9 @@ class OrdersFilterView implements OrdersRows, DatabaseFilteredRows<Order> {
     final List<Order> all = feed.rows;
     while (_examined < all.length) {
       final Order order = all[_examined++];
-      if (filter.matches(order)) _matches.add(order);
+      if (filter.matches(order) && quick.matches(order.number)) {
+        _matches.add(order);
+      }
     }
   }
 

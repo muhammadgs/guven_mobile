@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import '../../../core/network/api_exception.dart';
 import '../data/database_api.dart';
+import '../domain/database_filter.dart';
 import '../domain/cash_desk.dart';
 import '../domain/cash_desks_filter.dart';
 import 'cash_desks_filter_values.dart';
@@ -39,7 +40,7 @@ const int kCashDesksFeedMemory = 8;
 /// ([filtered]) with its own place in the scroll, so letting go of it puts
 /// the reader back exactly where they were.
 class CashDesksController extends DatabaseListController<CashDesk>
-    implements DatabaseFilterSource {
+    implements DatabaseFilterSource, DatabaseQuickSearchSource {
   /// [pageSize] is the seam the tests reach through.
   CashDesksController(this._api, {int pageSize = kCashDesksPageSize})
     : super(_api.cashDesksPage, idOf: _idOf, pageSize: pageSize);
@@ -173,8 +174,31 @@ class CashDesksController extends DatabaseListController<CashDesk>
   Future<void> setFilter(CashDesksFilter next) {
     if (next == _filter) return _view?.ready ?? Future<void>.value();
     _filter = next;
+    return _narrow();
+  }
+
+  QuickSearch _quick = QuickSearch.none;
+
+  /// The headline's name, under what is typed.
+  @override
+  String get quickSearchHint => CashDesksColumn.name.label;
+
+  @override
+  String get quickSearch => _quick.text;
+
+  @override
+  Future<void> setQuickSearch(String text) {
+    final QuickSearch next = QuickSearch(text);
+    if (next == _quick) return _view?.ready ?? Future<void>.value();
+    _quick = next;
+    return _narrow();
+  }
+
+  /// The filter and the quick search, asked together — or let go together,
+  /// putting the reader back where they were, once neither narrows.
+  Future<void> _narrow() {
     _view?._close();
-    if (next.isEmpty) {
+    if (_filter.isEmpty && _quick.isEmpty) {
       _view = null;
       notify();
       return Future<void>.value();
@@ -204,6 +228,7 @@ class CashDesksController extends DatabaseListController<CashDesk>
       _filter,
       ++_viewSerial,
       fresh: fresh,
+      quick: _quick,
     );
     _view = view;
     view._ready = view._start();
@@ -284,6 +309,7 @@ class CashDesksFilterView implements DatabaseFilteredRows<CashDesk> {
     this.filter,
     this.serial, {
     required this.fresh,
+    required this.quick,
   }) : _scanSize = _owner.pageSize;
 
   final CashDesksController _owner;
@@ -295,6 +321,9 @@ class CashDesksFilterView implements DatabaseFilteredRows<CashDesk> {
 
   /// Set by a pull: nothing read before it is trusted.
   final bool fresh;
+
+  /// What the quick search bar holds: the name must hold it too.
+  final QuickSearch quick;
 
   final List<CashDesk> _matches = <CashDesk>[];
 
@@ -347,6 +376,7 @@ class CashDesksFilterView implements DatabaseFilteredRows<CashDesk> {
   @override
   bool get scans {
     final CashDesksColumn? searched = filter.searchColumn;
+    if (quick.scans || (quick.isNotEmpty && searched != null)) return true;
     for (final CashDesksColumn column in filter.columns) {
       if (column != searched) return true;
     }
@@ -363,7 +393,7 @@ class CashDesksFilterView implements DatabaseFilteredRows<CashDesk> {
     try {
       final CashDesksColumn? searched = filter.searchColumn;
       final String? search = searched == null
-          ? null
+          ? quick.bridgeText
           : filter.valueOf(searched)!.trim();
       _feed = _owner._feedFor(
         search == null || search.isEmpty ? null : search,
@@ -396,7 +426,7 @@ class CashDesksFilterView implements DatabaseFilteredRows<CashDesk> {
     final List<CashDesk> all = feed.rows;
     while (_examined < all.length) {
       final CashDesk desk = all[_examined++];
-      if (filter.matches(desk)) _matches.add(desk);
+      if (filter.matches(desk) && quick.matches(desk.name)) _matches.add(desk);
     }
   }
 

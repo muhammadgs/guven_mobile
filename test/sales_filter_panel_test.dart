@@ -67,7 +67,7 @@ void main() {
     await _openFilter(tester);
     expect(find.text('Filter'), findsOneWidget);
     for (final SalesColumn column in SalesColumn.values) {
-      expect(find.text(column.label), findsOneWidget, reason: column.label);
+      expect(_inPanel(column.label), findsOneWidget, reason: column.label);
     }
     expect(tester.takeException(), isNull);
   });
@@ -78,10 +78,10 @@ void main() {
     await _openFilter(tester);
     final Rect columns = _glass(tester);
 
-    await tester.tap(find.text('Müştəri'));
+    await tester.tap(_inPanel('Müştəri'));
     await tester.pumpAndSettle();
     expect(find.text('Hamısı'), findsOneWidget);
-    expect(find.byType(TextField), findsOneWidget);
+    expect(_inPanelField, findsOneWidget);
     expect(_inPanel(_Bridge.bar), findsOneWidget);
     expect(find.text('Sənəd'), findsNothing);
 
@@ -102,7 +102,7 @@ void main() {
   ) async {
     final DatabaseController database = await _pump(tester);
     await _openFilter(tester);
-    await tester.tap(find.text('Müştəri'));
+    await tester.tap(_inPanel('Müştəri'));
     await tester.pumpAndSettle();
 
     await tester.tap(_inPanel(_Bridge.bar));
@@ -131,7 +131,7 @@ void main() {
 
     // `Hamısı` lets it go: the list is the list again.
     await _openFilter(tester);
-    await tester.tap(find.text('Müştəri'));
+    await tester.tap(_inPanel('Müştəri'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Hamısı'));
     await tester.tapAt(const Offset(390, 700));
@@ -151,7 +151,7 @@ void main() {
   ) async {
     await _pump(tester);
     await _openFilter(tester);
-    await tester.tap(find.text('Müştəri'));
+    await tester.tap(_inPanel('Müştəri'));
     await tester.pumpAndSettle();
 
     final Finder long = _inPanel(_Bridge.long);
@@ -237,7 +237,7 @@ void main() {
           final Rect columns = _glass(tester);
           inside(columns, band(), 'the columns');
           for (final SalesColumn column in SalesColumn.values) {
-            final Rect row = tester.getRect(find.text(column.label));
+            final Rect row = tester.getRect(_inPanel(column.label));
             inside(row, columns, column.label);
           }
 
@@ -259,7 +259,7 @@ void main() {
           );
 
           // The values: five and a half rows at most, then a scroll.
-          await tester.tap(find.text('Müştəri'));
+          await tester.tap(_inPanel('Müştəri'));
           await tester.pumpAndSettle();
           final Rect values = _glass(tester);
           inside(values, band(), 'the values');
@@ -295,7 +295,7 @@ void main() {
             ),
             findsOneWidget,
           );
-          final Rect field = tester.getRect(find.byType(TextField));
+          final Rect field = tester.getRect(_inPanelField);
           inside(field, typing, 'the search field');
 
           expect(tester.takeException(), isNull);
@@ -461,4 +461,10 @@ http.Response _json(Object body, [int status = 200]) => http.Response(
   jsonEncode(body),
   status,
   headers: <String, String>{'content-type': 'application/json; charset=utf-8'},
+);
+
+/// The panel's search field — not the quick search bar beside the funnel.
+final Finder _inPanelField = find.descendant(
+  of: find.byType(DatabaseFilterPanel),
+  matching: find.byType(TextField),
 );

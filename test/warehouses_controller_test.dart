@@ -253,6 +253,144 @@ void main() {
       ]);
     });
   });
+
+  // The bar beside the funnel (2026-11-08): a piece of the headline, found
+  // through the bridge like a name, apart from the funnel's columns.
+  group('the quick search', () {
+    test('says what it searches: the headline\'s column', () {
+      final WarehousesController warehouses = _Bridge().controller();
+      expect(warehouses.quickSearchHint, 'Anbar adı');
+      expect(warehouses.quickSearch, isEmpty);
+    });
+
+    test('a piece of the name goes to the bridge, and is held to the name '
+        'on the phone', () async {
+      final _Bridge bridge = _Bridge();
+      final WarehousesController warehouses = bridge.controller();
+      await warehouses.ensureLoaded();
+
+      await warehouses.setQuickSearch('  nərimanov  ');
+      final WarehousesFilterView view = warehouses.filtered!;
+      expect(warehouses.quickSearch, 'nərimanov');
+      expect(bridge.searches, <String>['nərimanov']);
+      // Both warehouses that hold it, not only the one exactly so named.
+      expect(view.rows.map((Warehouse w) => w.id), <int>[10, 11]);
+      expect(view.scans, isFalse);
+      // Not a column of the funnel.
+      expect(warehouses.filterCount, 0);
+      expect(warehouses.isFiltered, isFalse);
+
+      // Cleared, the list is the list again.
+      await warehouses.setQuickSearch('');
+      expect(warehouses.filtered, isNull);
+      expect(warehouses.warehouses, hasLength(20));
+    });
+
+    test('narrows together with the funnel, and outlives Sıfırla', () async {
+      final _Bridge bridge = _Bridge();
+      final WarehousesController warehouses = bridge.controller();
+      await warehouses.ensureLoaded();
+
+      await warehouses.setQuickSearch('Anbar 2');
+      await warehouses.toggleFilter(WarehousesColumn.type, 'Pərakəndə');
+      WarehousesFilterView view = warehouses.filtered!;
+      while (view.hasMore) {
+        await view.loadMore();
+      }
+      // `Anbar 2…` (and `Nərimanov Anbar 2`) and a shop's: 20, 24, 28.
+      expect(view.rows.map((Warehouse w) => w.id), <int>[20, 24, 28]);
+
+      await warehouses.clearFilter();
+      view = warehouses.filtered!;
+      while (view.hasMore) {
+        await view.loadMore();
+      }
+      expect(warehouses.quickSearch, 'Anbar 2');
+      expect(view.rows.map((Warehouse w) => w.id), <int>[
+        2,
+        11,
+        20,
+        21,
+        22,
+        23,
+        24,
+        25,
+        26,
+        27,
+        28,
+        29,
+      ]);
+    });
+
+    test('a name chosen in the funnel goes to the bridge, and the typed '
+        'piece is checked on the phone', () async {
+      final _Bridge bridge = _Bridge();
+      final WarehousesController warehouses = bridge.controller();
+      await warehouses.ensureLoaded();
+
+      await warehouses.toggleFilter(WarehousesColumn.name, 'Nərimanov Anbar');
+      await warehouses.setQuickSearch('anbar');
+      final WarehousesFilterView view = warehouses.filtered!;
+      expect(bridge.searches.last, 'Nərimanov Anbar');
+      expect(view.rows.map((Warehouse w) => w.id), <int>[10]);
+      expect(view.scans, isTrue);
+
+      await warehouses.setQuickSearch('xyz');
+      expect(warehouses.filtered!.rows, isEmpty);
+    });
+
+    test('typed without Azerbaijani letters, only the part written the '
+        'same either way goes to the bridge', () async {
+      final _Bridge bridge = _Bridge();
+      final WarehousesController warehouses = bridge.controller();
+      await warehouses.ensureLoaded();
+
+      // The bridge would find nothing for `nerimanov`: it holds `ə`.
+      await warehouses.setQuickSearch('nerimanov');
+      final WarehousesFilterView view = warehouses.filtered!;
+      expect(bridge.searches, <String>['man']);
+      expect(view.rows.map((Warehouse w) => w.id), <int>[10, 11]);
+      expect(view.scans, isTrue);
+    });
+  });
+
+  group('QuickSearch', () {
+    test('tidies what is typed, and nothing is none', () {
+      expect(QuickSearch('  a   b ').text, 'a b');
+      expect(QuickSearch('   '), QuickSearch.none);
+      expect(QuickSearch.none.bridgeText, isNull);
+      expect(QuickSearch('ab').bridgeText, 'ab');
+      expect(QuickSearch('ab').scans, isFalse);
+    });
+
+    test('the bridge, which does not fold ə into e, is sent what it can '
+        'find', () {
+      // Typed with the letters: as typed.
+      expect(QuickSearch('şəbəkə').bridgeText, 'şəbəkə');
+      expect(QuickSearch('Anbar 2').bridgeText, 'Anbar 2');
+      // Without: the longest run with no stand-in for one.
+      expect(QuickSearch('hollywood').bridgeText, 'llyw');
+      expect(QuickSearch('favorit').bridgeText, 'fav');
+      expect(QuickSearch('NT0001').bridgeText, 'NT0001');
+      expect(QuickSearch('hollywood').scans, isTrue);
+      // A letter or two is not worth asking for: the table is read.
+      expect(QuickSearch('sebeke').bridgeText, isNull);
+      expect(QuickSearch('sebeke').scans, isTrue);
+    });
+
+    test('a piece anywhere in the field, case, i\'s and Azerbaijani letters '
+        'set aside', () {
+      const String customer = 'QASIMOV ƏLİYAR ƏRƏSTUN OĞLU - HOLLYWOOD';
+      expect(QuickSearch('hollywood').matches(customer), isTrue);
+      expect(QuickSearch('eliyar').matches(customer), isTrue);
+      expect(QuickSearch('Əliyar').matches(customer), isTrue);
+      expect(QuickSearch('FAVORIT').matches('FAVORİT PREMIUM'), isTrue);
+      expect(QuickSearch('oglu  -  holly').matches(customer), isTrue);
+      expect(QuickSearch('marketlər').matches(customer), isFalse);
+      expect(QuickSearch('a').matches(null), isFalse);
+      expect(QuickSearch.none.matches(null), isTrue);
+    });
+  });
 }
 
 /// The catalogue: thirty warehouses, by name as the bridge gives them. Every

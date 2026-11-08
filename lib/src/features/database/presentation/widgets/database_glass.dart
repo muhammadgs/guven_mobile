@@ -15,6 +15,7 @@ export '../../../tasks/presentation/widgets/task_glass.dart'
     show
         AppGlassBackend,
         AppGlassSurface,
+        glassAtRadius,
         kGlassInk,
         kGlassInkMuted,
         kGlassLift,

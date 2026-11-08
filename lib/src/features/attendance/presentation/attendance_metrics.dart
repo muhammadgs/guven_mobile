@@ -67,13 +67,14 @@ class AttendanceMetrics {
   // Sizes come from the widths of the design's words, which agree with
   // their cap heights to within a pixel at 2×.
 
-  /// `Məhəmməd Qasımov` — CalSans 22, set tight.
+  /// `Məhəmməd Qasımov` — CalSans 22, the face's own spacing, as on the
+  /// Baza cards. The design's −1.1 (−5%) ran the letters into each other.
   static const double nameSize = 22;
-  static const double nameTracking = -1.1;
+  static const double nameTracking = 0;
 
-  /// `Güvən Finans MMC`.
+  /// `Güvən Finans MMC`. Poppins' own spacing: −0.9 (−6%) crowded it too.
   static const double companySize = 15;
-  static const double companyTracking = -0.9;
+  static const double companyTracking = 0;
 
   /// `Dəvamiyyət: …`, the buttons' labels, a history row's kind and time.
   static const double bodySize = 15;

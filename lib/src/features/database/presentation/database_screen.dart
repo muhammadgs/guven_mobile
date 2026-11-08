@@ -15,6 +15,7 @@ import 'widgets/database_filter_panel.dart';
 import 'widgets/database_glass.dart';
 import 'widgets/database_menu.dart';
 import 'widgets/database_overview_row.dart';
+import 'widgets/database_quick_search.dart';
 import 'widgets/debt_allocations_list.dart';
 import 'widgets/debts_list.dart';
 import 'widgets/manager_debts_list.dart';
@@ -104,6 +105,8 @@ class _DatabaseScreenState extends State<DatabaseScreen> {
   /// Opens `Detallar`, growing out of the button that was pressed.
   Future<void> _openMenu(Rect button, double radius) async {
     final DatabaseController database = _controller!;
+    // The keyboard of the quick search goes down under the glass.
+    FocusManager.instance.primaryFocus?.unfocus();
     setState(() => _menuOpen = true);
     await openDatabaseMenu(
       context,
@@ -146,6 +149,7 @@ class _DatabaseScreenState extends State<DatabaseScreen> {
     );
     if (source == null) return;
     final double gap = scaled(context, 12);
+    FocusManager.instance.primaryFocus?.unfocus();
     setState(() => _filterOpen = true);
     await openDatabaseFilter(
       context,
@@ -174,6 +178,11 @@ class _DatabaseScreenState extends State<DatabaseScreen> {
       builder: (BuildContext context, _) {
         final DatabaseSection section = database.section;
         final DatabaseFilterSource? filter = _filterOf(database, section);
+        // Every page with a funnel has a quick search beside it.
+        final DatabaseQuickSearchSource? quick = switch (filter) {
+          final DatabaseQuickSearchSource source => source,
+          _ => null,
+        };
 
         // The titles and the button keep the design's margin; each page sets
         // its own, because the cards reach nearer the edges than anything
@@ -194,40 +203,48 @@ class _DatabaseScreenState extends State<DatabaseScreen> {
                     SizedBox(height: 4.5 * s),
                     _Subtitle(text: section.title),
                     SizedBox(height: 11.5 * s),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: <Widget>[
-                          Visibility(
-                            // The menu is this button's glass once it opens,
-                            // so the button steps out of the way rather than
-                            // sitting under it and doubling both the lens
-                            // and the glyph. Its space is kept, so nothing
-                            // below moves.
-                            visible: !_menuOpen,
-                            maintainSize: true,
-                            maintainAnimation: true,
-                            maintainState: true,
-                            child: GlassToolButton(
-                              size: button,
-                              onTap: _openMenu,
-                              semanticLabel: 'Detallar',
-                              glyph: DatabaseMenuGlyph(button: button),
+                    Row(
+                      children: <Widget>[
+                        Visibility(
+                          // The menu is this button's glass once it opens,
+                          // so the button steps out of the way rather than
+                          // sitting under it and doubling both the lens
+                          // and the glyph. Its space is kept, so nothing
+                          // below moves.
+                          visible: !_menuOpen,
+                          maintainSize: true,
+                          maintainAnimation: true,
+                          maintainState: true,
+                          child: GlassToolButton(
+                            size: button,
+                            onTap: _openMenu,
+                            semanticLabel: 'Detallar',
+                            glyph: DatabaseMenuGlyph(button: button),
+                          ),
+                        ),
+                        if (filter != null) ...<Widget>[
+                          // The task list's gap between its two buttons.
+                          SizedBox(width: scaled(context, 12)),
+                          _FilterButton(
+                            source: filter,
+                            size: button,
+                            hidden: _filterOpen,
+                            onTap: _openFilter,
+                          ),
+                        ],
+                        if (quick != null) ...<Widget>[
+                          SizedBox(width: scaled(context, 12)),
+                          Expanded(
+                            child: DatabaseQuickSearchBar(
+                              // Its own text for every page: `Kreditorlar`
+                              // and `Debitorlar` are one widget twice.
+                              key: ValueKey<DatabaseSection>(section),
+                              source: quick,
+                              height: button,
                             ),
                           ),
-                          if (filter != null) ...<Widget>[
-                            // The task list's gap between its two buttons.
-                            SizedBox(width: scaled(context, 12)),
-                            _FilterButton(
-                              source: filter,
-                              size: button,
-                              hidden: _filterOpen,
-                              onTap: _openFilter,
-                            ),
-                          ],
                         ],
-                      ),
+                      ],
                     ),
                   ],
                 ),

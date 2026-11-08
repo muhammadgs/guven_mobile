@@ -14,6 +14,7 @@ import 'package:guven_mobile/src/features/database/domain/database_metric.dart';
 import 'package:guven_mobile/src/features/database/domain/database_section.dart';
 import 'package:guven_mobile/src/features/database/presentation/database_screen.dart';
 import 'package:guven_mobile/src/features/database/presentation/widgets/customer_card.dart';
+import 'package:guven_mobile/src/features/database/presentation/widgets/database_quick_search.dart';
 import 'package:guven_mobile/src/features/database/presentation/widgets/debt_allocation_card.dart';
 import 'package:guven_mobile/src/features/database/presentation/widgets/order_card.dart';
 import 'package:guven_mobile/src/features/database/presentation/widgets/sale_card.dart';
@@ -128,6 +129,96 @@ void main() {
     });
   });
 
+  // The quick search bar beside the funnel (2026-11-08): the buttons'
+  // height, the rest of their row to the titles' margin, on every phone.
+  for (final ({String name, Size size, double text}) phone
+      in <({String name, Size size, double text})>[
+        (name: 'iPhone 16 Pro', size: const Size(402, 874), text: 1),
+        (name: 'small Android', size: const Size(360, 780), text: 1),
+        (name: 'small Android', size: const Size(360, 780), text: 1.2),
+        (name: 'S23 Ultra', size: const Size(412, 915), text: 1.2),
+        (name: 'iPad 11"', size: const Size(834, 1194), text: 1),
+      ]) {
+    testWidgets('${phone.name} @ ${phone.text}x — Satışlar\' quick search '
+        'sits beside the funnel and asks the bridge for what is typed', (
+      WidgetTester tester,
+    ) async {
+      final List<Uri> asked = <Uri>[];
+      final DatabaseController controller = await _pump(
+        tester,
+        (http.Request request) {
+          asked.add(request.url);
+          return _answer(request);
+        },
+        size: phone.size,
+        text: phone.text,
+      );
+      // `Əsas panel` has no funnel, so no bar.
+      expect(find.byType(TextField), findsNothing);
+
+      controller.select(DatabaseSection.sales);
+      await tester.pumpAndSettle();
+
+      final Finder bar = find.byType(DatabaseQuickSearchBar);
+      expect(bar, findsOneWidget);
+      expect(
+        find.descendant(of: bar, matching: find.text('Müştəri')),
+        findsOneWidget,
+      );
+      final Rect glass = tester.getRect(bar);
+      final Rect menu = tester.getRect(find.byType(GlassToolButton).at(0));
+      final Rect funnel = tester.getRect(find.byType(GlassToolButton).at(1));
+      expect(glass.height, moreOrLessEquals(funnel.height, epsilon: 0.01));
+      expect(glass.top, moreOrLessEquals(funnel.top, epsilon: 0.01));
+      // The buttons' own gap after the funnel...
+      expect(
+        glass.left - funnel.right,
+        moreOrLessEquals(funnel.left - menu.right, epsilon: 0.01),
+      );
+      // ...and the titles' margin on the right, as on the left.
+      expect(
+        phone.size.width - glass.right,
+        moreOrLessEquals(menu.left, epsilon: 0.01),
+      );
+      expect(glass.width, greaterThan(funnel.width * 2.5));
+      expect(tester.takeException(), isNull);
+
+      await tester.enterText(
+        find.descendant(of: bar, matching: find.byType(TextField)),
+        'hollywood',
+      );
+      // Nothing while typing; one question once it pauses.
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(
+        asked.where((Uri uri) => uri.queryParameters['search'] != null),
+        isEmpty,
+      );
+      await tester.pump(kQuickSearchPause);
+      await tester.pumpAndSettle();
+      expect(controller.sales.quickSearch, 'hollywood');
+      expect(
+        asked.any(
+          (Uri uri) =>
+              uri.path.endsWith('/onec-data/sales/') &&
+              // The part the bridge finds with or without Azerbaijani
+              // letters: see [QuickSearch.bridgeText].
+              uri.queryParameters['search'] == 'llyw',
+        ),
+        isTrue,
+      );
+      // Not a column of the funnel: no number on it.
+      expect(controller.sales.filterCount, 0);
+
+      // Cleared, the list is the list again, at once.
+      await tester.tap(
+        find.descendant(of: bar, matching: find.byIcon(Icons.close_rounded)),
+      );
+      await tester.pumpAndSettle();
+      expect(controller.sales.quickSearch, isEmpty);
+      expect(controller.sales.filtered, isNull);
+    });
+  }
+
   testWidgets('Sifarişlər, chosen from the menu, is a list of cards', (
     WidgetTester tester,
   ) async {
@@ -201,11 +292,15 @@ void main() {
 
 Future<DatabaseController> _pump(
   WidgetTester tester,
-  Future<http.Response> Function(http.Request) handler,
-) async {
-  tester.view.physicalSize = const Size(1206, 2622);
+  Future<http.Response> Function(http.Request) handler, {
+  Size size = const Size(402, 874),
+  double text = 1,
+}) async {
+  tester.view.physicalSize = size * 3;
   tester.view.devicePixelRatio = 3;
+  tester.platformDispatcher.textScaleFactorTestValue = text;
   addTearDown(tester.view.reset);
+  addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
 
   final SessionController session = SessionController();
   addTearDown(session.dispose);

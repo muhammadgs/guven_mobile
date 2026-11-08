@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import '../../../core/network/api_exception.dart';
 import '../data/database_api.dart';
+import '../domain/database_filter.dart';
 import '../domain/warehouse.dart';
 import '../domain/warehouses_filter.dart';
 import 'warehouses_filter_values.dart';
@@ -39,7 +40,7 @@ const int kWarehousesFeedMemory = 8;
 /// ([filtered]) with its own place in the scroll, so letting go of it puts
 /// the reader back exactly where they were.
 class WarehousesController extends DatabaseListController<Warehouse>
-    implements DatabaseFilterSource {
+    implements DatabaseFilterSource, DatabaseQuickSearchSource {
   /// [pageSize] is the seam the tests reach through.
   WarehousesController(this._api, {int pageSize = kWarehousesPageSize})
     : super(_api.warehousesPage, idOf: _idOf, pageSize: pageSize);
@@ -195,8 +196,31 @@ class WarehousesController extends DatabaseListController<Warehouse>
   Future<void> setFilter(WarehousesFilter next) {
     if (next == _filter) return _view?.ready ?? Future<void>.value();
     _filter = next;
+    return _narrow();
+  }
+
+  QuickSearch _quick = QuickSearch.none;
+
+  /// The headline's name, under what is typed.
+  @override
+  String get quickSearchHint => WarehousesColumn.name.label;
+
+  @override
+  String get quickSearch => _quick.text;
+
+  @override
+  Future<void> setQuickSearch(String text) {
+    final QuickSearch next = QuickSearch(text);
+    if (next == _quick) return _view?.ready ?? Future<void>.value();
+    _quick = next;
+    return _narrow();
+  }
+
+  /// The filter and the quick search, asked together — or let go together,
+  /// putting the reader back where they were, once neither narrows.
+  Future<void> _narrow() {
     _view?._close();
-    if (next.isEmpty) {
+    if (_filter.isEmpty && _quick.isEmpty) {
       _view = null;
       notify();
       return Future<void>.value();
@@ -226,6 +250,7 @@ class WarehousesController extends DatabaseListController<Warehouse>
       _filter,
       ++_viewSerial,
       fresh: fresh,
+      quick: _quick,
     );
     _view = view;
     view._ready = view._start();
@@ -306,6 +331,7 @@ class WarehousesFilterView implements DatabaseFilteredRows<Warehouse> {
     this.filter,
     this.serial, {
     required this.fresh,
+    required this.quick,
   }) : _scanSize = _owner.pageSize;
 
   final WarehousesController _owner;
@@ -317,6 +343,9 @@ class WarehousesFilterView implements DatabaseFilteredRows<Warehouse> {
 
   /// Set by a pull: nothing read before it is trusted.
   final bool fresh;
+
+  /// What the quick search bar holds: the name must hold it too.
+  final QuickSearch quick;
 
   final List<Warehouse> _matches = <Warehouse>[];
 
@@ -369,6 +398,7 @@ class WarehousesFilterView implements DatabaseFilteredRows<Warehouse> {
   @override
   bool get scans {
     final WarehousesColumn? searched = filter.searchColumn;
+    if (quick.scans || (quick.isNotEmpty && searched != null)) return true;
     for (final WarehousesColumn column in filter.columns) {
       if (column != searched) return true;
     }
@@ -385,7 +415,7 @@ class WarehousesFilterView implements DatabaseFilteredRows<Warehouse> {
     try {
       final WarehousesColumn? searched = filter.searchColumn;
       final String? search = searched == null
-          ? null
+          ? quick.bridgeText
           : filter.valueOf(searched)!.trim();
       _feed = _owner._feedFor(
         search == null || search.isEmpty ? null : search,
@@ -418,7 +448,9 @@ class WarehousesFilterView implements DatabaseFilteredRows<Warehouse> {
     final List<Warehouse> all = feed.rows;
     while (_examined < all.length) {
       final Warehouse warehouse = all[_examined++];
-      if (filter.matches(warehouse)) _matches.add(warehouse);
+      if (filter.matches(warehouse) && quick.matches(warehouse.name)) {
+        _matches.add(warehouse);
+      }
     }
   }
 

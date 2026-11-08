@@ -42,7 +42,10 @@ const FilterRangeField kDebtAllocationsShareField = FilterRangeField(
 /// ([filtered]) with its own place in the scroll, so letting go of it puts
 /// the reader back exactly where they were.
 class DebtAllocationsController extends DatabaseListController<DebtAllocation>
-    implements DatabaseRangeFilterSource, DatabasePeriodFilterSource {
+    implements
+        DatabaseRangeFilterSource,
+        DatabasePeriodFilterSource,
+        DatabaseQuickSearchSource {
   /// [pageSize] is the seam the tests reach through.
   DebtAllocationsController(
     this._api, {
@@ -189,8 +192,31 @@ class DebtAllocationsController extends DatabaseListController<DebtAllocation>
   Future<void> setFilter(DebtAllocationsFilter next) {
     if (next == _filter) return _view?.ready ?? Future<void>.value();
     _filter = next;
+    return _narrow();
+  }
+
+  QuickSearch _quick = QuickSearch.none;
+
+  /// The headline's name, under what is typed.
+  @override
+  String get quickSearchHint => DebtAllocationsColumn.manager.label;
+
+  @override
+  String get quickSearch => _quick.text;
+
+  @override
+  Future<void> setQuickSearch(String text) {
+    final QuickSearch next = QuickSearch(text);
+    if (next == _quick) return _view?.ready ?? Future<void>.value();
+    _quick = next;
+    return _narrow();
+  }
+
+  /// The filter and the quick search, asked together — or let go together,
+  /// putting the reader back where they were, once neither narrows.
+  Future<void> _narrow() {
     _view?._close();
-    if (next.isEmpty) {
+    if (_filter.isEmpty && _quick.isEmpty) {
       _view = null;
       notify();
       return Future<void>.value();
@@ -220,6 +246,7 @@ class DebtAllocationsController extends DatabaseListController<DebtAllocation>
       _filter,
       ++_viewSerial,
       fresh: fresh,
+      quick: _quick,
     );
     _view = view;
     view._ready = view._start();
@@ -302,6 +329,7 @@ class DebtAllocationsFilterView
     this.filter,
     this.serial, {
     required this.fresh,
+    required this.quick,
   }) : _scanSize = _owner.pageSize;
 
   final DebtAllocationsController _owner;
@@ -313,6 +341,9 @@ class DebtAllocationsFilterView
 
   /// Set by a pull: nothing read before it is trusted.
   final bool fresh;
+
+  /// What the quick search bar holds: the manager must hold it too.
+  final QuickSearch quick;
 
   final List<DebtAllocation> _matches = <DebtAllocation>[];
 
@@ -370,7 +401,11 @@ class DebtAllocationsFilterView
   }
 
   @override
-  bool get scans => filter.period.isNotEmpty || filter.share.isNotEmpty;
+  bool get scans =>
+      filter.period.isNotEmpty ||
+      filter.share.isNotEmpty ||
+      quick.scans ||
+      (quick.isNotEmpty && filter.manager != null);
 
   @override
   int get read => _examined;
@@ -380,7 +415,7 @@ class DebtAllocationsFilterView
 
   Future<void> _start() async {
     try {
-      final String? search = filter.manager?.trim();
+      final String? search = (filter.manager ?? quick.bridgeText)?.trim();
       _feed = _owner._feedFor(
         search == null || search.isEmpty ? null : search,
         fresh: fresh,
@@ -413,7 +448,7 @@ class DebtAllocationsFilterView
     final List<DebtAllocation> all = feed.rows;
     while (!_ended && _examined < all.length) {
       final DebtAllocation row = all[_examined++];
-      if (filter.matches(row)) {
+      if (filter.matches(row) && quick.matches(row.manager)) {
         _matches.add(row);
       } else if (filter.endsAt(row)) {
         _ended = true;

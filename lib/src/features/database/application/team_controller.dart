@@ -51,7 +51,7 @@ const Map<TeamColumn, FilterRangeField> kTeamRangeFields =
 /// ([filtered]) with its own place in the scroll, so letting go of it puts
 /// the reader back exactly where they were.
 class TeamController extends DatabaseListController<TeamMember>
-    implements DatabaseRangeFilterSource {
+    implements DatabaseRangeFilterSource, DatabaseQuickSearchSource {
   /// [pageSize] is the seam the tests reach through.
   TeamController(this._api, {int pageSize = kTeamPageSize})
     : super(_api.teamPage, idOf: _idOf, pageSize: pageSize);
@@ -194,8 +194,31 @@ class TeamController extends DatabaseListController<TeamMember>
   Future<void> setFilter(TeamFilter next) {
     if (next == _filter) return _view?.ready ?? Future<void>.value();
     _filter = next;
+    return _narrow();
+  }
+
+  QuickSearch _quick = QuickSearch.none;
+
+  /// The headline's name, under what is typed.
+  @override
+  String get quickSearchHint => TeamColumn.name.label;
+
+  @override
+  String get quickSearch => _quick.text;
+
+  @override
+  Future<void> setQuickSearch(String text) {
+    final QuickSearch next = QuickSearch(text);
+    if (next == _quick) return _view?.ready ?? Future<void>.value();
+    _quick = next;
+    return _narrow();
+  }
+
+  /// The filter and the quick search, asked together — or let go together,
+  /// putting the reader back where they were, once neither narrows.
+  Future<void> _narrow() {
     _view?._close();
-    if (next.isEmpty) {
+    if (_filter.isEmpty && _quick.isEmpty) {
       _view = null;
       notify();
       return Future<void>.value();
@@ -225,6 +248,7 @@ class TeamController extends DatabaseListController<TeamMember>
       _filter,
       ++_viewSerial,
       fresh: fresh,
+      quick: _quick,
     );
     _view = view;
     view._ready = view._start();
@@ -301,8 +325,13 @@ class TeamController extends DatabaseListController<TeamMember>
 /// read, a page at a time as the list asks for more, the page growing while
 /// matches are few.
 class TeamFilterView implements DatabaseFilteredRows<TeamMember> {
-  TeamFilterView._(this._owner, this.filter, this.serial, {required this.fresh})
-    : _scanSize = _owner.pageSize;
+  TeamFilterView._(
+    this._owner,
+    this.filter,
+    this.serial, {
+    required this.fresh,
+    required this.quick,
+  }) : _scanSize = _owner.pageSize;
 
   final TeamController _owner;
 
@@ -313,6 +342,9 @@ class TeamFilterView implements DatabaseFilteredRows<TeamMember> {
 
   /// Set by a pull: nothing read before it is trusted.
   final bool fresh;
+
+  /// What the quick search bar holds: the name must hold it too.
+  final QuickSearch quick;
 
   final List<TeamMember> _matches = <TeamMember>[];
 
@@ -365,6 +397,7 @@ class TeamFilterView implements DatabaseFilteredRows<TeamMember> {
   @override
   bool get scans {
     final TeamColumn? searched = filter.searchColumn;
+    if (quick.scans || (quick.isNotEmpty && searched != null)) return true;
     for (final TeamColumn column in filter.columns) {
       if (column != searched) return true;
     }
@@ -381,7 +414,7 @@ class TeamFilterView implements DatabaseFilteredRows<TeamMember> {
     try {
       final TeamColumn? searched = filter.searchColumn;
       final String? search = searched == null
-          ? null
+          ? quick.bridgeText
           : filter.valueOf(searched)!.trim();
       _feed = _owner._feedFor(
         search == null || search.isEmpty ? null : search,
@@ -414,7 +447,9 @@ class TeamFilterView implements DatabaseFilteredRows<TeamMember> {
     final List<TeamMember> all = feed.rows;
     while (_examined < all.length) {
       final TeamMember member = all[_examined++];
-      if (filter.matches(member)) _matches.add(member);
+      if (filter.matches(member) && quick.matches(member.name)) {
+        _matches.add(member);
+      }
     }
   }
 

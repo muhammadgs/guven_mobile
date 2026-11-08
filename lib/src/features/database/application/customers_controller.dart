@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import '../../../core/network/api_exception.dart';
 import '../data/database_api.dart';
+import '../domain/database_filter.dart';
 import '../domain/customer.dart';
 import '../domain/customers_filter.dart';
 import 'customers_filter_values.dart';
@@ -60,7 +61,7 @@ abstract interface class CustomersRows implements DatabaseRows<Customer> {
 /// ([filtered]) with its own open cards and its own place in the scroll, so
 /// letting go of it puts the reader back exactly where they were.
 class CustomersController extends DatabaseListController<Customer>
-    implements CustomersRows, DatabaseFilterSource {
+    implements CustomersRows, DatabaseFilterSource, DatabaseQuickSearchSource {
   /// [pageSize] is the seam the tests reach through.
   CustomersController(this._api, {int pageSize = kCustomersPageSize})
     : super(_api.customersPage, idOf: _idOf, pageSize: pageSize);
@@ -297,8 +298,31 @@ class CustomersController extends DatabaseListController<Customer>
   Future<void> setFilter(CustomersFilter next) {
     if (next == _filter) return _view?.ready ?? Future<void>.value();
     _filter = next;
+    return _narrow();
+  }
+
+  QuickSearch _quick = QuickSearch.none;
+
+  /// The headline's name, under what is typed.
+  @override
+  String get quickSearchHint => CustomersColumn.name.label;
+
+  @override
+  String get quickSearch => _quick.text;
+
+  @override
+  Future<void> setQuickSearch(String text) {
+    final QuickSearch next = QuickSearch(text);
+    if (next == _quick) return _view?.ready ?? Future<void>.value();
+    _quick = next;
+    return _narrow();
+  }
+
+  /// The filter and the quick search, asked together — or let go together,
+  /// putting the reader back where they were, once neither narrows.
+  Future<void> _narrow() {
     _view?._close();
-    if (next.isEmpty) {
+    if (_filter.isEmpty && _quick.isEmpty) {
       _view = null;
       _filteredExpanded.clear();
       notify();
@@ -329,6 +353,7 @@ class CustomersController extends DatabaseListController<Customer>
       _filter,
       ++_viewSerial,
       fresh: fresh,
+      quick: _quick,
     );
     _view = view;
     view._ready = view._start();
@@ -415,6 +440,7 @@ class CustomersFilterView
     this.filter,
     this.serial, {
     required this.fresh,
+    required this.quick,
   }) : _scanSize = _owner.pageSize;
 
   final CustomersController _owner;
@@ -426,6 +452,9 @@ class CustomersFilterView
 
   /// Set by a pull: nothing read before it is trusted.
   final bool fresh;
+
+  /// What the quick search bar holds: the name must hold it too.
+  final QuickSearch quick;
 
   final List<Customer> _matches = <Customer>[];
 
@@ -478,6 +507,7 @@ class CustomersFilterView
   @override
   bool get scans {
     final CustomersColumn? searched = filter.searchColumn;
+    if (quick.scans || (quick.isNotEmpty && searched != null)) return true;
     for (final CustomersColumn column in filter.columns) {
       if (column != searched) return true;
     }
@@ -494,7 +524,7 @@ class CustomersFilterView
     try {
       final CustomersColumn? searched = filter.searchColumn;
       final String? search = searched == null
-          ? null
+          ? quick.bridgeText
           : filter.valueOf(searched)!.trim();
       _feed = _owner._feedFor(
         search == null || search.isEmpty ? null : search,
@@ -527,7 +557,9 @@ class CustomersFilterView
     final List<Customer> all = feed.rows;
     while (_examined < all.length) {
       final Customer customer = all[_examined++];
-      if (filter.matches(customer)) _matches.add(customer);
+      if (filter.matches(customer) && quick.matches(customer.name)) {
+        _matches.add(customer);
+      }
     }
   }
 

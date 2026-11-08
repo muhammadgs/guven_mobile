@@ -81,7 +81,10 @@ abstract interface class ProductsRows implements DatabaseRows<Product> {
 /// ([filtered]) with its own open cards and its own place in the scroll, so
 /// letting go of it puts the reader back exactly where they were.
 class ProductsController extends DatabaseListController<Product>
-    implements ProductsRows, DatabaseRangeFilterSource {
+    implements
+        ProductsRows,
+        DatabaseRangeFilterSource,
+        DatabaseQuickSearchSource {
   /// [pageSize] is the seam the tests reach through.
   ProductsController(this._api, {int pageSize = kProductsPageSize})
     : super(_api.productsPage, idOf: _idOf, pageSize: pageSize);
@@ -313,8 +316,31 @@ class ProductsController extends DatabaseListController<Product>
   Future<void> setFilter(ProductsFilter next) {
     if (next == _filter) return _view?.ready ?? Future<void>.value();
     _filter = next;
+    return _narrow();
+  }
+
+  QuickSearch _quick = QuickSearch.none;
+
+  /// The headline's name, under what is typed.
+  @override
+  String get quickSearchHint => ProductsColumn.name.label;
+
+  @override
+  String get quickSearch => _quick.text;
+
+  @override
+  Future<void> setQuickSearch(String text) {
+    final QuickSearch next = QuickSearch(text);
+    if (next == _quick) return _view?.ready ?? Future<void>.value();
+    _quick = next;
+    return _narrow();
+  }
+
+  /// The filter and the quick search, asked together — or let go together,
+  /// putting the reader back where they were, once neither narrows.
+  Future<void> _narrow() {
     _view?._close();
-    if (next.isEmpty) {
+    if (_filter.isEmpty && _quick.isEmpty) {
       _view = null;
       _filteredExpanded.clear();
       notify();
@@ -345,6 +371,7 @@ class ProductsController extends DatabaseListController<Product>
       _filter,
       ++_viewSerial,
       fresh: fresh,
+      quick: _quick,
     );
     _view = view;
     view._ready = view._start();
@@ -432,6 +459,7 @@ class ProductsFilterView
     this.filter,
     this.serial, {
     required this.fresh,
+    required this.quick,
   }) : _scanSize = _owner.pageSize;
 
   final ProductsController _owner;
@@ -443,6 +471,9 @@ class ProductsFilterView
 
   /// Set by a pull: nothing read before it is trusted.
   final bool fresh;
+
+  /// What the quick search bar holds: the name must hold it too.
+  final QuickSearch quick;
 
   final List<Product> _matches = <Product>[];
 
@@ -495,6 +526,7 @@ class ProductsFilterView
   @override
   bool get scans {
     final ProductsColumn? searched = filter.searchColumn;
+    if (quick.scans || (quick.isNotEmpty && searched != null)) return true;
     for (final ProductsColumn column in filter.columns) {
       if (column != searched) return true;
     }
@@ -511,7 +543,7 @@ class ProductsFilterView
     try {
       final ProductsColumn? searched = filter.searchColumn;
       final String? search = searched == null
-          ? null
+          ? quick.bridgeText
           : filter.valueOf(searched)!.trim();
       _feed = _owner._feedFor(
         search == null || search.isEmpty ? null : search,
@@ -544,7 +576,9 @@ class ProductsFilterView
     final List<Product> all = feed.rows;
     while (_examined < all.length) {
       final Product product = all[_examined++];
-      if (filter.matches(product)) _matches.add(product);
+      if (filter.matches(product) && quick.matches(product.name)) {
+        _matches.add(product);
+      }
     }
   }
 
