@@ -12,6 +12,8 @@ library;
 
 import 'package:flutter/foundation.dart';
 
+import '../../database/domain/database_filter.dart';
+
 import 'task_dates.dart';
 import 'task_item.dart';
 
@@ -22,7 +24,7 @@ import 'task_item.dart';
 /// ones a scope has no values for drop out on their own — `Şöbə` is absent
 /// from the site's `external` table for the same reason it will be absent
 /// here, because those rows carry no department.
-enum TaskFilterField {
+enum TaskFilterField implements DatabaseFilterColumn {
   date('Tarix'),
   company('Şirkət'),
   assignedBy('Kim tərəfindən'),
@@ -35,6 +37,7 @@ enum TaskFilterField {
   const TaskFilterField(this.label);
 
   /// What the filter panel calls this column. The site's own header text.
+  @override
   final String label;
 
   /// Whether values in this column are days rather than words.
@@ -42,6 +45,18 @@ enum TaskFilterField {
   /// Dates sort newest-first and everything else alphabetically, the same
   /// split the site makes.
   bool get isDate => this == TaskFilterField.date || this == TaskFilterField.dueDate;
+
+  /// The day this task puts in a date column, as [filterDayOf] counts it —
+  /// what a span of days is held against. Null for a column of words, and
+  /// for a task with no such day.
+  int? dayOf(TaskItem task) {
+    final DateTime? date = switch (this) {
+      TaskFilterField.date => task.createdAt,
+      TaskFilterField.dueDate => task.dueDate,
+      _ => null,
+    };
+    return date == null ? null : filterDayOf(date);
+  }
 
   /// What this task puts in this column, or null when it carries nothing.
   ///
@@ -70,39 +85,65 @@ enum TaskFilterField {
   }
 }
 
+
 /// The selections currently in force, keyed by column.
 ///
-/// Empty means "everything", and a column absent from [selections] means
-/// "everything in that column" — which is why selecting `Hamısı` deletes the
-/// column's entry rather than adding every value to it. Two filters holding
-/// the same selections are equal, so the controller can tell a real change
-/// from a rebuild.
+/// Empty means "everything", and a column absent from [selections] and
+/// [ranges] means "everything in that column" — which is why selecting
+/// `Hamısı` deletes the column's entry rather than adding every value to it.
+/// Two filters holding the same selections are equal, so the controller can
+/// tell a real change from a rebuild.
+///
+/// A date column is narrowed either by days ticked in its list or by a span
+/// — a first and a last day, either left open — never both: the `Baza`
+/// filter's rule for a span column, which this one now shares (2026-11-08).
 @immutable
 class TaskFilter {
-  const TaskFilter([this.selections = const <TaskFilterField, Set<String>>{}]);
+  const TaskFilter([
+    this.selections = const <TaskFilterField, Set<String>>{},
+    this.ranges = const <TaskFilterField, FilterRange>{},
+  ]);
 
   final Map<TaskFilterField, Set<String>> selections;
 
+  /// The date columns narrowed to a span of days, held as [filterDayOf]
+  /// counts them. Never an empty span: letting go of one removes it.
+  final Map<TaskFilterField, FilterRange> ranges;
+
   static const TaskFilter none = TaskFilter();
 
-  bool get isEmpty => selections.isEmpty;
-  bool get isNotEmpty => selections.isNotEmpty;
+  bool get isEmpty => selections.isEmpty && ranges.isEmpty;
+  bool get isNotEmpty => !isEmpty;
 
   /// How many columns are narrowing the list — what the button's badge shows.
-  int get activeFieldCount => selections.length;
+  int get activeFieldCount =>
+      <TaskFilterField>{...selections.keys, ...ranges.keys}.length;
+
+  /// Whether [field] is narrowing the list, by values or by a span.
+  bool narrows(TaskFilterField field) =>
+      selections.containsKey(field) || ranges.containsKey(field);
 
   Set<String> valuesOf(TaskFilterField field) =>
       selections[field] ?? const <String>{};
 
+  /// The span [field] is narrowed to — [FilterRange.any] when it is not.
+  FilterRange rangeOf(TaskFilterField field) =>
+      ranges[field] ?? FilterRange.any;
+
   bool isSelected(TaskFilterField field, String value) =>
       selections[field]?.contains(value) ?? false;
 
-  /// Whether [task] survives every column's selections.
+  /// Whether [task] survives every column's selections and spans.
   bool matches(TaskItem task) {
     for (final MapEntry<TaskFilterField, Set<String>> entry
         in selections.entries) {
       final String? value = entry.key.valueOf(task);
       if (value == null || !entry.value.contains(value)) return false;
+    }
+    for (final MapEntry<TaskFilterField, FilterRange> entry
+        in ranges.entries) {
+      final int? day = entry.key.dayOf(task);
+      if (day == null || !entry.value.contains(day.toDouble())) return false;
     }
     return true;
   }
@@ -113,26 +154,59 @@ class TaskFilter {
     return tasks.where(matches).toList(growable: false);
   }
 
-  /// Adds or removes one value in one column.
+  /// Adds or removes one value in one column — and lets go of the column's
+  /// span, since a day ticked and a span are one or the other.
   TaskFilter toggle(TaskFilterField field, String value) {
     final Set<String> next = Set<String>.of(valuesOf(field));
     if (!next.remove(value)) next.add(value);
-    return next.isEmpty ? clear(field) : _with(field, next);
+    final TaskFilter base = clear(field);
+    return next.isEmpty ? base : base._with(field, next);
+  }
+
+  /// [field] narrowed to [range]. An empty span lets go of the span and
+  /// leaves a day the column holds alone; a span lets go of the days.
+  TaskFilter withRange(TaskFilterField field, FilterRange range) {
+    if (range.isEmpty) return _without(field, values: false);
+    final TaskFilter base = clear(field);
+    final Map<TaskFilterField, FilterRange> next =
+        Map<TaskFilterField, FilterRange>.of(base.ranges)..[field] = range;
+    return TaskFilter(
+      base.selections,
+      Map<TaskFilterField, FilterRange>.unmodifiable(next),
+    );
   }
 
   /// `Hamısı` — the column stops narrowing anything.
-  TaskFilter clear(TaskFilterField field) {
-    if (!selections.containsKey(field)) return this;
-    final Map<TaskFilterField, Set<String>> next =
-        Map<TaskFilterField, Set<String>>.of(selections)..remove(field);
-    return TaskFilter(Map<TaskFilterField, Set<String>>.unmodifiable(next));
+  TaskFilter clear(TaskFilterField field) => _without(field, values: true);
+
+  /// This filter with [field]'s span let go, and its values too where
+  /// [values].
+  TaskFilter _without(TaskFilterField field, {required bool values}) {
+    final bool dropValues = values && selections.containsKey(field);
+    final bool dropRange = ranges.containsKey(field);
+    if (!dropValues && !dropRange) return this;
+    return TaskFilter(
+      dropValues
+          ? Map<TaskFilterField, Set<String>>.unmodifiable(
+              Map<TaskFilterField, Set<String>>.of(selections)..remove(field),
+            )
+          : selections,
+      dropRange
+          ? Map<TaskFilterField, FilterRange>.unmodifiable(
+              Map<TaskFilterField, FilterRange>.of(ranges)..remove(field),
+            )
+          : ranges,
+    );
   }
 
   TaskFilter _with(TaskFilterField field, Set<String> values) {
     final Map<TaskFilterField, Set<String>> next =
         Map<TaskFilterField, Set<String>>.of(selections)
           ..[field] = Set<String>.unmodifiable(values);
-    return TaskFilter(Map<TaskFilterField, Set<String>>.unmodifiable(next));
+    return TaskFilter(
+      Map<TaskFilterField, Set<String>>.unmodifiable(next),
+      ranges,
+    );
   }
 
   /// The values [field] can still offer, given every *other* column's
@@ -169,7 +243,7 @@ class TaskFilter {
   List<TaskFilterField> fieldsIn(List<TaskItem> tasks) {
     return <TaskFilterField>[
       for (final TaskFilterField field in TaskFilterField.values)
-        if (selections.containsKey(field) ||
+        if (narrows(field) ||
             tasks.any((TaskItem task) => field.valueOf(task) != null))
           field,
     ];
@@ -180,6 +254,7 @@ class TaskFilter {
     if (identical(this, other)) return true;
     if (other is! TaskFilter) return false;
     if (other.selections.length != selections.length) return false;
+    if (!mapEquals(other.ranges, ranges)) return false;
     for (final MapEntry<TaskFilterField, Set<String>> entry
         in selections.entries) {
       final Set<String>? mine = other.selections[entry.key];
@@ -189,9 +264,16 @@ class TaskFilter {
   }
 
   @override
-  int get hashCode => Object.hashAllUnordered(<Object>[
-    for (final MapEntry<TaskFilterField, Set<String>> entry
-        in selections.entries)
-      Object.hash(entry.key, Object.hashAllUnordered(entry.value)),
-  ]);
+  int get hashCode => Object.hash(
+    Object.hashAllUnordered(<Object>[
+      for (final MapEntry<TaskFilterField, Set<String>> entry
+          in selections.entries)
+        Object.hash(entry.key, Object.hashAllUnordered(entry.value)),
+    ]),
+    Object.hashAllUnordered(<Object>[
+      for (final MapEntry<TaskFilterField, FilterRange> entry
+          in ranges.entries)
+        Object.hash(entry.key, entry.value),
+    ]),
+  );
 }

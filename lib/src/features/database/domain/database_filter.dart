@@ -105,6 +105,7 @@ class FilterRangeField {
     required this.maxHint,
     this.suffix,
     this.signed = false,
+    this.day = false,
   });
 
   /// `Min qiymət`, `Maks qiymət`.
@@ -116,6 +117,62 @@ class FilterRangeField {
 
   /// Whether a minus can be typed: 1C lets a balance go below nothing.
   final bool signed;
+
+  /// Whether the span is of days rather than figures: `01.06.2026` typed,
+  /// held as [filterDayOf]'s count. The task list's `Tarix` and `Son
+  /// müddət` — the only ordered columns it has (2026-11-08).
+  final bool day;
+
+  /// What a field of this span reads [text] as, or null for nothing yet.
+  double? parse(String text) =>
+      day ? parseFilterDay(text)?.toDouble() : parseFilterFigure(text);
+
+  /// [value] as a field of this span shows it again.
+  String write(double value) =>
+      day ? writeFilterDay(value.round()) : writeFilterFigure(value);
+}
+
+/// [date]'s day as a count of days since 1 January 1970 — what a day span
+/// holds, so `FilterRange` compares days the way it compares figures.
+int filterDayOf(DateTime date) =>
+    DateTime.utc(date.year, date.month, date.day).millisecondsSinceEpoch ~/
+    Duration.millisecondsPerDay;
+
+/// The day [filterDayOf] counted.
+DateTime filterDayDate(int day) =>
+    DateTime.fromMillisecondsSinceEpoch(
+      day * Duration.millisecondsPerDay,
+      isUtc: true,
+    );
+
+/// [day] as a day field shows it: `01.06.2026`.
+String writeFilterDay(int day) {
+  final DateTime date = filterDayDate(day);
+  final String d = date.day.toString().padLeft(2, '0');
+  final String m = date.month.toString().padLeft(2, '0');
+  return '$d.$m.${date.year}';
+}
+
+/// A day as it was typed — `01.06.2026`, or `01.06` for this year — as
+/// [filterDayOf] counts it. Null for nothing, for a year not typed out yet,
+/// and for a day the calendar has not got: `31.02`.
+int? parseFilterDay(String text, {DateTime? today}) {
+  final List<String> parts = text
+      .trim()
+      .split(RegExp(r'[.\-/ ]'))
+      .toList();
+  if (parts.length == 3 && parts.last.isEmpty) parts.removeLast();
+  if (parts.length < 2 || parts.length > 3) return null;
+  final int? day = int.tryParse(parts[0]);
+  final int? month = int.tryParse(parts[1]);
+  final int? year = parts.length == 3
+      ? (parts[2].length == 4 ? int.tryParse(parts[2]) : null)
+      : (today ?? DateTime.now()).year;
+  if (day == null || month == null || year == null) return null;
+  if (month < 1 || month > 12 || day < 1) return null;
+  final DateTime date = DateTime.utc(year, month, day);
+  if (date.day != day || date.month != month) return null;
+  return filterDayOf(date);
 }
 
 /// A figure as it was typed: `15.6`, `15,6` — the comma a local keyboard

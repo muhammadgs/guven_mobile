@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../../shared/effects.dart';
 import '../../../../shared/motion/glass_morph.dart';
+import '../../../database/domain/database_filter.dart' show filterSearchKey;
 import '../../application/new_task_controller.dart';
 import '../../domain/new_task.dart';
 import '../new_task_metrics.dart';
@@ -12,6 +13,11 @@ import 'task_glass.dart';
 const Duration kPickerOpen = Duration(milliseconds: 320);
 const Duration kPickerClose = Duration(milliseconds: 200);
 
+/// A list longer than this gets a search field over it. Shorter ones — a
+/// task's three statuses — are read at a glance, and a field there would
+/// only push them down.
+const int kPickerSearchMin = 6;
+
 /// A field's options, grown out of the field itself.
 ///
 /// Dark, and over the sheet rather than beside it. Both are deliberate: the
@@ -20,7 +26,13 @@ const Duration kPickerClose = Duration(milliseconds: 200);
 /// tell them apart by. The darkness doubles as the fix for two lenses stacked
 /// — this one keeps so little of what is behind it that there is no double
 /// image to see.
-class NewTaskPickerPanel extends StatelessWidget {
+///
+/// A long list opens with a search field over it (2026-11-08, the user):
+/// typing narrows the names the way every `Baza` search does — case, spacing
+/// and the letters a keyboard without `ə`, `ş` lacks set aside, so `sadiq`
+/// finds `Sadıq`. The panel keeps the height of the whole list while it is
+/// typed into, so it does not jump under the finger.
+class NewTaskPickerPanel extends StatefulWidget {
   const NewTaskPickerPanel({
     super.key,
     required this.metrics,
@@ -50,21 +62,83 @@ class NewTaskPickerPanel extends StatelessWidget {
   final ValueChanged<TaskOption> onPick;
 
   @override
+  State<NewTaskPickerPanel> createState() => _NewTaskPickerPanelState();
+}
+
+class _NewTaskPickerPanelState extends State<NewTaskPickerPanel> {
+  final TextEditingController _query = TextEditingController();
+  final FocusNode _focus = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    widget.flight.addStatusListener(_onFlight);
+    _query.addListener(_onQuery);
+  }
+
+  @override
+  void didUpdateWidget(covariant NewTaskPickerPanel old) {
+    super.didUpdateWidget(old);
+    if (old.flight == widget.flight) return;
+    old.flight.removeStatusListener(_onFlight);
+    widget.flight.addStatusListener(_onFlight);
+  }
+
+  @override
+  void dispose() {
+    widget.flight.removeStatusListener(_onFlight);
+    _query.dispose();
+    _focus.dispose();
+    super.dispose();
+  }
+
+  /// The keyboard goes down with the list, not after it.
+  void _onFlight(AnimationStatus status) {
+    if (status == AnimationStatus.reverse) _focus.unfocus();
+  }
+
+  void _onQuery() => setState(() {});
+
+  bool get _searchable =>
+      !widget.list.loading &&
+      widget.list.error == null &&
+      widget.list.notice == null &&
+      widget.list.options.length >= kPickerSearchMin;
+
+  /// The options holding what is typed, in the list's own order.
+  List<TaskOption> get _shown {
+    final String query = filterSearchKey(_query.text.trim());
+    if (query.isEmpty) return widget.list.options;
+    return <TaskOption>[
+      for (final TaskOption option in widget.list.options)
+        if (filterSearchKey(option.name).contains(query)) option,
+    ];
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final NewTaskMetrics metrics = widget.metrics;
+    final bool search = _searchable;
     // A message counts as a row: an empty list still has to be a panel, or
     // tapping the field would look like nothing happened.
-    final int rows = list.options.isEmpty ? 2 : list.options.length;
-    final Rect resting = metrics.pickerPanel(anchor: anchor, rowCount: rows);
+    final int rows = widget.list.options.isEmpty
+        ? 2
+        : widget.list.options.length;
+    final Rect resting = metrics.pickerPanel(
+      anchor: widget.anchor,
+      rowCount: rows,
+      search: search,
+    );
 
     return AnimatedBuilder(
-      animation: flight,
-      child: _content(),
+      animation: widget.flight,
+      child: _content(metrics, search),
       builder: (BuildContext context, Widget? child) {
         return DarkPanelSurface(
           frame: resolveGlassMorph(
-            progress: flight,
-            from: anchor,
-            fromRadius: anchor.height / 2,
+            progress: widget.flight,
+            from: widget.anchor,
+            fromRadius: widget.anchor.height / 2,
             to: resting,
             toRadius: metrics.pickerRadius,
           ),
@@ -75,7 +149,8 @@ class NewTaskPickerPanel extends StatelessWidget {
     );
   }
 
-  Widget _content() {
+  Widget _content(NewTaskMetrics metrics, bool search) {
+    final OptionList list = widget.list;
     if (list.loading) {
       return _Notice(metrics: metrics, text: 'Yüklənir…', spinner: true);
     }
@@ -86,26 +161,154 @@ class NewTaskPickerPanel extends StatelessWidget {
     final String? notice = list.notice;
     if (notice != null) return _Notice(metrics: metrics, text: notice);
     if (list.options.isEmpty) {
-      return _Notice(metrics: metrics, text: emptyMessage);
+      return _Notice(metrics: metrics, text: widget.emptyMessage);
     }
 
-    return ListView.builder(
-      padding: EdgeInsets.symmetric(
-        horizontal: metrics.pickerPadH,
-        vertical: metrics.pickerPadV,
+    final List<TaskOption> shown = search ? _shown : list.options;
+    final Widget options = shown.isEmpty
+        ? Align(
+            alignment: Alignment.topCenter,
+            child: _Notice(metrics: metrics, text: 'Heç nə tapılmadı'),
+          )
+        : ListView.builder(
+            padding: EdgeInsets.fromLTRB(
+              metrics.pickerPadH,
+              search ? 0 : metrics.pickerPadV,
+              metrics.pickerPadH,
+              metrics.pickerPadV,
+            ),
+            physics: const ClampingScrollPhysics(),
+            keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+            itemExtent: metrics.pickerRowHeight,
+            itemCount: shown.length,
+            itemBuilder: (BuildContext context, int i) {
+              final TaskOption option = shown[i];
+              return _Row(
+                metrics: metrics,
+                label: option.name,
+                selected: option == widget.chosen,
+                onTap: () {
+                  _focus.unfocus();
+                  widget.onPick(option);
+                },
+              );
+            },
+          );
+    if (!search) return options;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        Padding(
+          padding: EdgeInsets.fromLTRB(
+            metrics.pickerPadH,
+            metrics.pickerPadV,
+            metrics.pickerPadH,
+            metrics.pickerSearchGap,
+          ),
+          child: _SearchField(
+            metrics: metrics,
+            controller: _query,
+            focus: _focus,
+          ),
+        ),
+        Expanded(child: options),
+      ],
+    );
+  }
+}
+
+/// The picker's search: a capsule of the chosen row's tint, a magnifier, and
+/// a cross to empty it once something is typed.
+class _SearchField extends StatelessWidget {
+  const _SearchField({
+    required this.metrics,
+    required this.controller,
+    required this.focus,
+  });
+
+  final NewTaskMetrics metrics;
+  final TextEditingController controller;
+  final FocusNode focus;
+
+  @override
+  Widget build(BuildContext context) {
+    final double height = metrics.pickerSearchHeight;
+    final TextStyle style = TextStyle(
+      fontFamily: 'Poppins',
+      fontWeight: FontWeight.w400,
+      fontSize: metrics.valueSize,
+      height: 1.2,
+      color: kNewTaskPickerInk,
+    );
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: focus.requestFocus,
+      child: Container(
+        height: height,
+        decoration: ShapeDecoration(
+          color: kNewTaskPickerRowFill,
+          shape: RoundedSuperellipseBorder(
+            borderRadius: BorderRadius.circular(height / 2),
+          ),
+        ),
+        child: Row(
+          children: <Widget>[
+            SizedBox(width: metrics.pickerPadH * 1.2),
+            Icon(
+              Icons.search_rounded,
+              size: metrics.valueSize * 1.25,
+              color: kNewTaskPickerInkMuted,
+            ),
+            SizedBox(width: metrics.pickerPadH * 0.8),
+            Expanded(
+              child: TextField(
+                controller: controller,
+                focusNode: focus,
+                style: style,
+                cursorColor: kNewTaskPickerInk,
+                cursorWidth: 1.6,
+                textInputAction: TextInputAction.search,
+                textCapitalization: TextCapitalization.words,
+                autocorrect: false,
+                enableSuggestions: false,
+                maxLines: 1,
+                onSubmitted: (_) => focus.unfocus(),
+                decoration: InputDecoration.collapsed(
+                  hintText: 'Adla axtar',
+                  hintStyle: style.copyWith(color: kNewTaskPickerInkMuted),
+                ),
+              ),
+            ),
+            ListenableBuilder(
+              listenable: controller,
+              builder: (BuildContext context, _) {
+                if (controller.text.isEmpty) {
+                  return SizedBox(width: metrics.pickerPadH * 1.2);
+                }
+                return Semantics(
+                  button: true,
+                  label: 'Axtarışı təmizlə',
+                  excludeSemantics: true,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: controller.clear,
+                    child: SizedBox.square(
+                      dimension: height,
+                      child: Icon(
+                        Icons.close_rounded,
+                        size: metrics.valueSize * 1.15,
+                        color: kNewTaskPickerInkMuted,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
       ),
-      physics: const ClampingScrollPhysics(),
-      itemExtent: metrics.pickerRowHeight,
-      itemCount: list.options.length,
-      itemBuilder: (BuildContext context, int i) {
-        final TaskOption option = list.options[i];
-        return _Row(
-          metrics: metrics,
-          label: option.name,
-          selected: option == chosen,
-          onTap: () => onPick(option),
-        );
-      },
     );
   }
 }

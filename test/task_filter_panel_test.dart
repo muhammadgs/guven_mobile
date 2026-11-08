@@ -8,18 +8,17 @@ import 'package:http/testing.dart';
 import 'package:guven_mobile/src/core/network/api_client.dart';
 import 'package:guven_mobile/src/core/network/token_store.dart';
 import 'package:guven_mobile/src/features/auth/application/session_controller.dart';
+import 'package:guven_mobile/src/features/database/domain/database_filter.dart';
+import 'package:guven_mobile/src/features/database/presentation/widgets/database_filter_panel.dart';
+import 'package:guven_mobile/src/features/tasks/application/task_filter_source.dart';
 import 'package:guven_mobile/src/features/tasks/application/tasks_controller.dart';
 import 'package:guven_mobile/src/features/tasks/data/tasks_api.dart';
-import 'package:guven_mobile/src/features/tasks/presentation/widgets/task_filter_panel.dart';
+import 'package:guven_mobile/src/features/tasks/domain/task_filter.dart';
 
-/// The panel end to end: it draws, a column opens its values, ticking one
-/// narrows the list, and `Hamısı` puts it back.
-///
-/// Worth pumping rather than reasoning about, because everything visual here
-/// is laid out inside a morphing lens — an `OverflowBox` at the panel's
-/// resting size, inside a glass surface, inside a `Stack` positioned in global
-/// coordinates. A layout that overflows or a lens that throws would never show
-/// up in the arithmetic tests next door.
+/// The task filter end to end, on the `Baza` filter's panel — the user's
+/// one-to-one rule (2026-11-08): it draws, a column turns the same pane into
+/// its values, typing narrows them, ticking one narrows the list, the dates
+/// take a span of days, and `Hamısı` puts it back.
 void main() {
   testWidgets('the columns are the ones the rows carry', (
     WidgetTester tester,
@@ -64,6 +63,26 @@ void main() {
     expect(tasks.visibleTasks.length, 3);
   });
 
+  testWidgets('typing narrows the values, letters folded the Baza way', (
+    WidgetTester tester,
+  ) async {
+    final TasksController tasks = await _loaded();
+    await _pump(tester, tasks);
+
+    await tester.tap(find.text('İşin növü'));
+    await tester.pumpAndSettle();
+    expect(find.text('Audit'), findsOneWidget);
+    expect(find.text('Hesabat'), findsOneWidget);
+
+    // No `ə` or `ş` on the keyboard: `sebeke` still finds `Şəbəkə`.
+    await tester.enterText(find.byType(TextField), 'sebeke');
+    await tester.pumpAndSettle();
+
+    expect(find.text('Şəbəkə quraşdırma'), findsOneWidget);
+    expect(find.text('Audit'), findsNothing);
+    expect(find.text('Hesabat'), findsNothing);
+  });
+
   testWidgets('the values of one column narrow the options of another', (
     WidgetTester tester,
   ) async {
@@ -75,8 +94,9 @@ void main() {
     await tester.tap(find.text('Ay Ulduz ASC'));
     await tester.pumpAndSettle();
 
-    // Switching columns lets the first panel out before the second comes in —
-    // two lenses at once would refract each other.
+    // Back to the columns on the same pane, then the next column.
+    await tester.tap(find.bySemanticsLabel('Geri'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Şöbə'));
     await tester.pumpAndSettle();
 
@@ -86,6 +106,37 @@ void main() {
       findsNothing,
       reason: 'no Ay Ulduz row is in AUDİT, so that value is unreachable',
     );
+  });
+
+  testWidgets('a date column takes a span of days, with the days under it', (
+    WidgetTester tester,
+  ) async {
+    final TasksController tasks = await _loaded();
+    await _pump(tester, tasks);
+
+    await tester.tap(find.text('Tarix'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Min tarix'), findsOneWidget);
+    expect(find.text('Maks tarix'), findsOneWidget);
+    // The days, newest first, written the way the fields write them.
+    expect(find.text('25.08.2026'), findsOneWidget);
+    expect(find.text('24.08.2026'), findsOneWidget);
+
+    // Digits only: the points come by themselves.
+    await tester.enterText(find.byType(TextField).first, '25082026');
+    await tester.pump();
+    expect(find.text('25.08.2026'), findsWidgets);
+    await tester.pumpAndSettle(const Duration(milliseconds: 500));
+
+    expect(tasks.visibleTasks.length, 2);
+    expect(tasks.filter.activeFieldCount, 1);
+
+    // A day ticked lets go of the span.
+    await tester.tap(find.text('24.08.2026'));
+    await tester.pumpAndSettle();
+    expect(tasks.filter.rangeOf(TaskFilterField.date), FilterRange.any);
+    expect(tasks.visibleTasks.single.id, 3);
   });
 
   testWidgets('the reset control appears once something is selected', (
@@ -100,8 +151,10 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('İcra edilir'));
     await tester.pumpAndSettle();
+    await tester.tap(find.bySemanticsLabel('Geri'));
+    await tester.pumpAndSettle();
 
-    // In the title bar, so the panel does not grow a row taller under the
+    // In the title's line, so the panel does not grow a row taller under the
     // finger that just ticked something.
     expect(find.text('Sıfırla'), findsOneWidget);
 
@@ -116,6 +169,8 @@ void main() {
 /// Pumps the panel at rest — no morph, which is the state every assertion
 /// here is about. The flight itself is covered by `glass_morph_test.dart`.
 Future<void> _pump(WidgetTester tester, TasksController tasks) async {
+  final TaskFilterSource source = TaskFilterSource(tasks);
+  addTearDown(source.dispose);
   await tester.pumpWidget(
     MediaQuery(
       data: const MediaQueryData(
@@ -127,7 +182,12 @@ Future<void> _pump(WidgetTester tester, TasksController tasks) async {
         // No `Material` here on purpose. This route is pushed as a sibling
         // of the shell, so the panel has to bring its own or every label
         // comes out in the framework's yellow debug style.
-        child: MaterialApp(home: TaskFilterPanel(controller: tasks)),
+        child: MaterialApp(
+          home: DatabaseFilterPanel(
+            source: source,
+            origin: const Offset(22, 190),
+          ),
+        ),
       ),
     ),
   );

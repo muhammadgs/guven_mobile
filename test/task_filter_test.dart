@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 
+import 'package:guven_mobile/src/features/database/domain/database_filter.dart';
 import 'package:guven_mobile/src/features/tasks/domain/task_filter.dart';
 import 'package:guven_mobile/src/features/tasks/domain/task_item.dart';
 import 'package:guven_mobile/src/features/tasks/domain/task_status.dart';
@@ -241,6 +242,77 @@ void main() {
       );
       first.toggle(TaskFilterField.department, 'İKT');
       expect(first.valuesOf(TaskFilterField.department), <String>{'AUDİT'});
+    });
+  });
+
+  group('a span of days', () {
+    FilterRange days(DateTime? from, DateTime? to) => FilterRange(
+      min: from == null ? null : filterDayOf(from).toDouble(),
+      max: to == null ? null : filterDayOf(to).toDouble(),
+    );
+
+    test('holds every task on its first and last day, whatever the hour', () {
+      final TaskFilter filter = TaskFilter.none.withRange(
+        TaskFilterField.date,
+        days(DateTime(2026, 8, 25), DateTime(2026, 8, 25)),
+      );
+      expect(filter.apply(rows), <TaskItem>[audit, ikt]);
+      expect(filter.activeFieldCount, 1);
+    });
+
+    test('an open end lets everything past it through', () {
+      final TaskFilter filter = TaskFilter.none.withRange(
+        TaskFilterField.date,
+        days(null, DateTime(2026, 8, 24)),
+      );
+      // The task with no date is in no span at all.
+      expect(filter.apply(rows), <TaskItem>[books]);
+    });
+
+    test('a span and ticked days are one or the other', () {
+      final TaskFilter ticked = TaskFilter.none.toggle(
+        TaskFilterField.date,
+        '2026-08-24',
+      );
+      final TaskFilter spanned = ticked.withRange(
+        TaskFilterField.date,
+        days(DateTime(2026, 8, 25), null),
+      );
+      expect(spanned.valuesOf(TaskFilterField.date), isEmpty);
+      expect(spanned.narrows(TaskFilterField.date), isTrue);
+
+      final TaskFilter back = spanned.toggle(TaskFilterField.date, '2026-08-24');
+      expect(back.rangeOf(TaskFilterField.date), FilterRange.any);
+      expect(back.apply(rows), <TaskItem>[books]);
+
+      // An empty span leaves the ticked days alone.
+      expect(
+        back.withRange(TaskFilterField.date, FilterRange.any),
+        back,
+      );
+      expect(back.clear(TaskFilterField.date), TaskFilter.none);
+    });
+
+    test('a day is read the way it is typed', () {
+      final DateTime today = DateTime(2026, 11, 8);
+      expect(
+        parseFilterDay('25.08.2026'),
+        filterDayOf(DateTime(2026, 8, 25)),
+      );
+      expect(
+        parseFilterDay('25.08', today: today),
+        filterDayOf(DateTime(2026, 8, 25)),
+      );
+      expect(
+        parseFilterDay('25.08.', today: today),
+        filterDayOf(DateTime(2026, 8, 25)),
+      );
+      // A year not typed out yet, a day the calendar lacks, nothing.
+      expect(parseFilterDay('25.08.20'), isNull);
+      expect(parseFilterDay('31.02.2026'), isNull);
+      expect(parseFilterDay('25'), isNull);
+      expect(parseFilterDay(''), isNull);
+      expect(writeFilterDay(filterDayOf(DateTime(2026, 6, 1))), '01.06.2026');
     });
   });
 }

@@ -280,6 +280,7 @@ class _NewTaskPanelState extends State<NewTaskPanel>
                 ListenableBuilder(
                   listenable: _controller,
                   builder: (BuildContext context, _) => NewTaskPickerPanel(
+                    key: ValueKey<Object>(_field!),
                     metrics: metrics,
                     anchor: _anchor,
                     flight: _picker,

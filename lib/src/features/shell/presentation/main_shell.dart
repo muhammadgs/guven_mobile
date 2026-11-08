@@ -9,6 +9,7 @@ import '../../../shared/layout.dart';
 import '../../../shared/widgets/app_background.dart';
 import '../../database/presentation/database_screen.dart';
 import '../../home/presentation/home_screen.dart';
+import '../../settings/presentation/settings_screen.dart';
 import '../../tasks/presentation/tasks_screen.dart';
 import '../data/nav_layout_store.dart';
 import '../domain/shell_destination.dart';
@@ -67,7 +68,8 @@ class MainShell extends StatefulWidget {
       MediaQuery.paddingOf(context).bottom,
       scaled(context, _barMinBottomMargin),
     );
-    final double bottom = screen.height - floor - scaled(context, _barBottomGap);
+    final double bottom =
+        screen.height - floor - scaled(context, _barBottomGap);
     return Rect.fromLTRB(
       side,
       bottom - scaled(context, _barHeight),
@@ -361,7 +363,10 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
         widget.pageBuilder;
     if (builder != null) return builder(page, reserve);
     return switch (page) {
-      ShellDestination.home => HomeScreen(bottomReserve: reserve),
+      ShellDestination.home => HomeScreen(
+        bottomReserve: reserve,
+        active: _current == ShellDestination.home,
+      ),
       ShellDestination.tasks => TasksScreen(
         bottomReserve: reserve,
         active: _current == ShellDestination.tasks,
@@ -369,6 +374,10 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
       ShellDestination.database => DatabaseScreen(
         bottomReserve: reserve,
         active: _current == ShellDestination.database,
+      ),
+      ShellDestination.settings => SettingsScreen(
+        bottomReserve: reserve,
+        active: _current == ShellDestination.settings,
       ),
       // Every other page is a button for now; its screen comes later.
       _ => ComingSoonTab(title: page.title, bottomReserve: reserve),
@@ -535,8 +544,7 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
       double bestDistance = double.infinity;
       for (int page = 0; page < ShellNavLayout.barPageCount; page++) {
         final double distance =
-            (_cellCenter(bar, ShellNavLayout.cellOf(page)).dx - point.dx)
-                .abs();
+            (_cellCenter(bar, ShellNavLayout.cellOf(page)).dx - point.dx).abs();
         if (distance < bestDistance) {
           best = page;
           bestDistance = distance;

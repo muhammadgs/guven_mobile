@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import '../../../core/json.dart';
 import '../../../core/network/api_client.dart';
 import '../../../core/network/api_exception.dart';
@@ -75,13 +77,19 @@ class AuthApi {
   /// Ends the session on the server, then locally.
   ///
   /// The local half happens regardless: if the server cannot be reached the
-  /// user still expects to be signed out of this device.
+  /// user still expects to be signed out of this device. The server gets
+  /// [_logoutTimeout], short of the client's 20s, so `Çıxış edin` on a dead
+  /// connection does not hold the user for the whole timeout.
   Future<void> signOut() async {
     try {
-      await _client.post('/auth/logout');
+      await _client.post('/auth/logout').timeout(_logoutTimeout);
     } on ApiException {
       // Already invalid, or offline. Either way the tokens go.
+    } on TimeoutException {
+      // The server never answered; the tokens go regardless.
     }
     await _tokens.clear();
   }
+
+  static const Duration _logoutTimeout = Duration(seconds: 5);
 }

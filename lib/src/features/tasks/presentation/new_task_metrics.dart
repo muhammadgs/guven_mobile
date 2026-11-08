@@ -6,7 +6,7 @@ import '../../../shared/layout.dart';
 
 /// Where the `Yeni tapşırıq` surfaces sit, as arithmetic.
 ///
-/// Same rule as the filter's ([TaskFilterMetrics]): none of these panels is
+/// Same rule as the filter's (`DatabaseFilterMetrics`): none of these panels is
 /// laid out by the widget tree, because each one grows out of a *global* rect —
 /// the `+` button's, then the sheet's, then one field row's — and a
 /// destination has to be known in those coordinates before the first frame is
@@ -204,16 +204,43 @@ class NewTaskMetrics {
   /// It opens *over* the row rather than beside it: unlike the filter, a field
   /// here is as wide as the sheet, so there is no column of screen left to put
   /// a second panel in.
-  Rect pickerPanel({required Rect anchor, required int rowCount}) => panelAt(
+  ///
+  /// A list with a search field ([search]) keeps above the keyboard the
+  /// field brings up: it rides up first, and only then lets its rows shrink.
+  Rect pickerPanel({
+    required Rect anchor,
+    required int rowCount,
+    bool search = false,
+  }) => panelAt(
     anchor: anchor,
-    height: 2 * pickerPadV + rowCount * pickerRowHeight,
+    height:
+        2 * pickerPadV +
+        (search ? pickerSearchHeight + pickerSearchGap : 0) +
+        rowCount * pickerRowHeight,
+    aboveKeyboard: search,
   );
+
+  /// A picker's search field: a row's height.
+  double get pickerSearchHeight => pickerRowHeight;
+
+  /// From the search field to the first option.
+  double get pickerSearchGap => kPickerPadV * scale;
 
   /// The same placement for a panel whose height is not a count of rows — the
   /// date wheel, which is as tall as it is whatever the month holds.
-  Rect panelAt({required Rect anchor, required double height}) {
+  Rect panelAt({
+    required Rect anchor,
+    required double height,
+    bool aboveKeyboard = false,
+  }) {
+    final double floor = aboveKeyboard
+        ? math.max(
+            band.top + math.min(160 * scale, band.height),
+            math.min(band.bottom, keyboardTop),
+          )
+        : band.bottom;
     final double width = math.min(anchor.width, band.width);
-    height = math.min(height, band.height);
+    height = math.min(height, floor - band.top);
     final double left = anchor.left.clamp(
       band.left,
       math.max(band.left, band.right - width),
@@ -222,7 +249,7 @@ class NewTaskMetrics {
     // long enough to run off the bottom rides up instead of being cut.
     final double top = anchor.top.clamp(
       band.top,
-      math.max(band.top, band.bottom - height),
+      math.max(band.top, floor - height),
     );
     return Rect.fromLTWH(left, top, width, height);
   }

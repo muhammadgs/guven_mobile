@@ -4,7 +4,9 @@ import 'package:flutter/material.dart';
 
 import '../../../shared/layout.dart';
 import '../../auth/application/session_controller.dart';
+import '../../database/presentation/widgets/database_filter_panel.dart';
 import '../application/task_edit_controller.dart';
+import '../application/task_filter_source.dart';
 import '../application/tasks_controller.dart';
 import '../domain/new_task.dart';
 import '../domain/task_attachment.dart';
@@ -14,7 +16,6 @@ import '../domain/task_status.dart';
 import 'widgets/new_task_panel.dart';
 import 'widgets/task_card.dart';
 import 'widgets/task_edit_panel.dart';
-import 'widgets/task_filter_panel.dart';
 import 'widgets/task_glass.dart';
 import 'widgets/task_scope_bar.dart';
 import 'widgets/task_tools.dart';
@@ -53,6 +54,10 @@ class TasksScreen extends StatefulWidget {
 class _TasksScreenState extends State<TasksScreen> {
   TasksController? _controller;
 
+  /// The filter as the shared filter panel reads it — made with the
+  /// controller, and let go with it.
+  TaskFilterSource? _filter;
+
   /// A one-line failure notice shown above the list for a few seconds.
   ///
   /// The app has no `Scaffold` anywhere — the shell owns the background and
@@ -78,6 +83,7 @@ class _TasksScreenState extends State<TasksScreen> {
   void didChangeDependencies() {
     super.didChangeDependencies();
     _controller ??= TasksController(SessionScope.read(context));
+    _filter ??= TaskFilterSource(_controller!);
     if (widget.active) _loadOnce();
   }
 
@@ -98,6 +104,7 @@ class _TasksScreenState extends State<TasksScreen> {
   @override
   void dispose() {
     _flashTimer?.cancel();
+    _filter?.dispose();
     _controller?.dispose();
     super.dispose();
   }
@@ -148,11 +155,14 @@ class _TasksScreenState extends State<TasksScreen> {
   /// Opens the filter, growing out of the button that was pressed.
   Future<void> _openFilter(Rect button, double radius) async {
     setState(() => _filterOpen = true);
-    await openTaskFilter(
+    // The `Baza` filter, one to one (2026-11-08). The funnel is the first of
+    // the two buttons here, so the panel's corner is the funnel's own.
+    await openDatabaseFilter(
       context,
       button: button,
       radius: radius,
-      controller: _controller!,
+      origin: button.topLeft,
+      source: _filter!,
     );
     if (mounted) setState(() => _filterOpen = false);
   }

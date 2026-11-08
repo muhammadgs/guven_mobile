@@ -239,7 +239,7 @@ class _DatabaseFilterPanelState extends State<DatabaseFilterPanel>
     final bool period = _periods?.takesPeriod(column) ?? false;
     _values.open(column);
     _query.clear();
-    if (field != null) _fillRange(_ranges!.rangeOf(column));
+    if (field != null) _fillRange(_ranges!.rangeOf(column), field);
     if (period) _startPeriod(column);
     setState(() {
       _column = column;
@@ -376,12 +376,15 @@ class _DatabaseFilterPanelState extends State<DatabaseFilterPanel>
   // ── A span ─────────────────────────────────────────────────────────────
 
   /// Writes [range] into the fields without it counting as typing.
-  void _fillRange(FilterRange range) {
+  void _fillRange(FilterRange range, [FilterRangeField? into]) {
     _rangeDebounce?.cancel();
     _rangeDebounce = null;
     _quiet = true;
-    _min.text = range.min == null ? '' : writeFilterFigure(range.min!);
-    _max.text = range.max == null ? '' : writeFilterFigure(range.max!);
+    final FilterRangeField? field = into ?? _field;
+    String write(double value) =>
+        field?.write(value) ?? writeFilterFigure(value);
+    _min.text = range.min == null ? '' : write(range.min!);
+    _max.text = range.max == null ? '' : write(range.max!);
     _quiet = false;
   }
 
@@ -403,8 +406,8 @@ class _DatabaseFilterPanelState extends State<DatabaseFilterPanel>
     ranges.setRange(
       column,
       FilterRange(
-        min: parseFilterFigure(_min.text),
-        max: parseFilterFigure(_max.text),
+        min: _field?.parse(_min.text) ?? parseFilterFigure(_min.text),
+        max: _field?.parse(_max.text) ?? parseFilterFigure(_max.text),
       ),
     );
   }
@@ -996,6 +999,7 @@ class _RangePage extends StatelessWidget {
                       hint: field.minHint,
                       suffix: field.suffix,
                       signed: field.signed,
+                      day: field.day,
                       controller: min,
                       focus: minFocus,
                       action: TextInputAction.next,
@@ -1021,6 +1025,7 @@ class _RangePage extends StatelessWidget {
                 hint: field.maxHint,
                 suffix: field.suffix,
                 signed: field.signed,
+                day: field.day,
                 controller: max,
                 focus: maxFocus,
                 action: TextInputAction.done,
@@ -1551,6 +1556,7 @@ class _FigureField extends StatelessWidget {
     required this.hint,
     required this.suffix,
     required this.signed,
+    this.day = false,
     required this.controller,
     required this.focus,
     required this.action,
@@ -1561,6 +1567,10 @@ class _FigureField extends StatelessWidget {
   final String hint;
   final String? suffix;
   final bool signed;
+
+  /// A day rather than a figure: digits only, the points put in as they are
+  /// typed — `01062026` reads `01.06.2026`.
+  final bool day;
   final TextEditingController controller;
   final FocusNode focus;
   final TextInputAction action;
@@ -1594,12 +1604,15 @@ class _FigureField extends StatelessWidget {
                 style: style,
                 cursorColor: kGlassInk,
                 cursorWidth: 1.6,
-                keyboardType: TextInputType.numberWithOptions(
-                  decimal: true,
-                  signed: signed,
-                ),
+                keyboardType: day
+                    ? TextInputType.number
+                    : TextInputType.numberWithOptions(
+                        decimal: true,
+                        signed: signed,
+                      ),
                 inputFormatters: <TextInputFormatter>[
-                  _FigureFormatter(signed: signed),
+                  if (day) const DayFieldFormatter()
+                  else _FigureFormatter(signed: signed),
                 ],
                 textInputAction: action,
                 autocorrect: false,
@@ -1671,6 +1684,45 @@ class _FigureFormatter extends TextInputFormatter {
     TextEditingValue oldValue,
     TextEditingValue newValue,
   ) => _shape.hasMatch(newValue.text) ? newValue : oldValue;
+}
+
+/// A day typed on the number keys: up to eight digits, a point put in
+/// after the day and after the month — `0106` reads `01.06`, the year
+/// after it. A point typed by hand is let through where one goes, so a
+/// keyboard with a point on it still works; anything else is dropped.
+class DayFieldFormatter extends TextInputFormatter {
+  const DayFieldFormatter();
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    // Deleting a point deletes the digit before it too, or the point would
+    // only come straight back.
+    String digits = newValue.text.replaceAll(RegExp(r"[^0-9]"), "");
+    final bool deleting = newValue.text.length < oldValue.text.length;
+    if (deleting &&
+        oldValue.text.endsWith(".") &&
+        !newValue.text.endsWith(".") &&
+        digits.isNotEmpty &&
+        newValue.text.length == oldValue.text.length - 1) {
+      digits = digits.substring(0, digits.length - 1);
+    }
+    if (digits.length > 8) digits = digits.substring(0, 8);
+    final StringBuffer out = StringBuffer();
+    for (int i = 0; i < digits.length; i++) {
+      out.write(digits[i]);
+      if ((i == 1 || i == 3) && (i < digits.length - 1 || !deleting)) {
+        out.write(".");
+      }
+    }
+    final String text = out.toString();
+    return TextEditingValue(
+      text: text,
+      selection: TextSelection.collapsed(offset: text.length),
+    );
+  }
 }
 
 /// What the list says when it has nothing to list.

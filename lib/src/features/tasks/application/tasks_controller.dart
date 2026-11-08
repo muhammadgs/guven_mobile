@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 
 import '../../../core/network/api_exception.dart';
 import '../../auth/application/session_controller.dart';
+import '../../database/domain/database_filter.dart';
 import '../data/task_files_api.dart';
 import '../data/tasks_api.dart';
 import '../domain/task_attachment.dart';
@@ -167,6 +168,11 @@ class TasksController extends ChangeNotifier {
   /// Adds or removes one value in one column.
   void toggleFilter(TaskFilterField field, String value) =>
       _setFilter(current.filter.toggle(field, value));
+
+  /// [field] — a date column — narrowed to a span of days; an empty span
+  /// lets go of it.
+  void setFilterRange(TaskFilterField field, FilterRange range) =>
+      _setFilter(current.filter.withRange(field, range.ordered));
 
   /// `Hamısı` — [field] stops narrowing anything.
   void clearFilterField(TaskFilterField field) =>

@@ -241,6 +241,7 @@ class _TaskEditPanelState extends State<TaskEditPanel>
                 ListenableBuilder(
                   listenable: _controller,
                   builder: (BuildContext context, _) => NewTaskPickerPanel(
+                    key: ValueKey<Object>(_field!),
                     metrics: metrics,
                     anchor: _anchor,
                     flight: _picker,
@@ -255,6 +256,7 @@ class _TaskEditPanelState extends State<TaskEditPanel>
                 )
               else if (_status)
                 NewTaskPickerPanel(
+                  key: const ValueKey<Object>('status'),
                   metrics: metrics,
                   anchor: _anchor,
                   flight: _picker,
