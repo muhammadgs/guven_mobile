@@ -39,7 +39,6 @@ dependencies:
   # animation. Flutter has no native SVG support, so this package is required.
   flutter_svg: ^2.0.10
   video_player: ^2.10.0
-  liquid_glass_easy: ^3.5.0
   http: ^1.6.0
   flutter_secure_storage: ^10.3.1
 
@@ -50,14 +49,23 @@ dependencies:
   # manifest work here, and uses `UIDocumentInteractionController` on iOS.
   path_provider: ^2.1.5
   open_filex: ^4.7.0
-  liquid_glass_renderer: 0.2.0-dev.4
-  flutter_liquid_glass_plus: ^0.0.7
-  native_glass_navbar: ^1.0.2
   record: ^7.1.1
   audioplayers: ^6.8.1
   file_picker: ^12.1.2
   http_parser: ^4.1.2
   phone_numbers_parser: ^9.0.26
+
+  # Face ID / Touch ID / fingerprint as an alternative to the passcode. Android
+  # needs `MainActivity` to be a `FlutterFragmentActivity` and an AppCompat
+  # launch theme for it; iOS needs `NSFaceIDUsageDescription`. The platform
+  # packages are listed only so the prompt's buttons can be worded in
+  # Azerbaijani (`AndroidAuthMessages`, `IOSAuthMessages`).
+  local_auth: ^3.0.2
+  local_auth_android: ^2.3.0
+  local_auth_darwin: ^2.0.5
+
+  # PBKDF2 over the passcode: only a salted hash is kept, never the digits.
+  crypto: ^3.0.8
 
 dev_dependencies:
   flutter_test:
@@ -102,6 +110,9 @@ flutter:
           weight: 400
     - family: Poppins
       fonts:
+        # The passcode keypad's digits are set in Light, as the design does.
+        - asset: assets/fonts/Poppins-Light.ttf
+          weight: 300
         - asset: assets/fonts/Poppins-Regular.ttf
           weight: 400
         # The task cards set their timestamps and deadlines in italics, the way

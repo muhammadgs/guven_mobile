@@ -110,9 +110,6 @@ class _DatabaseQuickSearchBarState extends State<DatabaseQuickSearchBar> {
         child: SizedBox(
           height: height,
           child: AppGlassSurface(
-            // The buttons' glass beside it, rim and all — see
-            // [GlassToolButton].
-            backend: AppGlassBackend.easy,
             style: glassAtRadius(kTaskToolGlass, radius),
             cornerRadius: radius,
             child: Row(

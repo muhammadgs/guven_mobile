@@ -4,7 +4,6 @@ import 'package:guven_mobile/src/features/home/domain/activity.dart';
 import 'package:guven_mobile/src/features/home/presentation/widgets/activity_panel.dart';
 import 'package:guven_mobile/src/features/shell/presentation/widgets/guven_glass_bottom_bar.dart';
 import 'package:guven_mobile/src/shared/glass/app_glass.dart';
-import 'package:liquid_glass_renderer/liquid_glass_renderer.dart' as renderer;
 
 void main() {
   testWidgets('activity text and its real glass travel together', (
@@ -43,11 +42,6 @@ void main() {
 
     final Finder glass = find.byType(AppGlassSurface);
     expect(glass, findsAtLeastNWidgets(2));
-    for (final AppGlassSurface surface in tester.widgetList<AppGlassSurface>(
-      glass,
-    )) {
-      expect(surface.fake, isFalse);
-    }
 
     final Finder rowText = find.text('Activity 2');
     final Finder rowGlass = find.ancestor(
@@ -73,7 +67,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('navbar lens follows drag and fits each label width', (
+  testWidgets('navbar marker follows drag and fits each label width', (
     WidgetTester tester,
   ) async {
     tester.view.physicalSize = const Size(390, 200);
@@ -120,11 +114,10 @@ void main() {
     expect(
       glass,
       findsOneWidget,
-      reason: 'parked, the only glass in the bar is the bar',
+      reason: 'the only glass in the bar is the bar',
     );
 
     final Finder pill = _pill;
-    final Finder selectionGlass = _selectionGlass;
     final Size restSize = tester.getSize(pill);
     expect(restSize.height, lessThan(64 * 0.8));
     final double startX = tester.getCenter(pill).dx;
@@ -134,54 +127,23 @@ void main() {
     await drag.moveBy(const Offset(20, 0));
     await drag.moveTo(Offset(barRect.center.dx, barRect.center.dy));
     // The first frame after a ticker starts only fixes its time base, so the
-    // springs need a second one before they have integrated anything.
+    // spring needs a second one before it has integrated anything.
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 80));
 
     expect(selected, 0, reason: 'selection commits only when the finger lifts');
+    expect(tester.getCenter(pill).dx, greaterThan(startX + 70));
     expect(
-      selectionGlass,
-      findsOneWidget,
-      reason: 'holding the marker turns it into a lens',
+      tester.getSize(pill).height,
+      restSize.height,
+      reason: 'a held marker stays the same flat marker',
     );
-    expect(tester.getCenter(selectionGlass).dx, greaterThan(startX + 70));
-    if (!kUseLegacyEasyGlass) {
-      expect(
-        tester.getSize(selectionGlass).height,
-        greaterThan(restSize.height),
-        reason: 'and swells past the flat marker it grew out of',
-      );
-      expect(
-        tester
-            .widget<AppGlassSurface>(selectionGlass)
-            .style
-            .settings
-            .visibility,
-        greaterThan(0.4),
-      );
-      expect(
-        _stretch(tester).dx.abs(),
-        greaterThan(1),
-        reason: 'renderer stretch must deform while the lens is held',
-      );
-    }
+    expect(glass, findsOneWidget, reason: 'and no glass appears under it');
 
     await drag.up();
     await tester.pumpAndSettle();
     expect(selected, 1);
-    expect(
-      selectionGlass,
-      findsNothing,
-      reason: 'the lens goes away with the finger that asked for it',
-    );
     expect(tester.getSize(pill).width, greaterThan(restSize.width + 10));
-    if (!kUseLegacyEasyGlass) {
-      expect(
-        _stretch(tester),
-        Offset.zero,
-        reason: 'the spring must restore the capsule after release',
-      );
-    }
 
     expect(tester.takeException(), isNull);
   });
@@ -201,68 +163,35 @@ void main() {
     final double midX = tester.getCenter(_pill).dx;
     expect(midX, greaterThan(startX + 20), reason: 'the marker set off');
     expect(midX, lessThan(295), reason: 'and is still on its way, not there');
-    expect(
-      _stretch(tester).dx.abs(),
-      greaterThan(1),
-      reason: 'a tap deforms the capsule too, not only a drag',
-    );
 
     await tester.pumpAndSettle();
     expect(tester.getCenter(_pill).dx, greaterThan(midX));
-    expect(_stretch(tester), Offset.zero);
-    expect(
-      _selectionGlass,
-      findsNothing,
-      reason: 'a tap never leaves the lens behind',
-    );
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('pulling the lens off its rail stands it up and lets it back', (
+  testWidgets('a vertical drag never moves the selection', (
     WidgetTester tester,
   ) async {
     int selected = 0;
     await _pumpBar(tester, onSelected: (int next) => selected = next);
+    final Offset start = tester.getCenter(_pill);
 
-    final TestGesture drag = await tester.startGesture(
-      tester.getCenter(_pill),
-    );
-    // The first move only clears the pan slop; the second is the one that
-    // arrives as an update and feeds the pull.
+    final TestGesture drag = await tester.startGesture(start);
     await drag.moveBy(const Offset(0, -40));
     await drag.moveBy(const Offset(0, -24));
     await tester.pump();
-
-    expect(_stretch(tester).dy, lessThan(-5));
-    expect(
-      _stretch(tester).dx.abs(),
-      lessThan(0.01),
-      reason: 'a vertical pull must not drag the selection sideways',
-    );
+    expect(tester.getCenter(_pill).dx, closeTo(start.dx, 0.01));
 
     await drag.up();
     await tester.pumpAndSettle();
     expect(selected, 0);
-    expect(_stretch(tester), Offset.zero);
+    expect(tester.getCenter(_pill), start);
     expect(tester.takeException(), isNull);
   });
 }
 
-/// The flat marker. Always present — it is what the lens grows out of, and it
-/// is only faded out, never removed.
+/// The marker under the selected cell.
 final Finder _pill = find.byKey(const ValueKey<String>('nav-selection-pill'));
-
-/// The lens itself, which exists only while a finger is on the bar.
-final Finder _selectionGlass = find.byKey(
-  const ValueKey<String>('nav-selection-glass'),
-);
-
-/// Both layers carry the same deformation, so either one reports it.
-Offset _stretch(WidgetTester tester) => tester
-    .widget<renderer.RawLiquidStretch>(
-      find.byType(renderer.RawLiquidStretch).first,
-    )
-    .stretchPixels;
 
 /// A 300pt three-cell bar sitting at the top of a 390pt view, so cell centres
 /// land on round numbers.

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
-import '../../../../shared/motion/glass_touch_surface.dart';
 import '../../../home/presentation/widgets/home_glass.dart';
 import '../attendance_metrics.dart';
 import 'attendance_card.dart';
@@ -29,15 +28,12 @@ class ProfileButton extends StatelessWidget {
             shape: BoxShape.circle,
             boxShadow: kGlassLift,
           ),
-          // Its own layer: `GlassTouchSurface` draws into one, as the stat
-          // rows do under theirs.
           child: AppGlassLayer(
             style: kStatPillGlass,
             child: Builder(
-              builder: (BuildContext context) => GlassTouchSurface(
-                style: kStatPillGlass,
+              builder: (BuildContext context) => AppGlassButton(
+                style: glassAtRadius(kStatPillGlass, d / 2),
                 cornerRadius: d / 2,
-                flex: const AppGlassFlex.statPill(),
                 onTap: () {
                   final RenderBox box =
                       context.findRenderObject()! as RenderBox;

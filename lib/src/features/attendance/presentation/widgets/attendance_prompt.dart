@@ -667,7 +667,6 @@ class _PromptButtonState extends State<_PromptButton> {
               AppGlassSurface(
                 style: glassAtRadius(promptButtonGlass(widget.tint), h / 2),
                 cornerRadius: h / 2,
-                backend: AppGlassBackend.easy,
                 fade: p,
                 child: const SizedBox.expand(),
               ),
@@ -741,7 +740,6 @@ class _ReasonField extends StatelessWidget {
               m.fieldRadius,
             ),
             cornerRadius: m.fieldRadius,
-            backend: AppGlassBackend.easy,
             fade: p,
             child: const SizedBox.expand(),
           ),

@@ -5,7 +5,7 @@ import android.os.Bundle
 import android.view.View
 import android.view.WindowInsets
 import android.view.WindowInsetsController
-import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.FlutterFragmentActivity
 
 /**
  * Hides Android's navigation bar so the app owns the full height of the screen.
@@ -24,8 +24,13 @@ import io.flutter.embedding.android.FlutterActivity
  *
  * Only the navigation bar goes. The status bar stays, so the clock, signal and
  * battery remain where users expect them.
+ *
+ * A [FlutterFragmentActivity] rather than a plain `FlutterActivity` because the
+ * passcode screen offers Face ID / fingerprint through `local_auth`, and
+ * Android's `BiometricPrompt` is hosted in a fragment. It is still an
+ * `Activity`, so the navigation-bar handling below is unchanged.
  */
-class MainActivity : FlutterActivity() {
+class MainActivity : FlutterFragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         hideNavigationBar()

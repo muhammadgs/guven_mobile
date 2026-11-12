@@ -609,9 +609,6 @@ class _DatabaseFilterPanelState extends State<DatabaseFilterPanel>
           ),
         ),
         child: AppGlassSurface(
-          // Pinned to `liquid_glass_easy`, like the funnel it grew out of —
-          // see `kTaskFilterGlass`.
-          backend: AppGlassBackend.easy,
           style: lerpAppGlassStyle(
             kTaskToolGlass,
             kTaskFilterGlass,

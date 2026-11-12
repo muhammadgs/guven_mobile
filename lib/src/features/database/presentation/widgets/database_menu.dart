@@ -525,9 +525,6 @@ class _PanelSurface extends StatelessWidget {
           ),
         ),
         child: AppGlassSurface(
-          // Pinned to `liquid_glass_easy`, like the button it grew out of and
-          // like the filter it copies — see `kTaskFilterGlass`.
-          backend: AppGlassBackend.easy,
           style: lerpAppGlassStyle(
             kTaskToolGlass,
             kTaskFilterGlass,

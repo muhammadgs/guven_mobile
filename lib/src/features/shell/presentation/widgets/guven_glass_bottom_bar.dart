@@ -2,30 +2,17 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:flutter_liquid_glass_plus/flutter_liquid_glass.dart'
-    show IndicatorPhysics;
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:liquid_glass_renderer/liquid_glass_renderer.dart' as renderer;
 
-import '../../../../shared/motion/lens_rim.dart';
 import '../../../../shared/motion/spring.dart';
 import '../../../home/presentation/widgets/home_glass.dart';
 
-/// Güvən's compact bottom bar with a restrained, refractive moving lens.
+/// Güvən's compact bottom bar: a frosted capsule with a plain marker under the
+/// selected cell.
 ///
-/// `LGBottomBar` hard-codes a 14px indicator expansion. This app-owned shell
-/// keeps the package's drag resistance but owns the visual layer, allowing
-/// the moving lens to follow a finger and fit each label's measured width.
-///
-/// Motion is a small spring system rather than a curve. A finger holds the
-/// lens directly — it never lags behind the thing dragging it — while three
-/// springs run off one ticker beside it: the travel back to a cell once the
-/// finger is gone, the sideways deformation, and the vertical pull. The last
-/// two are fed straight into `RawLiquidStretch`, the same squash-and-stretch
-/// engine the package's own `LiquidStretch` wraps, so the capsule leads with
-/// its front edge while moving and stands up when it is pulled off its rail.
-/// Driving it from here rather than from `LiquidStretch`'s own listener is
-/// what lets a *tap* deform the capsule too, and not only a drag.
+/// The marker is a flat fill sized to each label's measured width. It slides
+/// between cells on a spring, and a finger dragging along the bar holds it
+/// directly — it never lags behind the thing dragging it.
 class GuvenGlassBottomBar extends StatefulWidget {
   const GuvenGlassBottomBar({
     super.key,
@@ -80,51 +67,16 @@ class GuvenGlassBottomBar extends StatefulWidget {
   State<GuvenGlassBottomBar> createState() => _GuvenGlassBottomBarState();
 }
 
-/// The travel spring, at ζ ≈ 0.71: the lens overshoots its cell and rocks back
+/// The travel spring, at ζ ≈ 0.71: the marker overshoots its cell and rocks back
 /// instead of gliding to a stop.
 const double _kTravelStiffness = 265;
 const double _kTravelDamping = 23;
 
-/// The sideways deformation. Bouncy on purpose — it is what recoils when a
-/// drag stops dead.
-const double _kSquashStiffness = 500;
-const double _kSquashDamping = 30;
-
-/// The vertical pull on its way home, at ζ ≈ 0.44, so letting go of a lens
-/// that has been dragged upwards squashes it flat before it recovers.
-const double _kPullReturnStiffness = 330;
-const double _kPullReturnDamping = 16;
-
-/// The swell from flat marker to lens, at ζ ≈ 0.72 so it arrives with a little
-/// overshoot rather than easing in.
-const double _kLensStiffness = 520;
-const double _kLensDamping = 33;
-
-/// How far the capsule grows on each side when it becomes a lens, in pixels.
-/// The bar insets it by 7, so this all but fills the bar's height.
-const double _kSwell = 10;
-
-/// Cells of deformation per cell of finger travel, dumped into the squash
-/// spring on every drag update. A fast drag outruns the spring's recovery and
-/// the capsule stays stretched; a slow one barely marks it.
-const double _kGrabSquash = 0.30;
-
-/// How far ahead of itself a freely travelling lens runs, in seconds of
-/// travel, before the soft limit starts holding it back.
-const double _kTravelSquash = 0.070;
-
-/// Neither deformation ever passes these, in pixels. The pull is the smaller
-/// of the two on purpose: `RawLiquidStretch` translates by the offset as well
-/// as scaling by it, so every pixel here lifts the capsule off its rail by
-/// rather more than a pixel.
-const double _kSquashLimit = 50;
-const double _kPullLimit = 5;
-
-/// Cells per second the lens may carry out of a fling. Left unclamped, a flick
+/// Cells per second the marker may carry out of a fling. Left unclamped, a flick
 /// throws it most of a cell past its target.
 const double _kFlingLimit = 6;
 
-/// How far the lens may sit from the finger that grabbed it, in cells. A grab
+/// How far the marker may sit from the finger that grabbed it, in cells. A grab
 /// from further away still pulls it over — it just has to travel.
 const double _kGrabReach = 0.6;
 
@@ -246,29 +198,11 @@ class _BarCells {
 
 class _GuvenGlassBottomBarState extends State<GuvenGlassBottomBar>
     with SingleTickerProviderStateMixin {
-  /// Where the lens is, in cells.
+  /// Where the marker is, in cells.
   late final Spring _travel = Spring(
     stiffness: _kTravelStiffness,
     damping: _kTravelDamping,
     value: widget.selectedIndex.toDouble(),
-  );
-
-  /// How far the lens is stretched along the bar, in cells.
-  final Spring _squash = Spring(
-    stiffness: _kSquashStiffness,
-    damping: _kSquashDamping,
-  );
-
-  /// How far a finger has dragged it off its rail, in pixels.
-  final Spring _pull = Spring(
-    stiffness: _kPullReturnStiffness,
-    damping: _kPullReturnDamping,
-  );
-
-  /// 0 flat marker, 1 full lens. Held up only while a finger is on the bar.
-  final Spring _lens = Spring(
-    stiffness: _kLensStiffness,
-    damping: _kLensDamping,
   );
 
   /// Created eagerly rather than on first use: a bar that is disposed without
@@ -276,19 +210,14 @@ class _GuvenGlassBottomBarState extends State<GuvenGlassBottomBar>
   /// `dispose`, which reaches for an ancestor that is already gone.
   late final Ticker _ticker;
 
-  /// Bumped whenever the lens needs redrawing. Only the indicator listens, so
+  /// Bumped whenever the marker needs redrawing. Only the indicator listens, so
   /// the labels are built once and handed down as a cached child.
   final ValueNotifier<int> _frame = ValueNotifier<int>(0);
 
   Duration _lastTick = Duration.zero;
   bool _laidOut = false;
-  bool _pressed = false;
   bool _grabbed = false;
   double _grabOffset = 0;
-  double _pullRaw = 0;
-
-  /// Whether a finger is on the bar. The only thing that makes glass.
-  bool get _active => _pressed || _grabbed;
 
   @override
   void initState() {
@@ -357,10 +286,6 @@ class _GuvenGlassBottomBarState extends State<GuvenGlassBottomBar>
                 behavior: HitTestBehavior.opaque,
                 onTapUp: (TapUpDetails details) =>
                     _onTapAt(details.localPosition.dx, barWidth),
-                // Pan rather than a horizontal drag: the vertical component
-                // never moves the selection, it only feeds the pull that makes
-                // the capsule stand up and squash when it is let go.
-                onPanDown: _onPanDown,
                 onPanStart: (DragStartDetails details) =>
                     _onPanStart(details, barWidth),
                 onPanUpdate: (DragUpdateDetails details) =>
@@ -370,13 +295,11 @@ class _GuvenGlassBottomBarState extends State<GuvenGlassBottomBar>
                 onPanCancel: _onPanCancel,
                 // Held still for long enough, a touch stops being about the
                 // selection and picks the cell up instead. The pan above loses
-                // the arena to it and drains the lens it had started to swell.
+                // the arena to it.
                 onLongPressStart: widget.onLiftStart == null
                     ? null
-                    : (LongPressStartDetails details) => _onLongPressStart(
-                        details,
-                        slotWidth,
-                      ),
+                    : (LongPressStartDetails details) =>
+                          _onLongPressStart(details, slotWidth),
                 child: AnimatedBuilder(
                   animation: _frame,
                   builder: (BuildContext context, Widget? child) {
@@ -390,53 +313,17 @@ class _GuvenGlassBottomBarState extends State<GuvenGlassBottomBar>
                               barWidth - indicatorWidth - _kEdgeInset,
                             );
 
-                    final double lens = _lens.value;
-                    final double swell = _kSwell * lens;
-                    // Leading along the rail, standing up along the pull: one
-                    // offset, and the renderer turns it into volume-preserving
-                    // squash and stretch.
-                    final Offset stretch = Offset(
-                      soften(_squash.value * slotWidth, _kSquashLimit),
-                      _pull.value,
-                    );
-
                     return Stack(
                       fit: StackFit.expand,
-                      clipBehavior: Clip.none,
                       children: <Widget>[
-                        // Parked, the marker is a plain fill and it sits
-                        // *under* the glyphs, so they stay black on white.
-                        if (lens < 0.999)
-                          _RestingPill(
-                            left: left,
-                            width: indicatorWidth,
-                            radius: radius - 7,
-                            opacity: 1 - lens,
-                            stretchPixels: stretch,
-                          ),
+                        // A plain fill *under* the glyphs, so they stay black
+                        // on it.
+                        _SelectionPill(
+                          left: left,
+                          width: indicatorWidth,
+                          radius: radius - 7,
+                        ),
                         IgnorePointer(child: child!),
-                        // The lens goes over them instead. A lens only shows
-                        // what it has to bend, and over this app's near-flat
-                        // backdrop the glyphs and labels are the only real
-                        // content in reach — putting them behind it is what
-                        // makes the rim distort something visible, the way an
-                        // iOS tab bar's does. It exists only while a finger
-                        // does, so a parked bar runs no shader at all.
-                        if (_active || lens > 0.001)
-                          _MovingLens(
-                            left: (left - swell).clamp(
-                              0.0,
-                              math.max(
-                                0,
-                                barWidth - indicatorWidth - 2 * swell,
-                              ),
-                            ),
-                            width: indicatorWidth + 2 * swell,
-                            inset: 7 - swell,
-                            radius: radius - 7 + swell,
-                            lens: lens.clamp(0.0, 1.0),
-                            stretchPixels: stretch,
-                          ),
                       ],
                     );
                   },
@@ -566,7 +453,7 @@ class _GuvenGlassBottomBarState extends State<GuvenGlassBottomBar>
     final double indicatorFraction = 1 / widget.labels.length;
     final double raw =
         (dx / barWidth - indicatorFraction / 2) / (1 - indicatorFraction);
-    final double resisted = IndicatorPhysics.applyRubberBandResistance(raw);
+    final double resisted = rubberBand(raw);
     return resisted * (widget.labels.length - 1);
   }
 
@@ -588,25 +475,13 @@ class _GuvenGlassBottomBarState extends State<GuvenGlassBottomBar>
     widget.onLiftStart?.call(index, details.globalPosition);
   }
 
-  /// Fires on every touch, a tap included — which is why it only lights the
-  /// lens up. Moving it from here is what used to teleport the capsule under a
-  /// finger that had merely tapped a distant cell.
-  void _onPanDown(DragDownDetails details) {
-    _pressed = true;
-    _pullRaw = 0;
-    _wake();
-  }
-
   void _onPanStart(DragStartDetails details, double barWidth) {
     final double finger = _indexAtPosition(details.localPosition.dx, barWidth);
-    // Grab the lens where it stands: it keeps its offset to the finger rather
+    // Grab the marker where it stands: it keeps its offset to the finger rather
     // than jumping to it, and a grab from beyond [_kGrabReach] drags it over
     // the remaining distance instead of snapping.
     _grabOffset = (_travel.value - finger).clamp(-_kGrabReach, _kGrabReach);
     _grabbed = true;
-    _pullRaw = 0;
-    // Whatever the last flight left aimed at, a finger now owns the shape.
-    _squash.target = 0;
     _holdAt(finger);
     _wake();
   }
@@ -617,12 +492,6 @@ class _GuvenGlassBottomBarState extends State<GuvenGlassBottomBar>
     double barWidth,
   ) {
     _holdAt(_indexAtPosition(details.localPosition.dx, barWidth));
-    // Every pixel of drag shoves the capsule further out of shape, and the
-    // squash spring spends the gaps between updates pulling it back. Outrun
-    // that recovery and it stays stretched for as long as the finger moves.
-    _squash.value += details.delta.dx / slotWidth * _kGrabSquash;
-    _pullRaw += details.delta.dy;
-    _pull.hold(soften(_pullRaw, _kPullLimit));
     _wake();
   }
 
@@ -643,37 +512,28 @@ class _GuvenGlassBottomBarState extends State<GuvenGlassBottomBar>
   }
 
   void _onPanCancel() {
-    // A tap loses the pan arena here. It never moved the lens, so its target
-    // is left alone for the tap handler to set.
-    if (!_grabbed) {
-      _pressed = false;
-      _wake();
-      return;
-    }
+    // A tap loses the pan arena here. It never moved the marker, so its
+    // target is left alone for the tap handler to set.
+    if (!_grabbed) return;
     _release(widget.selectedIndex);
   }
 
-  /// Pins the lens to the finger. A dragged capsule sits exactly where the
-  /// finger is; what deforms is its shape, not its position.
+  /// Pins the marker to the finger: a dragged marker sits exactly where the
+  /// finger is.
   void _holdAt(double finger) {
     final double last = (widget.labels.length - 1).toDouble();
-    _travel.hold(
-      (finger + _grabOffset).clamp(-_kOverdrag, last + _kOverdrag),
-    );
+    _travel.hold((finger + _grabOffset).clamp(-_kOverdrag, last + _kOverdrag));
   }
 
   void _release(int target) {
     _grabbed = false;
-    _pressed = false;
-    _pullRaw = 0;
     _travel.target = target.toDouble();
-    _pull.target = 0;
     _wake();
   }
 
   // ----------------------------------------------------------------- physics
 
-  /// Redraws the lens, and starts the ticker if the springs have work left.
+  /// Redraws the marker, and starts the ticker if the spring has work left.
   void _wake() {
     _frame.value++;
     if (_ticker.isActive) return;
@@ -688,19 +548,7 @@ class _GuvenGlassBottomBarState extends State<GuvenGlassBottomBar>
     _lastTick = elapsed;
 
     if (dt > 0) {
-      if (!_grabbed) {
-        _travel.advance(dt);
-        _pull.advance(dt);
-        // Off the finger, the deformation follows the travel: the faster the
-        // lens moves, the further its leading edge runs ahead of it.
-        _squash.target = _travel.velocity * _kTravelSquash;
-      }
-      _squash.advance(dt);
-      // The glass is a touch response, not a movement one: it swells in under
-      // the finger and drains away the moment the finger is gone, whether the
-      // capsule is still travelling or not.
-      _lens.target = _active ? 1 : 0;
-      _lens.advance(dt);
+      if (!_grabbed) _travel.advance(dt);
       _frame.value++;
     } else {
       // The first tick after a start carries no elapsed time to integrate,
@@ -709,20 +557,9 @@ class _GuvenGlassBottomBarState extends State<GuvenGlassBottomBar>
     }
 
     // Every gesture wakes the ticker again, so parking it the moment the
-    // springs are still is safe even with a finger resting on the bar.
-    if (!_grabbed &&
-        _travel.isAtRest(0.0008) &&
-        _squash.isAtRest(0.001) &&
-        _pull.isAtRest(0.01) &&
-        _lens.isAtRest(0.001)) {
-      // Land on exact values rather than near them: a resting lens has to
-      // report no stretch at all, or it sits permanently a hair out of shape.
+    // spring is still is safe even with a finger resting on the bar.
+    if (!_grabbed && _travel.isAtRest(0.0008)) {
       _travel.snap();
-      _squash
-        ..target = 0
-        ..snap();
-      _pull.snap();
-      _lens.snap();
       _ticker.stop();
       _frame.value++;
     }
@@ -770,21 +607,17 @@ class _PopInState extends State<_PopIn> with SingleTickerProviderStateMixin {
   }
 }
 
-/// The selected cell while nothing is being touched: a plain fill, no shader.
-class _RestingPill extends StatelessWidget {
-  const _RestingPill({
+/// The marker under the selected cell: a plain fill.
+class _SelectionPill extends StatelessWidget {
+  const _SelectionPill({
     required this.left,
     required this.width,
     required this.radius,
-    required this.opacity,
-    required this.stretchPixels,
   });
 
   final double left;
   final double width;
   final double radius;
-  final double opacity;
-  final Offset stretchPixels;
 
   @override
   Widget build(BuildContext context) {
@@ -794,84 +627,12 @@ class _RestingPill extends StatelessWidget {
       top: 7,
       bottom: 7,
       width: width,
-      child: renderer.RawLiquidStretch(
-        stretchPixels: stretchPixels,
-        child: Opacity(
-          opacity: opacity.clamp(0.0, 1.0),
-          child: DecoratedBox(
-            decoration: ShapeDecoration(
-              color: kNavIndicatorRestFill,
-              shape: RoundedSuperellipseBorder(
-                borderRadius: BorderRadius.circular(radius),
-              ),
-            ),
+      child: DecoratedBox(
+        decoration: ShapeDecoration(
+          color: kNavIndicatorRestFill,
+          shape: RoundedSuperellipseBorder(
+            borderRadius: BorderRadius.circular(radius),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-/// The same marker under a finger: swollen, refracting, and over the glyphs.
-class _MovingLens extends StatelessWidget {
-  const _MovingLens({
-    required this.left,
-    required this.width,
-    required this.inset,
-    required this.radius,
-    required this.lens,
-    required this.stretchPixels,
-  });
-
-  final double left;
-  final double width;
-
-  /// Distance from the bar's top and bottom edges, shrinking as it swells.
-  final double inset;
-  final double radius;
-
-  /// 0 not there at all, 1 fully formed.
-  final double lens;
-  final Offset stretchPixels;
-
-  @override
-  Widget build(BuildContext context) {
-    return Positioned(
-      left: left,
-      top: inset,
-      bottom: inset,
-      width: width,
-      child: renderer.RawLiquidStretch(
-        stretchPixels: stretchPixels,
-        child: Stack(
-          fit: StackFit.expand,
-          clipBehavior: Clip.none,
-          children: <Widget>[
-            AppGlassSurface(
-              key: const ValueKey<String>('nav-selection-glass'),
-              // `liquid_glass_easy` rather than the renderer everything else
-              // here uses, for its optical border — see [kNavIndicatorGlass].
-              // Nothing about the geometry or the motion changes; only who
-              // draws the glass inside the capsule.
-              backend: AppGlassBackend.easy,
-              style: kNavIndicatorGlass.copyWith(cornerRadius: radius),
-              cornerRadius: radius,
-              // Swells in with the touch rather than switching on: the
-              // backend spreads it across every optical property it has, so
-              // a capsule that has not been asked for yet costs nothing.
-              fade: lens,
-              // A bloom that tracks the finger across the capsule, so the
-              // side being touched is the side that lights up.
-              glowColor: Color.fromRGBO(255, 255, 255, 0.2 * lens),
-              glowRadius: 0.9,
-              child: const SizedBox.expand(),
-            ),
-            IgnorePointer(
-              child: CustomPaint(
-                painter: LensRimPainter(radius: radius, lens: lens),
-              ),
-            ),
-          ],
         ),
       ),
     );

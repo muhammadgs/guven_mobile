@@ -49,6 +49,25 @@ class Spring {
 }
 
 /// Holds [value] back the further it runs, approaching but never passing
-/// [limit] — the renderer's own `withResistance`, in one dimension.
+/// [limit] — a rubber-band resistance, in one dimension.
 double soften(double value, double limit) =>
     value * limit / (limit + value.abs());
+
+/// Holds a 0–1 position back once it is pulled past either end.
+///
+/// Inside the range the value passes through. Past an end, only [resistance]
+/// of the overshoot is kept, capped at [maxOverdrag] — a rubber band that
+/// gives a little and then stops.
+double rubberBand(
+  double value, {
+  double resistance = 0.4,
+  double maxOverdrag = 0.3,
+}) {
+  if (value < 0) {
+    return -(-value * resistance).clamp(0.0, maxOverdrag);
+  }
+  if (value > 1) {
+    return 1 + ((value - 1) * resistance).clamp(0.0, maxOverdrag);
+  }
+  return value;
+}

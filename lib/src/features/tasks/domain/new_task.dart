@@ -179,6 +179,7 @@ class TaskOption {
     required this.name,
     this.code,
     this.companyId,
+    this.departmentId,
     this.isMine = false,
   });
 
@@ -186,6 +187,10 @@ class TaskOption {
   final String name;
   final String? code;
   final int? companyId;
+
+  /// An employee's own department, when the row says — what `Şöbə` is filled
+  /// with the moment that person is chosen to carry the task out.
+  final int? departmentId;
 
   /// True for the signed-in user's own company in the [NewTaskKind.internal]
   /// company list — the entry that starts selected.
@@ -214,8 +219,14 @@ class TaskOption {
     final String? name =
         readPersonName(row) ?? readString(row, <String>['email', 'ceo_email']);
     if (id == null || name == null) return null;
-    return TaskOption(id: id, name: name);
+    return TaskOption(id: id, name: name, departmentId: departmentIdOf(row));
   }
+
+  /// The department a user row belongs to, in any of the three spellings the
+  /// website tries (`new_task_design.js`, `autoSelectDepartmentByEmployee`).
+  static int? departmentIdOf(Map<String, Object?> row) =>
+      readInt(row, <String>['department_id', 'departmentId']) ??
+      readInt(asMap(row['department']), <String>['id', 'department_id']);
 
   /// A work type: `/worktypes/company/{id}`.
   static TaskOption? workType(Map<String, Object?> row) {

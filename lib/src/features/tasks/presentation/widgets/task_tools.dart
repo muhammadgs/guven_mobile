@@ -12,9 +12,7 @@ typedef TaskToolTap = void Function(Rect rect, double radius);
 
 /// The two round glass buttons under the scope bar: filter, and new task.
 ///
-/// The only real lenses on this screen besides the scope marker — the cards
-/// are a flat fill over a background blur, by design — so they are the one
-/// place the eye is meant to catch light. Both glyphs are painted rather than
+/// Plain frosted glass, like the cards. Both glyphs are painted rather than
 /// set from an icon font: at 44pt a thin geometric funnel and a thin cross are
 /// what the design draws, and Material's own are heavier and rounder.
 class TaskToolButtons extends StatelessWidget {
@@ -45,7 +43,7 @@ class TaskToolButtons extends StatelessWidget {
   /// True while the filter panel is open.
   ///
   /// The panel *is* this button's glass once it opens, so the button steps
-  /// out of the way rather than sitting under it and doubling both the lens
+  /// out of the way rather than sitting under it and doubling both the glass
   /// and the glyph. Its space is kept, so nothing below moves.
   final bool filterHidden;
 
@@ -95,7 +93,7 @@ class TaskToolButtons extends StatelessWidget {
   }
 }
 
-/// One round glass button: a lens [size] on a side with a [glyph] on it.
+/// One round glass button: [size] on a side with a [glyph] on it.
 ///
 /// Public because it is not the task list's alone. `Baza`'s menu button is
 /// this button — the user asked for it to be exactly the filter's — with a
@@ -155,12 +153,8 @@ class GlassToolButton extends StatelessWidget {
               child: SizedBox.square(
                 dimension: size,
                 child: AppGlassSurface(
-                  // Pinned to `liquid_glass_easy` for its optical border, the
-                  // same as both travelling markers — see [kTaskToolGlass].
-                  backend: AppGlassBackend.easy,
                   style: glassAtRadius(kTaskToolGlass, radius),
                   cornerRadius: radius,
-                  flex: const AppGlassFlex.statPill(),
                   child: Center(child: glyph),
                 ),
               ),
@@ -178,8 +172,7 @@ class GlassToolButton extends StatelessWidget {
   }
 }
 
-/// The badge on the funnel. Sits proud of the glass rather than inside it: a
-/// lens refracts what is behind it, and a number drawn on one is unreadable.
+/// The badge on the funnel. Sits proud of the glass rather than inside it.
 class _CountDot extends StatelessWidget {
   const _CountDot({required this.count, required this.size});
 

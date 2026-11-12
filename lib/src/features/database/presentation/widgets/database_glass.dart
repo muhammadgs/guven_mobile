@@ -13,7 +13,6 @@ import '../../../../shared/layout.dart';
 
 export '../../../tasks/presentation/widgets/task_glass.dart'
     show
-        AppGlassBackend,
         AppGlassSurface,
         glassAtRadius,
         kGlassInk,

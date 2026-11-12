@@ -12,9 +12,10 @@ import 'voice_recorder_field.dart';
 
 /// The contents of the `Yeni tapşırıq` sheet.
 ///
-/// One scroll view, in the design's order: the company and the people, the
-/// work type and the department, the deadline, whether the customer may see
-/// it, the description, the recording, the files, and then the two buttons.
+/// One scroll view: the company, the executor and their department (filled in
+/// from the executor), the work type, the deadline, the other company's person
+/// and whether that company may see the task, the description, the recording,
+/// the files, and then the two buttons.
 /// The title and the back arrow scroll with the rest, exactly as the design
 /// draws them — the second screen of it shows neither.
 ///
@@ -70,6 +71,25 @@ class _NewTaskFormState extends State<NewTaskForm> {
     final NewTaskMetrics m = widget.metrics;
     final NewTaskController c = widget.controller;
 
+    List<Widget> rows(List<NewTaskField> fields) => <Widget>[
+      for (final NewTaskField field in fields) ...<Widget>[
+        TaskFormField(
+          metrics: m,
+          icon: field.icon,
+          label: field.labelFor(widget.kind),
+          value: c.chosen(field)?.name,
+          // A field whose list is deliberately not offered says why in
+          // place of its hint, so the reason is on the form rather than
+          // hidden behind a tap.
+          hint: c.listOf(field).notice ?? field.hintFor(widget.kind),
+          busy: c.listOf(field).loading,
+          active: widget.openField == field,
+          onTap: (Rect rect) => widget.onOpenField(field, rect),
+        ),
+        SizedBox(height: m.betweenFields),
+      ],
+    ];
+
     // Android's stretch overscroll lifts the scrolled content into an
     // `ImageFilterLayer`, and every box on this form is a lens: inside that
     // layer they sample an empty backdrop instead of the sheet and vanish the
@@ -94,22 +114,7 @@ class _NewTaskFormState extends State<NewTaskForm> {
             onBack: widget.onBack,
           ),
           SizedBox(height: m.betweenFields),
-          for (final NewTaskField field in c.fields) ...<Widget>[
-            TaskFormField(
-              metrics: m,
-              icon: field.icon,
-              label: field.labelFor(widget.kind),
-              value: c.chosen(field)?.name,
-              // A field whose list is deliberately not offered says why in
-              // place of its hint, so the reason is on the form rather than
-              // hidden behind a tap.
-              hint: c.listOf(field).notice ?? field.hintFor(widget.kind),
-              busy: c.listOf(field).loading,
-              active: widget.openField == field,
-              onTap: (Rect rect) => widget.onOpenField(field, rect),
-            ),
-            SizedBox(height: m.betweenFields),
-          ],
+          ...rows(c.fieldsAboveDeadline),
           TaskFormField(
             metrics: m,
             icon: 'assets/images/icons/new_task_icons/son_muddet.svg',
@@ -120,6 +125,7 @@ class _NewTaskFormState extends State<NewTaskForm> {
             onTap: widget.onOpenDate,
           ),
           SizedBox(height: m.betweenFields),
+          ...rows(c.fieldsBelowDeadline),
           if (widget.kind.hasVisibilityToggle) ...<Widget>[
             TaskFormToggle(
               metrics: m,

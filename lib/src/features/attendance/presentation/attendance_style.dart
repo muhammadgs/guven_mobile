@@ -2,7 +2,6 @@
 library;
 
 import 'package:flutter/material.dart';
-import 'package:liquid_glass_renderer/liquid_glass_renderer.dart' as renderer;
 
 import '../../../shared/glass/app_glass.dart';
 import '../domain/attendance.dart';
@@ -55,59 +54,16 @@ const double kAttendanceBlurOverCard = 5;
 Color fillFor(AttendanceKind kind) =>
     kind == AttendanceKind.entry ? kEntryFill : kExitFill;
 
-/// The prompt's pane: a pale glass over the washed-out screen. Drawn by the
-/// renderer — on a grey backdrop its edge highlight has something to show.
+/// The prompt's pane: a pale glass over the washed-out screen.
 const AppGlassStyle kPromptGlass = AppGlassStyle(
   cornerRadius: 35,
-  settings: renderer.LiquidGlassSettings(
-    thickness: 26,
-    blur: 6,
-    chromaticAberration: 0.12,
-    lightIntensity: 1.3,
-    ambientStrength: 0.55,
-    refractiveIndex: 1.36,
-    saturation: 1.1,
-    glassColor: Color(0x9EFFFFFF),
-  ),
-  legacy: AppGlassLegacyTuning(
-    distortion: 0.08,
-    distortionWidth: 26,
-    magnification: 1.02,
-    chromaticAberration: 0.002,
-    lightIntensity: 1.3,
-    ambientIntensity: 0.6,
-    borderSaturation: 1.05,
-    borderSolidity: 0.55,
-  ),
+  glassColor: Color(0x9EFFFFFF),
+  blur: 6,
 );
 
-/// A capsule on the prompt. On `liquid_glass_easy`, like the home screen's
-/// activity rows: it sits on pale glass, and easy draws its rim from the
-/// shape rather than from what is behind it.
-AppGlassStyle promptButtonGlass(Color tint) => AppGlassStyle(
-  cornerRadius: 22,
-  settings: renderer.LiquidGlassSettings(
-    thickness: 16,
-    blur: 0,
-    chromaticAberration: 0.08,
-    lightIntensity: 1.2,
-    ambientStrength: 0.5,
-    refractiveIndex: 1.3,
-    saturation: 1.1,
-    glassColor: tint,
-  ),
-  legacy: const AppGlassLegacyTuning(
-    distortion: 0.06,
-    distortionWidth: 18,
-    magnification: 1.02,
-    chromaticAberration: 0.002,
-    lightIntensity: 1.25,
-    ambientIntensity: 1,
-    borderSaturation: 1.2,
-    borderSolidity: 0.6,
-    lightDirection: 80,
-  ),
-);
+/// A capsule on the prompt, sitting on the pale pane.
+AppGlassStyle promptButtonGlass(Color tint) =>
+    AppGlassStyle(cornerRadius: 22, glassColor: tint, blur: 0);
 
 /// `Sonra`, `İcazəli`, `Ləğv et`… — whiter than the pane under it.
 const Color kPromptPlainTint = Color(0x73FFFFFF);

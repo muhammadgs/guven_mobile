@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../../../shared/layout.dart';
-import '../../../../shared/motion/glass_touch_surface.dart';
 import 'home_glass.dart';
 
 /// One of the three counts under the greeting: a label on the left, a number
@@ -36,10 +35,9 @@ class StatPill extends StatelessWidget {
       ),
       child: SizedBox(
         height: height,
-        child: GlassTouchSurface(
-          style: kStatPillGlass,
+        child: AppGlassSurface(
+          style: glassAtRadius(kStatPillGlass, height / 2),
           cornerRadius: height / 2,
-          flex: const AppGlassFlex.statPill(),
           child: Padding(
             padding: EdgeInsets.symmetric(horizontal: scaled(context, 26)),
             child: Row(

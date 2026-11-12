@@ -203,13 +203,8 @@ void main() {
       );
 
       expect(morphed.cornerRadius, button.cornerRadius);
-      expect(morphed.settings.lightIntensity, button.settings.lightIntensity);
-      expect(morphed.settings.glassColor, button.settings.glassColor);
-      expect(morphed.settings.saturation, button.settings.saturation);
-      expect(morphed.settings.thickness, button.settings.thickness);
-      expect(morphed.settings.refractiveIndex, button.settings.refractiveIndex);
-      expect(morphed.legacy.distortion, button.legacy.distortion);
-      expect(morphed.legacy.distortionWidth, button.legacy.distortionWidth);
+      expect(morphed.glassColor, button.glassColor);
+      expect(morphed.blur, button.blur);
     });
 
     test('frame one is the login card', () {
@@ -219,19 +214,11 @@ void main() {
         1,
       );
 
-      expect(morphed.settings.glassColor, kLoginCardGlass.settings.glassColor);
-      expect(
-        morphed.settings.refractiveIndex,
-        kLoginCardGlass.settings.refractiveIndex,
-      );
-      expect(morphed.legacy.distortion, kLoginCardGlass.legacy.distortion);
-      expect(
-        morphed.settings.ambientStrength,
-        kLoginCardGlass.settings.ambientStrength,
-      );
+      expect(morphed.glassColor, kLoginCardGlass.glassColor);
+      expect(morphed.blur, kLoginCardGlass.blur);
     });
 
-    test('the renderer settings stay continuous through the morph', () {
+    test('the glass stays continuous through the morph', () {
       double? previous;
       for (double t = 0; t <= 1.0001; t += 0.005) {
         final AppGlassStyle style = lerpAppGlassStyle(
@@ -239,18 +226,10 @@ void main() {
           kLoginCardGlass,
           t.clamp(0.0, 1.0),
         );
-        final double thickness = style.settings.thickness;
         if (previous != null) {
-          expect((thickness - previous).abs(), lessThan(0.5), reason: 't=$t');
+          expect((style.blur - previous).abs(), lessThan(0.5), reason: 't=$t');
         }
-        previous = thickness;
-        expect(
-          style.settings.refractiveIndex,
-          inInclusiveRange(
-            kStartCtaGlass.settings.refractiveIndex,
-            kLoginCardGlass.settings.refractiveIndex,
-          ),
-        );
+        previous = style.blur;
       }
     });
   });

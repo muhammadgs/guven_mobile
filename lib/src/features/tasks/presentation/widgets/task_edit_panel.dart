@@ -368,10 +368,6 @@ class _Surface extends StatelessWidget {
           ),
         ),
         child: AppGlassSurface(
-          // Pinned to `liquid_glass_easy`, like every other surface on this
-          // screen, and wearing the filter's own Figma settings once it has
-          // landed — the same glass the `Yeni tapşırıq` sheet is made of.
-          backend: AppGlassBackend.easy,
           style: lerpAppGlassStyle(
             kTaskToolGlass,
             kTaskFilterGlass,

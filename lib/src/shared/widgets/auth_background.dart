@@ -10,80 +10,74 @@ import 'package:video_player/video_player.dart';
 /// such as video_player). A dark scrim is layered on top for legibility.
 /// The [child] is stacked above everything.
 ///
-/// The controller lives here for the lifetime of this widget so the video
-/// continues looping seamlessly as pre-login screens are pushed or popped.
+/// The video itself is shared: every [AuthBackground] on screen shows the same
+/// playing controller ([_SharedAuthVideo]). The passcode lock sits above the
+/// app's navigator while the login flow sits inside it, so the two are
+/// separate widgets — but sharing the player means the lock opens over the
+/// login card on the very frame the video was already showing, with no
+/// restart and no jump.
 class AuthBackground extends StatefulWidget {
   const AuthBackground({
     super.key,
     required this.child,
     this.blurSigma = 4.0,
     this.scrimOpacity = 0.0,
+    this.videoOpacity = 1.0,
   });
 
   final Widget child;
   final double blurSigma;
   final double scrimOpacity;
 
+  /// How much of the video layer is drawn, 0–1. Only the video: [child] is
+  /// never faded through this, so glass in it is never inside the layer an
+  /// opacity opens (see `backdrop-filter-black-flash`). Below 1, whatever is
+  /// painted under this widget shows through the video.
+  final double videoOpacity;
+
   @override
   State<AuthBackground> createState() => _AuthBackgroundState();
 }
 
 class _AuthBackgroundState extends State<AuthBackground> {
-  static const String _assetPath = 'assets/videos/onboarding_background.mp4';
-
-  late final VideoPlayerController _controller;
-  bool _isReady = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = VideoPlayerController.asset(
-      _assetPath,
-      videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
-    );
-    _prepareVideo();
-  }
-
-  Future<void> _prepareVideo() async {
-    await _controller.initialize();
-    await _controller.setLooping(true);
-    await _controller.setVolume(0);
-    await _controller.seekTo(Duration.zero);
-
-    if (!mounted) return;
-    setState(() => _isReady = true);
-
-    await _controller.play();
-  }
+  late final _SharedAuthVideo _video = _SharedAuthVideo.acquire();
 
   @override
   void dispose() {
-    _controller.dispose();
+    _video.release();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    final double videoOpacity = widget.videoOpacity.clamp(0.0, 1.0);
     return Stack(
       fit: StackFit.expand,
       children: <Widget>[
         // ── 1. Blurred video ─────────────────────────────────────────────────
         //   ImageFiltered applies blur directly to the VideoPlayer widget,
         //   which avoids BackdropFilter's inability to sample Texture layers.
-        Positioned.fill(
-          child: IgnorePointer(
-            child: _isReady
-                ? ImageFiltered(
-                    imageFilter: ImageFilter.blur(
-                      sigmaX: widget.blurSigma,
-                      sigmaY: widget.blurSigma,
-                      tileMode: TileMode.mirror,
-                    ),
-                    child: _CoverVideo(controller: _controller),
-                  )
-                : const ColoredBox(color: Colors.black),
+        if (videoOpacity > 0)
+          Positioned.fill(
+            child: IgnorePointer(
+              child: Opacity(
+                opacity: videoOpacity,
+                child: ValueListenableBuilder<bool>(
+                  valueListenable: _video.ready,
+                  builder: (BuildContext context, bool ready, _) => ready
+                      ? ImageFiltered(
+                          imageFilter: ImageFilter.blur(
+                            sigmaX: widget.blurSigma,
+                            sigmaY: widget.blurSigma,
+                            tileMode: TileMode.mirror,
+                          ),
+                          child: _CoverVideo(controller: _video.controller),
+                        )
+                      : const ColoredBox(color: Colors.black),
+                ),
+              ),
+            ),
           ),
-        ),
 
         // ── 2. Dark scrim ────────────────────────────────────────────────────
         Positioned.fill(
@@ -98,6 +92,56 @@ class _AuthBackgroundState extends State<AuthBackground> {
         widget.child,
       ],
     );
+  }
+}
+
+/// The one looping backdrop video, shared by every [AuthBackground] that is
+/// mounted at the same time and disposed when the last one goes.
+class _SharedAuthVideo {
+  _SharedAuthVideo._()
+    : controller = VideoPlayerController.asset(
+        _assetPath,
+        videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
+      ) {
+    _prepare();
+  }
+
+  static const String _assetPath = 'assets/videos/onboarding_background.mp4';
+
+  static _SharedAuthVideo? _current;
+
+  static _SharedAuthVideo acquire() {
+    final _SharedAuthVideo video = _current ??= _SharedAuthVideo._();
+    video._users += 1;
+    return video;
+  }
+
+  final VideoPlayerController controller;
+  final ValueNotifier<bool> ready = ValueNotifier<bool>(false);
+  int _users = 0;
+  bool _disposed = false;
+
+  Future<void> _prepare() async {
+    try {
+      await controller.initialize();
+      await controller.setLooping(true);
+      await controller.setVolume(0);
+      await controller.seekTo(Duration.zero);
+      if (_disposed) return;
+      ready.value = true;
+      await controller.play();
+    } catch (_) {
+      // No video (a test, a broken asset): the black placeholder stays.
+    }
+  }
+
+  void release() {
+    _users -= 1;
+    if (_users > 0) return;
+    if (identical(_current, this)) _current = null;
+    _disposed = true;
+    ready.dispose();
+    controller.dispose();
   }
 }
 

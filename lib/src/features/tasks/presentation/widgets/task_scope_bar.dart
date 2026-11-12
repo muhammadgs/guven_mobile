@@ -2,25 +2,18 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
-import 'package:flutter_liquid_glass_plus/flutter_liquid_glass.dart'
-    show IndicatorPhysics;
 import 'package:flutter_svg/flutter_svg.dart';
-import 'package:liquid_glass_renderer/liquid_glass_renderer.dart' as renderer;
 
-import '../../../../shared/motion/lens_rim.dart';
 import '../../../../shared/motion/spring.dart';
 import '../../domain/task_scope.dart';
 import 'task_glass.dart';
 
 /// The five-cell bar over the task list.
 ///
-/// The same object as the bottom nav bar, minus one layer: there the bar
-/// *and* its marker are glass, here the bar is flat grey and only the marker
-/// refracts. Everything about how the marker behaves is the nav bar's — it is
-/// parked as a plain fill, a finger swells it into a lens, it can be dragged,
-/// flung and overdragged, and it leads with its front edge while it travels —
-/// and both bars run off the same [Spring] and the same [LensRimPainter], so
-/// the two cannot drift apart.
+/// The same object as the bottom nav bar: a plain fill marks the selected
+/// cell, slides between cells on a [Spring], and can be dragged, flung and
+/// overdragged. Both bars run off the same spring, so the two cannot drift
+/// apart.
 ///
 /// The one real difference is the rail. The nav bar divides its width into
 /// five equal cells; here the cells are as wide as their own labels need, so
@@ -54,36 +47,8 @@ class TaskScopeBar extends StatefulWidget {
 const double _kTravelStiffness = 265;
 const double _kTravelDamping = 23;
 
-/// The sideways deformation. Bouncy on purpose — it is what recoils when a
-/// drag stops dead.
-const double _kSquashStiffness = 500;
-const double _kSquashDamping = 30;
-
-/// The vertical pull on its way home, at ζ ≈ 0.44.
-const double _kPullReturnStiffness = 330;
-const double _kPullReturnDamping = 16;
-
-/// The swell from flat marker to lens.
-const double _kLensStiffness = 520;
-const double _kLensDamping = 33;
-
 /// Distance from the bar's top and bottom edges to the parked marker.
 const double _kMarkerInset = 4;
-
-/// How far the marker grows on each side when it becomes a lens. Set to the
-/// inset, so a held marker all but fills the bar's height — the same
-/// relationship the nav bar's 7 and 10 have.
-const double _kSwell = 4;
-
-/// Cells of deformation per cell of finger travel.
-const double _kGrabSquash = 0.30;
-
-/// How far ahead of itself a freely travelling marker runs, in seconds.
-const double _kTravelSquash = 0.070;
-
-/// Neither deformation ever passes these, in pixels.
-const double _kSquashLimit = 34;
-const double _kPullLimit = 4;
 
 /// Cells per second the marker may carry out of a fling.
 const double _kFlingLimit = 6;
@@ -111,22 +76,6 @@ class _TaskScopeBarState extends State<TaskScopeBar>
     value: _selectedIndex.toDouble(),
   );
 
-  final Spring _squash = Spring(
-    stiffness: _kSquashStiffness,
-    damping: _kSquashDamping,
-  );
-
-  final Spring _pull = Spring(
-    stiffness: _kPullReturnStiffness,
-    damping: _kPullReturnDamping,
-  );
-
-  /// 0 flat marker, 1 full lens. Held up only while a finger is on the bar.
-  final Spring _lens = Spring(
-    stiffness: _kLensStiffness,
-    damping: _kLensDamping,
-  );
-
   /// Created eagerly rather than on first use: a bar that is disposed without
   /// ever having been touched would otherwise build its ticker from inside
   /// `dispose`, which reaches for an ancestor that is already gone.
@@ -137,16 +86,12 @@ class _TaskScopeBarState extends State<TaskScopeBar>
   final ValueNotifier<int> _frame = ValueNotifier<int>(0);
 
   Duration _lastTick = Duration.zero;
-  bool _pressed = false;
   bool _grabbed = false;
   double _grabOffset = 0;
-  double _pullRaw = 0;
 
   /// The rail: one entry per cell, rebuilt whenever the bar's width or the
   /// text scale changes.
   _Rail? _rail;
-
-  bool get _active => _pressed || _grabbed;
 
   int get _selectedIndex => widget.scopes.indexOf(widget.selected);
 
@@ -199,10 +144,6 @@ class _TaskScopeBarState extends State<TaskScopeBar>
               behavior: HitTestBehavior.opaque,
               onTapUp: (TapUpDetails details) =>
                   _onTapAt(details.localPosition.dx, rail),
-              // Pan rather than a horizontal drag: the vertical component
-              // never moves the selection, it only feeds the pull that makes
-              // the marker stand up and squash when it is let go.
-              onPanDown: _onPanDown,
               onPanStart: (DragStartDetails details) =>
                   _onPanStart(details, rail),
               onPanUpdate: (DragUpdateDetails details) =>
@@ -224,47 +165,17 @@ class _TaskScopeBarState extends State<TaskScopeBar>
                     ),
                   );
 
-                  final double lens = _lens.value.clamp(0.0, 1.0);
-                  final double swell = _kSwell * lens;
-                  final double cell = rail.width / widget.scopes.length;
-                  // Leading along the rail, standing up along the pull: one
-                  // offset, and the renderer turns it into volume-preserving
-                  // squash and stretch.
-                  final Offset stretch = Offset(
-                    soften(_squash.value * cell, _kSquashLimit),
-                    _pull.value,
-                  );
-
                   return Stack(
                     fit: StackFit.expand,
-                    clipBehavior: Clip.none,
                     children: <Widget>[
-                      // Parked, the marker is a plain fill and it sits *under*
-                      // the glyphs, so they stay black on white.
-                      if (lens < 0.999)
-                        _RestingMarker(
-                          left: left,
-                          width: markerWidth,
-                          radius: radius - _kMarkerInset,
-                          opacity: 1 - lens,
-                          stretchPixels: stretch,
-                        ),
+                      // A plain fill *under* the glyphs, so they stay black
+                      // on it.
+                      _Marker(
+                        left: left,
+                        width: markerWidth,
+                        radius: radius - _kMarkerInset,
+                      ),
                       IgnorePointer(child: child!),
-                      // The lens goes over them instead: a lens only shows
-                      // what it has to bend, and the glyphs are the only real
-                      // content in reach on this pale bar.
-                      if (_active || lens > 0.001)
-                        _MovingMarkerLens(
-                          left: (left - swell).clamp(
-                            0.0,
-                            math.max(0, rail.width - markerWidth - 2 * swell),
-                          ),
-                          width: markerWidth + 2 * swell,
-                          inset: _kMarkerInset - swell,
-                          radius: radius - _kMarkerInset + swell,
-                          lens: lens,
-                          stretchPixels: stretch,
-                        ),
                     ],
                   );
                 },
@@ -291,7 +202,7 @@ class _TaskScopeBarState extends State<TaskScopeBar>
     final TaskScope scope = widget.scopes[index];
     final bool selected = scope == widget.selected;
     // The ink follows the *settled* selection rather than the travelling
-    // marker: a label that darkened as the lens crossed it would flicker
+    // marker: a label that darkened as the marker crossed it would flicker
     // through every cell of a drag.
     final Color ink = selected ? kGlassInk : kScopeInkMuted;
 
@@ -370,15 +281,6 @@ class _TaskScopeBarState extends State<TaskScopeBar>
     }
   }
 
-  /// Fires on every touch, a tap included — which is why it only lights the
-  /// lens up. Moving the marker from here is what would teleport it under a
-  /// finger that had merely tapped a distant cell.
-  void _onPanDown(DragDownDetails details) {
-    _pressed = true;
-    _pullRaw = 0;
-    _wake();
-  }
-
   void _onPanStart(DragStartDetails details, _Rail rail) {
     final double finger = _indexAt(details.localPosition.dx, rail);
     // Grab the marker where it stands: it keeps its offset to the finger
@@ -386,20 +288,12 @@ class _TaskScopeBarState extends State<TaskScopeBar>
     // over the remaining distance instead of snapping.
     _grabOffset = (_travel.value - finger).clamp(-_kGrabReach, _kGrabReach);
     _grabbed = true;
-    _pullRaw = 0;
-    _squash.target = 0;
     _holdAt(finger);
     _wake();
   }
 
   void _onPanUpdate(DragUpdateDetails details, _Rail rail) {
     _holdAt(_indexAt(details.localPosition.dx, rail));
-    // Every pixel of drag shoves the marker further out of shape, and the
-    // squash spring spends the gaps between updates pulling it back.
-    _squash.value +=
-        details.delta.dx / (rail.width / widget.scopes.length) * _kGrabSquash;
-    _pullRaw += details.delta.dy;
-    _pull.hold(soften(_pullRaw, _kPullLimit));
     _wake();
   }
 
@@ -424,27 +318,20 @@ class _TaskScopeBarState extends State<TaskScopeBar>
   void _onPanCancel() {
     // A tap loses the pan arena here. It never moved the marker, so its target
     // is left alone for the tap handler to set.
-    if (!_grabbed) {
-      _pressed = false;
-      _wake();
-      return;
-    }
+    if (!_grabbed) return;
     _release(_selectedIndex);
   }
 
-  /// Where the finger is, in cells, with the package's rubber band applied
+  /// Where the finger is, in cells, with a rubber band applied
   /// past either end.
   double _indexAt(double dx, _Rail rail) {
     final double last = (widget.scopes.length - 1).toDouble();
     final double raw = rail.indexAt(dx);
-    final double resisted = IndicatorPhysics.applyRubberBandResistance(
-      raw / last,
-    );
+    final double resisted = rubberBand(raw / last);
     return resisted * last;
   }
 
-  /// Pins the marker to the finger. What deforms is its shape, not its
-  /// position.
+  /// Pins the marker to the finger.
   void _holdAt(double finger) {
     final double last = (widget.scopes.length - 1).toDouble();
     _travel.hold((finger + _grabOffset).clamp(-_kOverdrag, last + _kOverdrag));
@@ -452,10 +339,7 @@ class _TaskScopeBarState extends State<TaskScopeBar>
 
   void _release(int target) {
     _grabbed = false;
-    _pressed = false;
-    _pullRaw = 0;
     _travel.target = target.toDouble();
-    _pull.target = 0;
     _wake();
   }
 
@@ -477,33 +361,11 @@ class _TaskScopeBarState extends State<TaskScopeBar>
     // the rest check below would read that as "nothing to do".
     if (dt <= 0) return;
 
-    if (!_grabbed) {
-      _travel.advance(dt);
-      _pull.advance(dt);
-      // Off the finger, the deformation follows the travel: the faster the
-      // marker moves, the further its leading edge runs ahead of it.
-      _squash.target = _travel.velocity * _kTravelSquash;
-    }
-    _squash.advance(dt);
-    // The glass is a touch response, not a movement one: it swells in under
-    // the finger and drains away the moment the finger is gone.
-    _lens.target = _active ? 1 : 0;
-    _lens.advance(dt);
+    if (!_grabbed) _travel.advance(dt);
     _frame.value++;
 
-    if (!_grabbed &&
-        _travel.isAtRest(0.0008) &&
-        _squash.isAtRest(0.001) &&
-        _pull.isAtRest(0.01) &&
-        _lens.isAtRest(0.001)) {
-      // Land on exact values rather than near them: a resting marker has to
-      // report no stretch at all, or it sits permanently a hair out of shape.
+    if (!_grabbed && _travel.isAtRest(0.0008)) {
       _travel.snap();
-      _squash
-        ..target = 0
-        ..snap();
-      _pull.snap();
-      _lens.snap();
       _ticker.stop();
       _frame.value++;
     }
@@ -610,106 +472,38 @@ class _Rail {
   }
 }
 
-/// The selected cell while nothing is being touched: a plain fill, no shader.
-class _RestingMarker extends StatelessWidget {
-  const _RestingMarker({
+/// The marker under the selected cell: a plain fill.
+class _Marker extends StatelessWidget {
+  const _Marker({
     required this.left,
     required this.width,
     required this.radius,
-    required this.opacity,
-    required this.stretchPixels,
   });
 
   final double left;
   final double width;
   final double radius;
-  final double opacity;
-  final Offset stretchPixels;
 
   @override
   Widget build(BuildContext context) {
     return Positioned(
+      key: const ValueKey<String>('scope-selection-marker'),
       left: left,
       top: _kMarkerInset,
       bottom: _kMarkerInset,
       width: width,
-      child: renderer.RawLiquidStretch(
-        stretchPixels: stretchPixels,
-        child: Opacity(
-          opacity: opacity.clamp(0.0, 1.0),
-          child: DecoratedBox(
-            decoration: ShapeDecoration(
-              color: kNavIndicatorRestFill,
-              shape: RoundedSuperellipseBorder(
-                borderRadius: BorderRadius.circular(radius),
-              ),
-              shadows: const <BoxShadow>[
-                BoxShadow(
-                  color: Color(0x1A25384F),
-                  blurRadius: 8,
-                  spreadRadius: -2,
-                  offset: Offset(0, 2),
-                ),
-              ],
-            ),
+      child: DecoratedBox(
+        decoration: ShapeDecoration(
+          color: kNavIndicatorRestFill,
+          shape: RoundedSuperellipseBorder(
+            borderRadius: BorderRadius.circular(radius),
           ),
-        ),
-      ),
-    );
-  }
-}
-
-/// The same marker under a finger: swollen, refracting, and over the glyphs.
-class _MovingMarkerLens extends StatelessWidget {
-  const _MovingMarkerLens({
-    required this.left,
-    required this.width,
-    required this.inset,
-    required this.radius,
-    required this.lens,
-    required this.stretchPixels,
-  });
-
-  final double left;
-  final double width;
-
-  /// Distance from the bar's top and bottom edges, shrinking as it swells.
-  final double inset;
-  final double radius;
-
-  /// 0 not there at all, 1 fully formed.
-  final double lens;
-  final Offset stretchPixels;
-
-  @override
-  Widget build(BuildContext context) {
-    return Positioned(
-      left: left,
-      top: inset,
-      bottom: inset,
-      width: width,
-      child: renderer.RawLiquidStretch(
-        stretchPixels: stretchPixels,
-        child: Stack(
-          fit: StackFit.expand,
-          clipBehavior: Clip.none,
-          children: <Widget>[
-            AppGlassSurface(
-              // `liquid_glass_easy` rather than the renderer, for its optical
-              // border — the same reason the nav bar's indicator is pinned to
-              // it, and the same style, so the two markers are one material.
-              backend: AppGlassBackend.easy,
-              style: kNavIndicatorGlass.copyWith(cornerRadius: radius),
-              cornerRadius: radius,
-              fade: lens,
-              glowColor: Color.fromRGBO(255, 255, 255, 0.2 * lens),
-              glowRadius: 0.9,
-              child: const SizedBox.expand(),
-            ),
-            IgnorePointer(
-              child: CustomPaint(
-                painter: LensRimPainter(radius: radius, lens: lens),
-              ),
+          shadows: const <BoxShadow>[
+            BoxShadow(
+              color: Color(0x1A25384F),
+              blurRadius: 8,
+              spreadRadius: -2,
+              offset: Offset(0, 2),
             ),
           ],
         ),

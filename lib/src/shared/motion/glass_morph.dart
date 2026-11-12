@@ -113,7 +113,6 @@ class GlassMorphFrame {
     required this.rect,
     required this.radius,
     required this.blend,
-    required this.shimmer,
     required this.sourceOpacity,
     required this.targetOpacity,
   });
@@ -121,7 +120,6 @@ class GlassMorphFrame {
   /// The surface at rest in its destination — used when there is no morph.
   const GlassMorphFrame.settled(this.rect, this.radius)
     : blend = 1,
-      shimmer = 1,
       sourceOpacity = 0,
       targetOpacity = 1;
 
@@ -135,11 +133,6 @@ class GlassMorphFrame {
   /// How far the *look* has travelled: 0 = the source's glass, 1 = the
   /// destination's. Drives the style and the drop shadow, not the geometry.
   final double blend;
-
-  /// One lap of the press shimmer, run over the opening of the bloom so the
-  /// flash the finger started on the button carries into the surface it
-  /// becomes. Feed it to `shimmerAppGlassStyle`; 1 means "no shimmer".
-  final double shimmer;
 
   /// Opacity of the source's own content (the button's label).
   final double sourceOpacity;
@@ -168,7 +161,7 @@ const Curve _kHeightCurve = Interval(0.08, 1.0, curve: _SettleCurve());
 /// The surface's travel across the screen — no wobble, just arrival.
 const Curve _kCentreCurve = Curves.easeOutCubic;
 
-/// Tint, rim and refraction, plus the drop shadow under the glass.
+/// The tint and blur, plus the drop shadow under the glass.
 const Curve _kBlendCurve = Curves.easeOutCubic;
 
 /// Coming back needs no theatre: everything runs plain and eager.
@@ -179,10 +172,6 @@ const double _kLabelOut = 0.18;
 
 /// …and on the way back it only reappears once the pill is nearly reformed.
 const double _kLabelBack = 0.34;
-
-/// The shimmer completes its lap in the opening stretch, while the surface is
-/// still opening out — after that the rim is back to its resting light.
-const double _kShimmerLap = 0.55;
 
 /// The destination's content condenses in over the back half of the flight.
 const double _kContentIn = 0.46;
@@ -233,8 +222,6 @@ GlassMorphFrame resolveGlassMorph({
       rect.shortestSide / 2,
     ),
     blend: blend,
-    // Only on the way out. A dismissal is not a press, so nothing flashes.
-    shimmer: back ? 1 : (raw / _kShimmerLap).clamp(0.0, 1.0),
     sourceOpacity: back
         ? Curves.easeOut.transform(1 - (raw / _kLabelBack).clamp(0.0, 1.0))
         : 1 - Curves.easeIn.transform((raw / _kLabelOut).clamp(0.0, 1.0)),

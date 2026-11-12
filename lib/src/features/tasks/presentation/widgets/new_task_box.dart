@@ -54,13 +54,6 @@ class NewTaskBox extends StatelessWidget {
   Widget build(BuildContext context) {
     final Widget surface = NewTaskGlass.of(context)
         ? AppGlassSurface(
-            // Pinned to `liquid_glass_easy`, like every other surface on this
-            // screen: its optical border is derived from the shape rather than
-            // tinted from the backdrop, and a small box on a pale sheet has
-            // almost no backdrop left for the renderer's highlight to work
-            // with. It also keeps the whole morph on one backend — the box and
-            // the panel it becomes are the same kind of glass.
-            backend: AppGlassBackend.easy,
             style: glassAtRadius(kNewTaskFieldGlass, radius),
             cornerRadius: radius,
             child: child,

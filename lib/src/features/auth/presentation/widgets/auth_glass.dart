@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:liquid_glass_renderer/liquid_glass_renderer.dart' as renderer;
 
 import '../../../../shared/glass/app_glass.dart';
 import '../../../../shared/layout.dart';
@@ -10,92 +9,32 @@ import '../../../../shared/layout.dart';
 /// their looks are defined here together rather than next to the widgets
 /// that draw them — the morph interpolates between these two constants and
 /// they have to stay comparable for that to mean anything.
-///
-/// Both use the renderer's rounded superellipse, so the flight stays on one
-/// shape path from end to end.
 
 /// The pill the user taps. `cornerRadius` here is nominal — both the button
 /// and the morph drive it from the live geometry (a capsule is always half
 /// the height).
+///
+/// With no rim to outline it, the tint is what tells the button apart from
+/// the video: the same ~15% white as the passcode keys on the same video.
 const AppGlassStyle kStartCtaGlass = AppGlassStyle(
   cornerRadius: 40,
-  settings: renderer.LiquidGlassSettings(
-    thickness: 34,
-    blur: 0,
-    chromaticAberration: 0.4,
-    lightIntensity: 1.45,
-    ambientStrength: 0.60,
-    refractiveIndex: 1.42,
-    saturation: 1.25,
-    glassColor: Color(0x00FFFFFF),
-  ),
-  legacy: AppGlassLegacyTuning(
-    distortion: 0.14,
-    distortionWidth: 30,
-    magnification: 1.04,
-    chromaticAberration: 0.004,
-    lightIntensity: 1.45,
-    ambientIntensity: 0.60,
-    borderSaturation: 1.15,
-    borderSolidity: 0.45,
-  ),
+  glassColor: Color(0x26FFFFFF),
 );
 
-/// The card it becomes: thicker glass, a wider bevel, a calmer rim.
+/// The card it becomes: a little clearer, so the form reads over it.
 const AppGlassStyle kLoginCardGlass = AppGlassStyle(
   cornerRadius: 56,
-  settings: renderer.LiquidGlassSettings(
-    thickness: 48,
-    blur: 0,
-    chromaticAberration: 0.6,
-    lightIntensity: 1.35,
-    ambientStrength: 0.55,
-    refractiveIndex: 1.50,
-    saturation: 1.20,
-    glassColor: Color(0x0DFFFFFF),
-  ),
-  legacy: AppGlassLegacyTuning(
-    distortion: 0.12,
-    distortionWidth: 45,
-    magnification: 1.05,
-    chromaticAberration: 0.006,
-    lightIntensity: 1.35,
-    ambientIntensity: 0.55,
-    borderSaturation: 1.10,
-    borderSolidity: 0.40,
-    refractionIndex: 1.45,
-    refractionDepth: 0.16,
-  ),
+  glassColor: Color(0x1FFFFFFF),
 );
 
 /// The small round back button beside the card.
-///
-/// Its own style rather than the pill's: at 46pt across, the pill's 30pt
-/// distortion band would swallow the whole surface, so the band is pulled in
-/// and the rim brightened to compensate for how little glass there is to light.
 const AppGlassStyle kAuthBackGlass = AppGlassStyle(
   cornerRadius: 23,
-  settings: renderer.LiquidGlassSettings(
-    thickness: 16,
-    blur: 0,
-    chromaticAberration: 0.5,
-    lightIntensity: 1.50,
-    ambientStrength: 0.62,
-    refractiveIndex: 1.45,
-    saturation: 1.25,
-    glassColor: Color(0x0AFFFFFF),
-  ),
-  legacy: AppGlassLegacyTuning(
-    distortion: 0.16,
-    distortionWidth: 13,
-    magnification: 1.06,
-    chromaticAberration: 0.005,
-    lightIntensity: 1.50,
-    ambientIntensity: 0.62,
-    borderSaturation: 1.15,
-    borderSolidity: 0.45,
-  ),
+  glassColor: Color(0x26FFFFFF),
 );
+
+/// The ripple on the auth buttons: white, since they sit on a dark video.
+const Color kAuthSplash = Color(0x33FFFFFF);
 
 /// Drop shadow under the pill.
 const List<BoxShadow> kStartCtaShadow = <BoxShadow>[

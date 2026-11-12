@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../features/auth/application/session_controller.dart';
+import '../features/auth/domain/auth_user.dart';
 import '../features/auth/presentation/auth_flow_shell.dart';
+import '../features/passcode/application/passcode_controller.dart';
+import '../features/passcode/presentation/app_lock_gate.dart';
 import '../features/shell/presentation/main_shell.dart';
 import 'app_theme.dart';
 
@@ -17,9 +20,39 @@ class _GuvenAppState extends State<GuvenApp> {
   /// client, so its lifetime is the app's.
   late final SessionController _session = SessionController()..restore();
 
+  /// The app's own passcode lock. Read from the keystore alongside the
+  /// session, so the lock can be up before `/auth/me` has even answered.
+  late final PasscodeController _passcode = PasscodeController()..load();
+
+  SessionStatus? _status;
+
+  @override
+  void initState() {
+    super.initState();
+    _session.addListener(_onSession);
+  }
+
+  /// Keeps the lock in step with the session: a session that ends takes its
+  /// passcode with it (the next sign-in starts at "Xoş Gəldiniz" again), and
+  /// the greeting's name follows the account.
+  void _onSession() {
+    final SessionStatus status = _session.status;
+    if (status == SessionStatus.signedOut && _status != status) {
+      _passcode.forget();
+    }
+    _status = status;
+    final AuthUser? user = _session.user;
+    if (user != null) {
+      final String name = user.greetingName;
+      _passcode.rememberName(name == 'İstifadəçi' ? null : name);
+    }
+  }
+
   @override
   void dispose() {
+    _session.removeListener(_onSession);
     _session.dispose();
+    _passcode.dispose();
     super.dispose();
   }
 
@@ -27,12 +60,20 @@ class _GuvenAppState extends State<GuvenApp> {
   Widget build(BuildContext context) {
     return SessionScope(
       controller: _session,
-      child: MaterialApp(
-        title: 'Güvən Mobile',
-        debugShowCheckedModeBanner: false,
-        theme: AppTheme.lightTheme(),
-        builder: _clampTextScale,
-        home: const _RootFlow(),
+      child: PasscodeScope(
+        controller: _passcode,
+        child: MaterialApp(
+          title: 'Güvən Mobile',
+          debugShowCheckedModeBanner: false,
+          theme: AppTheme.lightTheme(),
+          // The lock goes above the navigator, so nothing pushed inside the
+          // app can ever be drawn over it.
+          builder: (BuildContext context, Widget? child) => _clampTextScale(
+            context,
+            AppLockGate(child: child ?? const SizedBox.shrink()),
+          ),
+          home: const _RootFlow(),
+        ),
       ),
     );
   }
@@ -96,19 +137,33 @@ class _RootFlowState extends State<_RootFlow>
     value: 1,
   )..reverse();
 
-  SessionStatus? _shown;
+  _World? _shown;
+
+  /// Whether the passcode lock hid this flow on the previous frame. A world
+  /// swapped while the lock covered it needs no wipe — nobody saw it.
+  bool _wasCovered = false;
+
+  _World _world(SessionStatus status, AppLockState lock) => switch (status) {
+    SessionStatus.restoring => _World.blank,
+    SessionStatus.signedOut => _World.auth,
+    // Just signed in: the lock is still fading in over the login card.
+    SessionStatus.signedIn => lock.holdAuth ? _World.auth : _World.shell,
+  };
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final SessionStatus status = SessionScope.of(context).status;
-    if (_shown != null && _shown != status) {
+    final AppLockState lock = AppLockScope.of(context);
+    final _World world = _world(SessionScope.of(context).status, lock);
+    final bool hidden = lock.covered || lock.holdAuth || _wasCovered;
+    if (_shown != null && _shown != world && !hidden) {
       // The new world is built underneath in the same frame; the scrim goes
       // straight back to opaque over it and then pulls off.
       _wipe.value = 1;
       _wipe.reverse();
     }
-    _shown = status;
+    _shown = world;
+    _wasCovered = lock.covered || lock.holdAuth;
   }
 
   @override
@@ -119,17 +174,25 @@ class _RootFlowState extends State<_RootFlow>
 
   @override
   Widget build(BuildContext context) {
-    final SessionStatus status = SessionScope.of(context).status;
+    final AppLockState lock = AppLockScope.of(context);
 
     return Stack(
       fit: StackFit.expand,
       children: <Widget>[
-        switch (status) {
+        switch (_world(SessionScope.of(context).status, lock)) {
           // The keystore read is fast enough that a spinner would only flash;
           // the platform launch screen is still up underneath.
-          SessionStatus.restoring => const ColoredBox(color: _scrimColor),
-          SessionStatus.signedOut => const AuthFlowShell(),
-          SessionStatus.signedIn => const MainShell(),
+          _World.blank => const ColoredBox(color: _scrimColor),
+          _World.auth => const AuthFlowShell(),
+          // Under the lock the shell is built and loading, but neither
+          // painted nor ticking — it is the reveal that brings it on.
+          _World.shell => Offstage(
+            offstage: lock.covered,
+            child: TickerMode(
+              enabled: !lock.covered,
+              child: MainShell(active: lock.shellActive),
+            ),
+          ),
         },
         AnimatedBuilder(
           animation: _wipe,
@@ -148,6 +211,8 @@ class _RootFlowState extends State<_RootFlow>
     );
   }
 }
+
+enum _World { blank, auth, shell }
 
 /// The pale ground both worlds sit on, and what the swap wipes through.
 const Color _scrimColor = Color(0xFFF2F7FE);

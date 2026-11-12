@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
+import '../../../../shared/glass/app_glass.dart';
 import '../../../../shared/layout.dart';
 import '../../../../shared/motion/glass_morph.dart';
-import '../../../../shared/motion/glass_shimmer.dart';
 import '../../../auth/presentation/login_screen.dart';
 import '../../../auth/presentation/widgets/auth_glass.dart';
 import '../onboarding_metrics.dart';
@@ -37,8 +37,12 @@ class _StartCtaPageState extends State<StartCtaPage> {
   Widget build(BuildContext context) {
     final OnboardingMetrics metrics = OnboardingMetrics.of(context);
 
-    final double buttonWidth =
-        responsive(context, factor: 0.52, min: 210, max: 280);
+    final double buttonWidth = responsive(
+      context,
+      factor: 0.52,
+      min: 210,
+      max: 280,
+    );
     final double buttonHeight = (metrics.band * 0.10)
         .clamp(metrics.px(64), metrics.px(82))
         .toDouble();
@@ -52,23 +56,31 @@ class _StartCtaPageState extends State<StartCtaPage> {
           right: 0,
           child: Center(
             // While the morph holds the surface, the button stops painting —
-            // otherwise two lenses sit on the same rect and refract each other.
-            // `Visibility` and not `Opacity`: an opacity layer over a lens is a
-            // `saveLayer`, and a lens inside one renders black.
+            // otherwise two glass surfaces sit on the same rect and blur each
+            // other. `Visibility` and not `Opacity`: an opacity layer over a
+            // blur is a `saveLayer`, and the blur inside one reads nothing.
             child: Visibility(
               visible: !_handedOver,
               maintainSize: true,
               maintainAnimation: true,
               maintainState: true,
-              child: GlassPressButton(
+              child: DecoratedBox(
                 key: _buttonKey,
-                width: buttonWidth,
-                height: buttonHeight,
-                cornerRadius: buttonHeight / 2,
-                style: kStartCtaGlass,
-                shadow: kStartCtaShadow,
-                onTap: _openLogin,
-                child: const StartCtaLabel(),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(buttonHeight / 2),
+                  boxShadow: kStartCtaShadow,
+                ),
+                child: SizedBox(
+                  width: buttonWidth,
+                  height: buttonHeight,
+                  child: AppGlassButton(
+                    style: glassAtRadius(kStartCtaGlass, buttonHeight / 2),
+                    cornerRadius: buttonHeight / 2,
+                    splashColor: kAuthSplash,
+                    onTap: _openLogin,
+                    child: const Center(child: StartCtaLabel()),
+                  ),
+                ),
               ),
             ),
           ),

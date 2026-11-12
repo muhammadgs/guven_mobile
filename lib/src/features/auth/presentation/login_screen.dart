@@ -6,7 +6,6 @@ import '../../../shared/effects.dart';
 import '../../../shared/glass/app_glass.dart';
 import '../../../shared/layout.dart';
 import '../../../shared/motion/glass_morph.dart';
-import '../../../shared/motion/glass_shimmer.dart';
 import 'widgets/auth_glass.dart';
 import 'widgets/login_form.dart';
 
@@ -148,17 +147,28 @@ class _AuthSurface extends StatelessWidget {
           Positioned(
             left: anchor.dx - backSize / 2,
             top: anchor.dy - backSize / 2,
-            child: GlassPressButton(
-              width: backSize,
-              height: backSize,
-              cornerRadius: backSize / 2,
-              style: kAuthBackGlass,
-              shadow: kAuthBackShadow,
-              onTap: () => Navigator.of(context).maybePop(),
-              child: Icon(
-                Icons.arrow_back_ios_new_rounded,
-                color: Colors.white.withValues(alpha: appear.clamp(0.0, 1.0)),
-                size: scaled(context, 19),
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(backSize / 2),
+                boxShadow: kAuthBackShadow,
+              ),
+              child: SizedBox.square(
+                dimension: backSize,
+                child: AppGlassButton(
+                  style: glassAtRadius(kAuthBackGlass, backSize / 2),
+                  cornerRadius: backSize / 2,
+                  splashColor: kAuthSplash,
+                  onTap: () => Navigator.of(context).maybePop(),
+                  child: Center(
+                    child: Icon(
+                      Icons.arrow_back_ios_new_rounded,
+                      color: Colors.white.withValues(
+                        alpha: appear.clamp(0.0, 1.0),
+                      ),
+                      size: scaled(context, 19),
+                    ),
+                  ),
+                ),
               ),
             ),
           ),
@@ -230,19 +240,12 @@ class _GlassCard extends StatelessWidget {
           frame.blend,
         ),
       ),
-      // No `touch` flex on the card: it wraps text fields, and a deforming
-      // surface under a keyboard-bound input reads wrong. The shimmer the
-      // finger started on the button does carry through, though — it is
-      // lighting, not deformation.
       child: AppGlassSurface(
-        style: shimmerAppGlassStyle(
-          lerpAppGlassStyle(
-            kStartCtaGlass,
-            kLoginCardGlass,
-            frame.blend,
-            cornerRadius: frame.radius,
-          ),
-          frame.shimmer,
+        style: lerpAppGlassStyle(
+          kStartCtaGlass,
+          kLoginCardGlass,
+          frame.blend,
+          cornerRadius: frame.radius,
         ),
         cornerRadius: frame.radius,
         child: Stack(

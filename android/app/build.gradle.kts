@@ -42,3 +42,9 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // The AppCompat launch theme in `styles.xml` lives here; `local_auth`
+    // needs it for the passcode screen's fingerprint prompt on older Android.
+    implementation("androidx.appcompat:appcompat:1.7.1")
+}

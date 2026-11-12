@@ -50,6 +50,11 @@
 	     RECORD_AUDIO in its own manifest and the merge brings it in. -->
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Tapşırığa səs qeydi əlavə etmək üçün mikrofona icazə lazımdır.</string>
+	<!-- The passcode screen offers Face ID instead of typing the code. iOS
+	     terminates an app that asks for Face ID without this string, and shows
+	     it verbatim in the permission sheet, so it is in the app's language. -->
+	<key>NSFaceIDUsageDescription</key>
+	<string>Güvən Finans-a giriş kodu yazmadan, Face ID ilə daxil olmaq üçün.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

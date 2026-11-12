@@ -163,11 +163,6 @@ class _ActivityRow extends StatelessWidget {
     return SizedBox(
       height: height,
       child: AppGlassSurface(
-        // `liquid_glass_easy` rather than the renderer the tray under it
-        // uses — see [kActivityRowGlass]. The two are siblings in the Stack
-        // above, so the row is painted after the tray and its backdrop
-        // already contains it; nothing here has to nest.
-        backend: AppGlassBackend.easy,
         style: glassAtRadius(kActivityRowGlass, radius),
         cornerRadius: radius,
         child: Padding(

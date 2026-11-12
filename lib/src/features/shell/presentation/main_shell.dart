@@ -28,7 +28,17 @@ import 'widgets/more_menu.dart';
 /// The page sits under the app-owned glass bar so both the bar and its moving
 /// selection lens can refract the actual tab artwork behind them.
 class MainShell extends StatefulWidget {
-  const MainShell({super.key, this.store, this.pageBuilder});
+  const MainShell({
+    super.key,
+    this.store,
+    this.pageBuilder,
+    this.active = true,
+  });
+
+  /// False while the passcode lock is over the shell — built and loading
+  /// underneath, but not to start anything that greets the user (the
+  /// attendance reminder) until the lock has opened.
+  final bool active;
 
   /// Where the button arrangement is kept. A file, unless a test says
   /// otherwise.
@@ -365,19 +375,19 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
     return switch (page) {
       ShellDestination.home => HomeScreen(
         bottomReserve: reserve,
-        active: _current == ShellDestination.home,
+        active: widget.active && _current == ShellDestination.home,
       ),
       ShellDestination.tasks => TasksScreen(
         bottomReserve: reserve,
-        active: _current == ShellDestination.tasks,
+        active: widget.active && _current == ShellDestination.tasks,
       ),
       ShellDestination.database => DatabaseScreen(
         bottomReserve: reserve,
-        active: _current == ShellDestination.database,
+        active: widget.active && _current == ShellDestination.database,
       ),
       ShellDestination.settings => SettingsScreen(
         bottomReserve: reserve,
-        active: _current == ShellDestination.settings,
+        active: widget.active && _current == ShellDestination.settings,
       ),
       // Every other page is a button for now; its screen comes later.
       _ => ComingSoonTab(title: page.title, bottomReserve: reserve),

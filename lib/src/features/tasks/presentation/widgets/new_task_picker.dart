@@ -644,10 +644,6 @@ class DarkPanelSurface extends StatelessWidget {
           ),
         ),
         child: AppGlassSurface(
-          // Pinned to `liquid_glass_easy`, like every other panel on this
-          // screen: its optical border comes from the shape rather than from
-          // the backdrop, and this one has almost no backdrop left to tint.
-          backend: AppGlassBackend.easy,
           style: lerpAppGlassStyle(
             kNewTaskFieldGlass,
             kNewTaskPickerGlass,

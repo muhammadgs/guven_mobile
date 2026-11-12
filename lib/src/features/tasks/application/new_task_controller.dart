@@ -72,9 +72,12 @@ class OptionList {
 /// therefore drops the three answers under it rather than leaving a work type
 /// from one company attached to a task at another.
 class NewTaskController extends ChangeNotifier {
-  NewTaskController(this._session, {TaskCreateApi? api, VoiceNoteRecorder? voice})
-    : _api = api ?? TaskCreateApi(_session.client),
-      voice = voice ?? VoiceNoteRecorder() {
+  NewTaskController(
+    this._session, {
+    TaskCreateApi? api,
+    VoiceNoteRecorder? voice,
+  }) : _api = api ?? TaskCreateApi(_session.client),
+       voice = voice ?? VoiceNoteRecorder() {
     this.voice.addListener(_notify);
   }
 
@@ -123,15 +126,46 @@ class NewTaskController extends ChangeNotifier {
   OptionList listOf(NewTaskField field) => _lists[field]!;
   TaskOption? chosen(NewTaskField field) => _chosen[field];
 
-  /// The fields this kind actually asks for, in the order the design draws
-  /// them.
-  List<NewTaskField> get fields => <NewTaskField>[
+  /// The fields drawn above `Son müddət`, in order.
+  ///
+  /// `Şöbə` sits right under whoever carries the task out, because choosing
+  /// that person fills it in. On the internal form that is `İcra edən`; on the
+  /// other two the other company's person *is* the executor, so they take
+  /// that place instead.
+  List<NewTaskField> get fieldsAboveDeadline => <NewTaskField>[
     NewTaskField.company,
-    if (_kind?.hasOwnExecutor ?? false) NewTaskField.executor,
-    NewTaskField.otherWorker,
-    NewTaskField.workType,
+    executorField,
     NewTaskField.department,
+    NewTaskField.workType,
   ];
+
+  /// The fields drawn under `Son müddət`. On the internal form the other
+  /// company's person is only watching, so they sit next to the switch that
+  /// decides whether that company sees the task at all.
+  List<NewTaskField> get fieldsBelowDeadline => <NewTaskField>[
+    if (_kind?.hasOwnExecutor ?? false) NewTaskField.otherWorker,
+  ];
+
+  /// Every field this kind asks for.
+  List<NewTaskField> get fields => <NewTaskField>[
+    ...fieldsAboveDeadline,
+    ...fieldsBelowDeadline,
+  ];
+
+  /// The field whose answer carries the task out — and fills `Şöbə`.
+  NewTaskField get executorField => (_kind?.hasOwnExecutor ?? true)
+      ? NewTaskField.executor
+      : NewTaskField.otherWorker;
+
+  /// The department the chosen executor belongs to, while it is still being
+  /// looked up or the department list is still loading. Cleared the moment it
+  /// lands, or the moment `Şöbə` is answered by hand — a late answer must
+  /// never overwrite the user's own choice.
+  int? _wantedDepartment;
+
+  /// Bumped on every new executor, so a slow `/users/{id}` for the previous
+  /// one is ignored.
+  int _departmentLookup = 0;
 
   String? get _companyCode => _session.user?.companyCode;
   int? get _myCompanyId => _session.user?.companyId;
@@ -145,6 +179,7 @@ class NewTaskController extends ChangeNotifier {
     if (_kind == kind) return;
     _kind = kind;
     _chosen.clear();
+    _forgetWantedDepartment();
     _failure = null;
     for (final NewTaskField field in NewTaskField.values) {
       _lists[field] = const OptionList();
@@ -211,7 +246,64 @@ class NewTaskController extends ChangeNotifier {
     _chosen[field] = option;
     _failure = null;
     if (field == NewTaskField.company) _onCompanyChosen(option);
+    if (field == NewTaskField.department) _forgetWantedDepartment();
+    if (field == executorField) _fillDepartmentFrom(option);
     _notify();
+  }
+
+  // ── Şöbə follows the executor ───────────────────────────────────────────
+
+  /// Fills `Şöbə` with [person]'s own department, the way the website does
+  /// (`autoSelectDepartmentByEmployee`): from the employee row when it says,
+  /// otherwise from `/users/{id}`. The user can still change it afterwards; a
+  /// person with no department leaves the answer as it was.
+  void _fillDepartmentFrom(TaskOption person) {
+    final int lookup = ++_departmentLookup;
+    _wantedDepartment = null;
+
+    final int? known = person.departmentId;
+    if (known != null) {
+      _wantDepartment(known);
+      return;
+    }
+    unawaited(() async {
+      int? found;
+      try {
+        found = await _api.departmentOf(person.id);
+      } on ApiException {
+        found = null;
+      }
+      if (_disposed || lookup != _departmentLookup || found == null) return;
+      _wantDepartment(found);
+      _notify();
+    }());
+  }
+
+  void _wantDepartment(int id) {
+    _wantedDepartment = id;
+    _applyWantedDepartment();
+  }
+
+  /// Chooses [_wantedDepartment] once the department list holds it. While the
+  /// list is still loading it waits for [_load] to call back; a list that has
+  /// landed without it gives up rather than inventing an answer.
+  void _applyWantedDepartment() {
+    final int? wanted = _wantedDepartment;
+    if (wanted == null) return;
+    final OptionList list = listOf(NewTaskField.department);
+    if (list.loading) return;
+    _wantedDepartment = null;
+    for (final TaskOption option in list.options) {
+      if (option.id == wanted) {
+        _chosen[NewTaskField.department] = option;
+        return;
+      }
+    }
+  }
+
+  void _forgetWantedDepartment() {
+    _wantedDepartment = null;
+    _departmentLookup++;
   }
 
   /// A company decides who and what is available under it.
@@ -245,6 +337,7 @@ class NewTaskController extends ChangeNotifier {
     // On a task handed to another company, the work type and the department
     // are that company's — ours mean nothing there.
     if (!kind.hasOwnExecutor) {
+      _forgetWantedDepartment();
       _chosen
         ..remove(NewTaskField.workType)
         ..remove(NewTaskField.department);
@@ -387,9 +480,7 @@ class NewTaskController extends ChangeNotifier {
             (_chosen[NewTaskField.executor] ??
                     _chosen[NewTaskField.otherWorker])
                 ?.id,
-        watcher: kind.hasOwnExecutor
-            ? _chosen[NewTaskField.otherWorker]
-            : null,
+        watcher: kind.hasOwnExecutor ? _chosen[NewTaskField.otherWorker] : null,
         workType: _chosen[NewTaskField.workType]!,
         department: _chosen[NewTaskField.department]!,
         dueDate: _dueDate!,
@@ -440,21 +531,29 @@ class NewTaskController extends ChangeNotifier {
   ) async {
     _set(field, const OptionList.busy());
     try {
-      _set(field, OptionList(options: await fetch()));
+      final List<TaskOption> options = await fetch();
+      _lists[field] = OptionList(options: options);
     } on ApiException catch (error) {
-      _set(field, OptionList(error: error.message));
+      _lists[field] = OptionList(error: error.message);
     }
+    // An executor chosen before their department's list arrived.
+    if (field == NewTaskField.department) _applyWantedDepartment();
+    _notify();
   }
 
   Future<List<TaskOption>> _employeesOfMine() {
     final String? code = _companyCode;
-    if (code == null) return Future<List<TaskOption>>.value(const <TaskOption>[]);
+    if (code == null) {
+      return Future<List<TaskOption>>.value(const <TaskOption>[]);
+    }
     return _api.employees(code);
   }
 
   Future<List<TaskOption>> _departmentsOfMine() {
     final String? code = _companyCode;
-    if (code == null) return Future<List<TaskOption>>.value(const <TaskOption>[]);
+    if (code == null) {
+      return Future<List<TaskOption>>.value(const <TaskOption>[]);
+    }
     return _api.departments(code);
   }
 

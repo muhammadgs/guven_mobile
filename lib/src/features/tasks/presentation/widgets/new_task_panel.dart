@@ -394,10 +394,6 @@ class _Surface extends StatelessWidget {
               ),
             ),
             child: AppGlassSurface(
-              // Pinned to `liquid_glass_easy`, like the button it grew out of
-              // and like the filter — and the user asked for the filter's glass
-              // exactly, so it wears the filter's own settings.
-              backend: AppGlassBackend.easy,
               style: lerpAppGlassStyle(
                 kTaskToolGlass,
                 kTaskFilterGlass,

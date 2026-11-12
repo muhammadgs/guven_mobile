@@ -81,6 +81,16 @@ class TaskCreateApi {
     );
   }
 
+  /// One person's department, asked of `/users/{id}` — the website's fallback
+  /// when the employee list it already holds does not say. Null when the
+  /// person has none.
+  Future<int?> departmentOf(int userId) async {
+    final Object? payload = await _client.get('/users/$userId');
+    final Map<String, Object?> row = asMap(payload);
+    return TaskOption.departmentIdOf(row) ??
+        TaskOption.departmentIdOf(asMap(row['data']));
+  }
+
   Future<List<TaskOption>> departments(String companyCode) async {
     final Object? payload = await _client.get(
       '/departments/company-code/$companyCode',

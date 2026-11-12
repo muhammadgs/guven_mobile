@@ -52,15 +52,31 @@ void main() {
         find.text('İcra edən'),
         kind.hasOwnExecutor ? findsOneWidget : findsNothing,
       );
-      expect(find.text(kind.otherWorkerLabel), findsOneWidget);
       expect(find.text('İşin növü'), findsOneWidget);
       expect(find.text('Şöbə'), findsOneWidget);
 
+      // Şöbə comes straight after whoever carries the task out, because
+      // choosing them fills it in.
+      final String executor = kind.hasOwnExecutor
+          ? 'İcra edən'
+          : kind.otherWorkerLabel;
+      expect(
+        tester.getTopLeft(find.text('Şöbə')).dy,
+        greaterThan(tester.getTopLeft(find.text(executor)).dy),
+      );
+      expect(
+        tester.getTopLeft(find.text('Şöbə')).dy,
+        lessThan(tester.getTopLeft(find.text('İşin növü')).dy),
+      );
+
       // The rest of the form is below the fold — the sheet scrolls, exactly as
       // the design's second screen shows it — so it has to be scrolled to
-      // rather than merely looked for.
+      // rather than merely looked for. On the internal form the other
+      // company's person is only a watcher, and sits over the switch that
+      // decides whether that company sees the task.
       for (final String below in <String>[
         'Son müddət',
+        if (kind.hasOwnExecutor) kind.otherWorkerLabel,
         // Only the internal form can hide a task from the company it is for;
         // on the other two that company has to see it or it could not do it.
         if (kind.hasVisibilityToggle) 'Seçilmiş şirkətə göstər',
@@ -75,6 +91,21 @@ void main() {
           const Offset(0, -120),
         );
         expect(find.text(below), findsOneWidget);
+
+        // Each row is checked against the one drawn just before it, while
+        // both are still built.
+        final String? before = switch (below) {
+          'Seçilmiş şirkətə göstər' => kind.otherWorkerLabel,
+          _ when below == kind.otherWorkerLabel => 'Son müddət',
+          _ => null,
+        };
+        if (before != null) {
+          expect(
+            tester.getTopLeft(find.text(before, skipOffstage: false)).dy,
+            lessThan(tester.getTopLeft(find.text(below)).dy),
+            reason: '$before sits above $below',
+          );
+        }
       }
 
       if (!kind.hasVisibilityToggle) {
@@ -123,7 +154,13 @@ void main() {
 
     // The form opens on our own company, so `Digər şirkətin işçisi` has no
     // other side to name. It says what to do about that instead of offering
-    // our own people a second time…
+    // our own people a second time… (it sits under `Son müddət`, below the
+    // fold)
+    await tester.dragUntilVisible(
+      find.text('Digər şirkət seçin'),
+      find.byType(ListView),
+      const Offset(0, -120),
+    );
     expect(find.text('Digər şirkət seçin'), findsOneWidget);
     expect(api.employeesFor, <String>['GUV26001']);
 
@@ -144,6 +181,8 @@ void main() {
     await tester.pumpAndSettle();
 
     // Choosing a company that *is* another one asks for its people.
+    await tester.drag(find.byType(ListView), const Offset(0, 2000));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Güvən Finans MMC'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Alt Şirkət'));
