@@ -1,8 +1,8 @@
-import 'dart:ui' as ui show ImageFilter;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+import '../../../../shared/glass/app_glass.dart';
 import '../../domain/database_metric.dart';
 import 'database_glass.dart';
 
@@ -39,11 +39,9 @@ class DatabaseOverviewRow extends StatelessWidget {
       child: ClipRRect(
         // Fully round: the arc is drawn to the cap's own circle.
         borderRadius: BorderRadius.circular(height / 2),
-        child: BackdropFilter.grouped(
-          filter: ui.ImageFilter.blur(
-            sigmaX: kDatabaseRowBlurSigma,
-            sigmaY: kDatabaseRowBlurSigma,
-          ),
+        child: AppBackdropBlur(
+          sigma: kDatabaseRowBlurSigma,
+          grouped: true,
           child: ColoredBox(
             color: kDatabaseRowFill,
             child: CustomPaint(

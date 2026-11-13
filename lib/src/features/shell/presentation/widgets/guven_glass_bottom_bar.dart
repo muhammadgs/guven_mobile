@@ -4,15 +4,24 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+import '../../../../shared/glass/app_glass.dart';
+import '../../../../shared/glass/glass_backdrop.dart';
+import '../../../../shared/glass/liquid_glass.dart';
 import '../../../../shared/motion/spring.dart';
 import '../../../home/presentation/widgets/home_glass.dart';
 
-/// Güvən's compact bottom bar: a frosted capsule with a plain marker under the
+/// Güvən's compact bottom bar: a glass capsule with a plain marker under the
 /// selected cell.
 ///
 /// The marker is a flat fill sized to each label's measured width. It slides
 /// between cells on a spring, and a finger dragging along the bar holds it
 /// directly — it never lags behind the thing dragging it.
+///
+/// A touch turns the marker into a lens: it swells past the bar's edges and,
+/// while the finger stays down, magnifies and bends the bar under it — the
+/// iOS 26 tab bar. What it bends is a photograph of the bar taken as the
+/// touch lands, without the marker in it ([captureScreenRegion]), so it costs
+/// no read of the live screen. Without the liquid shader there is no lens.
 class GuvenGlassBottomBar extends StatefulWidget {
   const GuvenGlassBottomBar({
     super.key,
@@ -96,6 +105,34 @@ const double _kEdgeInset = 3;
 
 /// Between a marker and the name in the next cell.
 const double _kNeighbourGap = 4;
+
+/// The marker's inset from the bar's top and bottom.
+const double _kPillInset = 7;
+
+/// How far the lens swells past the resting marker on each side, fully
+/// pressed. Vertically that is past the bar itself — the lens stands proud
+/// of it.
+const double _kLensOutsetX = 12;
+const double _kLensOutsetY = 13;
+
+/// How much of the screen round the bar the touch photographs, beyond the
+/// bar: room for the swollen lens, its stretch and an overdragged end.
+const double _kLensReachX = 64;
+const double _kLensReachY = 28;
+
+/// The press spring: smooth, a hint of overshoot as the lens swells.
+const double _kPressStiffness = 420;
+const double _kPressDamping = 36;
+
+/// The stretch spring, and the most a fast drag stretches the lens: wider
+/// and flatter, its area kept.
+const double _kJellyStiffness = 320;
+const double _kJellyDamping = 26;
+const double _kJellyMax = 0.22;
+
+/// The drag speed, in logical pixels a second, at which the stretch is half
+/// of [_kJellyMax].
+const double _kJellySpeed = 700;
 
 /// Where each cell's name, marker and content go, for one set of names.
 ///
@@ -219,6 +256,35 @@ class _GuvenGlassBottomBarState extends State<GuvenGlassBottomBar>
   bool _grabbed = false;
   double _grabOffset = 0;
 
+  /// 0 the plain marker, 1 the lens fully swollen.
+  final Spring _press = Spring(
+    stiffness: _kPressStiffness,
+    damping: _kPressDamping,
+    value: 0,
+  );
+
+  /// How far the lens is stretched by the speed it moves at; see [_kJellyMax].
+  final Spring _jelly = Spring(
+    stiffness: _kJellyStiffness,
+    damping: _kJellyDamping,
+    value: 0,
+  );
+
+  /// Fingers on the bar.
+  int _pointers = 0;
+
+  /// The width of one cell, as last laid out.
+  double _slotWidth = 0;
+
+  /// The finger's speed along the bar, logical pixels a second, smoothed.
+  double _fingerSpeed = 0;
+  Duration? _lastDragStamp;
+
+  /// What the lens shows: the bar and the screen round it, photographed as
+  /// the touch landed. Null while there is no lens.
+  final ValueNotifier<GlassBackdropImage?> _lensPicture =
+      ValueNotifier<GlassBackdropImage?>(null);
+
   @override
   void initState() {
     super.initState();
@@ -246,6 +312,8 @@ class _GuvenGlassBottomBarState extends State<GuvenGlassBottomBar>
   void dispose() {
     _ticker.dispose();
     _frame.dispose();
+    _lensPicture.value?.dispose();
+    _lensPicture.dispose();
     super.dispose();
   }
 
@@ -259,6 +327,8 @@ class _GuvenGlassBottomBarState extends State<GuvenGlassBottomBar>
       ),
       child: Stack(
         fit: StackFit.expand,
+        // The lens stands proud of the bar; a clip would cut it flat.
+        clipBehavior: Clip.none,
         children: <Widget>[
           AppGlassSurface(
             style: glassAtRadius(kNavBarGlass, radius),
@@ -269,6 +339,7 @@ class _GuvenGlassBottomBarState extends State<GuvenGlassBottomBar>
             builder: (BuildContext context, BoxConstraints constraints) {
               final double barWidth = constraints.maxWidth;
               final double slotWidth = barWidth / widget.labels.length;
+              _slotWidth = slotWidth;
               final _BarCells cells = _BarCells.fit(
                 natural: <double>[
                   for (final String label in widget.labels)
@@ -282,76 +353,99 @@ class _GuvenGlassBottomBarState extends State<GuvenGlassBottomBar>
               final bool laidOut = _laidOut;
               _laidOut = true;
 
-              return GestureDetector(
-                behavior: HitTestBehavior.opaque,
-                onTapUp: (TapUpDetails details) =>
-                    _onTapAt(details.localPosition.dx, barWidth),
-                onPanStart: (DragStartDetails details) =>
-                    _onPanStart(details, barWidth),
-                onPanUpdate: (DragUpdateDetails details) =>
-                    _onPanUpdate(details, slotWidth, barWidth),
-                onPanEnd: (DragEndDetails details) =>
-                    _onPanEnd(details, slotWidth, barWidth),
-                onPanCancel: _onPanCancel,
-                // Held still for long enough, a touch stops being about the
-                // selection and picks the cell up instead. The pan above loses
-                // the arena to it.
-                onLongPressStart: widget.onLiftStart == null
-                    ? null
-                    : (LongPressStartDetails details) =>
-                          _onLongPressStart(details, slotWidth),
-                child: AnimatedBuilder(
-                  animation: _frame,
-                  builder: (BuildContext context, Widget? child) {
-                    final double last = (widget.labels.length - 1).toDouble();
-                    final double index = _travel.value.clamp(0.0, last);
-                    final double indicatorWidth = _lerpAt(cells.pills, index);
-                    final double left =
-                        (_lerpAt(cells.centers, index) - indicatorWidth / 2)
-                            .clamp(
-                              _kEdgeInset,
-                              barWidth - indicatorWidth - _kEdgeInset,
-                            );
+              // A Listener, not the gesture callbacks: it hears the touch the
+              // moment it lands, before any recognizer has won the arena.
+              return Listener(
+                onPointerDown: (_) => _onPointerDown(),
+                onPointerUp: (_) => _onPointerEnd(),
+                onPointerCancel: (_) => _onPointerEnd(),
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTapUp: (TapUpDetails details) =>
+                      _onTapAt(details.localPosition.dx, barWidth),
+                  onPanStart: (DragStartDetails details) =>
+                      _onPanStart(details, barWidth),
+                  onPanUpdate: (DragUpdateDetails details) =>
+                      _onPanUpdate(details, slotWidth, barWidth),
+                  onPanEnd: (DragEndDetails details) =>
+                      _onPanEnd(details, slotWidth, barWidth),
+                  onPanCancel: _onPanCancel,
+                  // Held still for long enough, a touch stops being about the
+                  // selection and picks the cell up instead. The pan above loses
+                  // the arena to it.
+                  onLongPressStart: widget.onLiftStart == null
+                      ? null
+                      : (LongPressStartDetails details) =>
+                            _onLongPressStart(details, slotWidth),
+                  child: AnimatedBuilder(
+                    animation: _frame,
+                    builder: (BuildContext context, Widget? child) {
+                      final double last = (widget.labels.length - 1).toDouble();
+                      final double index = _travel.value.clamp(0.0, last);
+                      final double indicatorWidth = _lerpAt(cells.pills, index);
+                      final double left =
+                          (_lerpAt(cells.centers, index) - indicatorWidth / 2)
+                              .clamp(
+                                _kEdgeInset,
+                                barWidth - indicatorWidth - _kEdgeInset,
+                              );
+                      final Rect marker = Rect.fromLTWH(
+                        left,
+                        _kPillInset,
+                        indicatorWidth,
+                        widget.height - 2 * _kPillInset,
+                      );
+                      final double press = _press.value.clamp(0.0, 1.0);
+                      final bool lens =
+                          press > 0.001 && _lensPicture.value != null;
 
-                    return Stack(
+                      return Stack(
+                        fit: StackFit.expand,
+                        clipBehavior: Clip.none,
+                        children: <Widget>[
+                          // A plain fill *under* the glyphs, so they stay black
+                          // on it. It hands over to the lens as that swells,
+                          // and stays out of the lens's photograph.
+                          _SelectionPill(
+                            rect: marker,
+                            radius: radius - _kPillInset,
+                            opacity: lens ? 1 - press : 1,
+                          ),
+                          IgnorePointer(child: child!),
+                          if (lens) _lens(marker),
+                        ],
+                      );
+                    },
+                    child: Stack(
                       fit: StackFit.expand,
                       children: <Widget>[
-                        // A plain fill *under* the glyphs, so they stay black
-                        // on it.
-                        _SelectionPill(
-                          left: left,
-                          width: indicatorWidth,
-                          radius: radius - 7,
-                        ),
-                        IgnorePointer(child: child!),
-                      ],
-                    );
-                  },
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: <Widget>[
-                      for (int index = 0; index < widget.labels.length; index++)
-                        AnimatedPositioned(
-                          key: ValueKey<String>(widget.labels[index]),
-                          duration: _kReflow,
-                          curve: Curves.easeOutCubic,
-                          // Centred on its marker, not on its slot: an end
-                          // cell's marker is pushed in off the bar's rim, and
-                          // its glyph and name go with it rather than being
-                          // left half outside it.
-                          left: cells.centers[index] - slotWidth / 2,
-                          top: 0,
-                          bottom: 0,
-                          width: slotWidth,
-                          child: _PopIn(
-                            // A cell that is new to the bar — traded in from
-                            // `Daha çox` — pops into its place. The first row
-                            // the bar ever draws just appears.
-                            enabled: laidOut,
-                            child: _tab(index, cells.labels[index]),
+                        for (
+                          int index = 0;
+                          index < widget.labels.length;
+                          index++
+                        )
+                          AnimatedPositioned(
+                            key: ValueKey<String>(widget.labels[index]),
+                            duration: _kReflow,
+                            curve: Curves.easeOutCubic,
+                            // Centred on its marker, not on its slot: an end
+                            // cell's marker is pushed in off the bar's rim, and
+                            // its glyph and name go with it rather than being
+                            // left half outside it.
+                            left: cells.centers[index] - slotWidth / 2,
+                            top: 0,
+                            bottom: 0,
+                            width: slotWidth,
+                            child: _PopIn(
+                              // A cell that is new to the bar — traded in from
+                              // `Daha çox` — pops into its place. The first row
+                              // the bar ever draws just appears.
+                              enabled: laidOut,
+                              child: _tab(index, cells.labels[index]),
+                            ),
                           ),
-                        ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               );
@@ -360,6 +454,99 @@ class _GuvenGlassBottomBarState extends State<GuvenGlassBottomBar>
         ],
       ),
     );
+  }
+
+  /// The lens over [marker]: swollen by the press, stretched by its speed,
+  /// showing the photograph taken as the touch landed.
+  Widget _lens(Rect marker) {
+    final double press = _press.value;
+    final double grown = math.max(press, 0);
+    final double stretch = _jelly.value.clamp(0.0, _kJellyMax);
+    // Wider and flatter with speed, its area kept.
+    final double sx = 1 + stretch;
+    final double sy = 1 / sx;
+    final double width = (marker.width + 2 * _kLensOutsetX * grown) * sx;
+    final double height = (marker.height + 2 * _kLensOutsetY * grown) * sy;
+    final Rect lens = Rect.fromCenter(
+      center: marker.center,
+      width: width,
+      height: height,
+    );
+    return Positioned.fromRect(
+      key: const ValueKey<String>('nav-lens'),
+      rect: lens,
+      child: IgnorePointer(
+        // Never in a photograph: a touch landing while the last lens is
+        // still shrinking photographs the bar, not the lens.
+        child: GlassCaptureHidden(
+          child: GlassBackdropScope(
+            backdrop: _lensPicture,
+            child: GlassBackdropPaint(
+              liquid: LiquidGlassSpec(
+                cornerRadius: lens.shortestSide / 2,
+                tint: kNavLensTint,
+                fade: press.clamp(0.0, 1.0),
+                optics: kNavLensOptics,
+              ),
+              child: const SizedBox.expand(),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ------------------------------------------------------------------- lens
+
+  void _onPointerDown() {
+    _pointers++;
+    if (!LiquidGlassShader.ready || widget.liftedIndex != null) return;
+    // A fresh photograph unless the last lens is still on screen — then the
+    // bar under it has not changed, and its photograph still holds.
+    if (_lensPicture.value == null || _press.value < 0.01) _photograph();
+    if (_lensPicture.value == null) return;
+    _press.target = 1;
+    _wake();
+  }
+
+  void _onPointerEnd() {
+    _pointers = math.max(0, _pointers - 1);
+    if (_pointers > 0) return;
+    _press.target = 0;
+    _fingerSpeed = 0;
+    _lastDragStamp = null;
+    _wake();
+  }
+
+  /// Photographs the bar and the screen round it, sharper than the screen by
+  /// as much as the lens magnifies.
+  void _photograph() {
+    final RenderObject? bar = context.findRenderObject();
+    if (bar is! RenderBox || !bar.hasSize) return;
+    final double ratio =
+        (MediaQuery.maybeDevicePixelRatioOf(context) ?? 1) *
+        kNavLensOptics.magnification;
+    final GlassBackdropImage? picture = captureScreenRegion(
+      anchor: bar,
+      region: Rect.fromLTRB(
+        -_kLensReachX,
+        -_kLensReachY,
+        bar.size.width + _kLensReachX,
+        bar.size.height + _kLensReachY,
+      ),
+      pixelRatio: ratio,
+    );
+    if (picture == null) return;
+    final GlassBackdropImage? previous = _lensPicture.value;
+    _lensPicture.value = picture;
+    previous?.dispose();
+  }
+
+  void _dropPhotograph() {
+    final GlassBackdropImage? previous = _lensPicture.value;
+    if (previous == null) return;
+    _lensPicture.value = null;
+    previous.dispose();
   }
 
   /// [labelWidth] is as wide as the name may be drawn — its own width, unless
@@ -472,6 +659,9 @@ class _GuvenGlassBottomBarState extends State<GuvenGlassBottomBar>
       0,
       widget.labels.length - 1,
     );
+    // The touch is picking the cell up now, not choosing: the lens goes.
+    _press.target = 0;
+    _wake();
     widget.onLiftStart?.call(index, details.globalPosition);
   }
 
@@ -492,6 +682,16 @@ class _GuvenGlassBottomBarState extends State<GuvenGlassBottomBar>
     double barWidth,
   ) {
     _holdAt(_indexAtPosition(details.localPosition.dx, barWidth));
+    // The finger's speed, for the lens's stretch: the held spring has none.
+    final Duration? stamp = details.sourceTimeStamp;
+    final Duration? previous = _lastDragStamp;
+    if (stamp != null && previous != null && stamp > previous) {
+      final double dt =
+          (stamp - previous).inMicroseconds / Duration.microsecondsPerSecond;
+      final double speed = details.delta.dx.abs() / dt;
+      _fingerSpeed = _fingerSpeed * 0.6 + speed * 0.4;
+    }
+    _lastDragStamp = stamp;
     _wake();
   }
 
@@ -549,6 +749,7 @@ class _GuvenGlassBottomBarState extends State<GuvenGlassBottomBar>
 
     if (dt > 0) {
       if (!_grabbed) _travel.advance(dt);
+      _advanceLens(dt);
       _frame.value++;
     } else {
       // The first tick after a start carries no elapsed time to integrate,
@@ -557,12 +758,33 @@ class _GuvenGlassBottomBarState extends State<GuvenGlassBottomBar>
     }
 
     // Every gesture wakes the ticker again, so parking it the moment the
-    // spring is still is safe even with a finger resting on the bar.
-    if (!_grabbed && _travel.isAtRest(0.0008)) {
+    // springs are still is safe even with a finger resting on the bar.
+    if (!_grabbed &&
+        _travel.isAtRest(0.0008) &&
+        _press.isAtRest(0.001) &&
+        _jelly.isAtRest(0.001)) {
       _travel.snap();
+      _press.snap();
+      _jelly.snap();
+      if (_press.value == 0) _dropPhotograph();
       _ticker.stop();
       _frame.value++;
     }
+  }
+
+  /// Swells or shrinks the lens, and stretches it by the speed it moves at.
+  void _advanceLens(double dt) {
+    _press.advance(dt);
+    if (_grabbed) {
+      // A finger that stops sends no more updates: let its speed die away.
+      _fingerSpeed *= math.exp(-dt * 10);
+    }
+    final double speed = _grabbed
+        ? _fingerSpeed
+        : _travel.velocity.abs() * _slotWidth;
+    final double pressed = _press.value.clamp(0.0, 1.0);
+    _jelly.target = _kJellyMax * speed / (speed + _kJellySpeed) * pressed;
+    _jelly.advance(dt);
   }
 }
 
@@ -608,30 +830,36 @@ class _PopInState extends State<_PopIn> with SingleTickerProviderStateMixin {
 }
 
 /// The marker under the selected cell: a plain fill.
+///
+/// Kept out of the lens's photograph: the lens takes its place, so under the
+/// lens there is only the bar.
 class _SelectionPill extends StatelessWidget {
   const _SelectionPill({
-    required this.left,
-    required this.width,
+    required this.rect,
     required this.radius,
+    required this.opacity,
   });
 
-  final double left;
-  final double width;
+  final Rect rect;
   final double radius;
+
+  /// 1 resting; less while the lens swells over it.
+  final double opacity;
 
   @override
   Widget build(BuildContext context) {
-    return Positioned(
+    return Positioned.fromRect(
       key: const ValueKey<String>('nav-selection-pill'),
-      left: left,
-      top: 7,
-      bottom: 7,
-      width: width,
-      child: DecoratedBox(
-        decoration: ShapeDecoration(
-          color: kNavIndicatorRestFill,
-          shape: RoundedSuperellipseBorder(
-            borderRadius: BorderRadius.circular(radius),
+      rect: rect,
+      child: GlassCaptureHidden(
+        child: DecoratedBox(
+          decoration: ShapeDecoration(
+            color: kNavIndicatorRestFill.withValues(
+              alpha: kNavIndicatorRestFill.a * opacity.clamp(0.0, 1.0),
+            ),
+            shape: RoundedSuperellipseBorder(
+              borderRadius: BorderRadius.circular(radius),
+            ),
           ),
         ),
       ),

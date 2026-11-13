@@ -11,7 +11,7 @@
 /// (`backdrop-filter-black-flash`).
 library;
 
-import 'dart:ui' as ui show ImageFilter, lerpDouble;
+import 'dart:ui' as ui show lerpDouble;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -63,12 +63,14 @@ Future<void> showAttendancePrompt(
           transitionDuration: _kOpen,
           reverseTransitionDuration: _kClose,
           pageBuilder: (BuildContext context, Animation<double> animation, _) =>
-              AttendancePrompt(
-                controller: controller,
-                kind: kind,
-                start: start,
-                entrance: animation,
-                overCard: overCard,
+              FrozenGlassBackdrop(
+                child: AttendancePrompt(
+                  controller: controller,
+                  kind: kind,
+                  start: start,
+                  entrance: animation,
+                  overCard: overCard,
+                ),
               ),
         )
       : GlassMorphRoute<void>(
@@ -583,15 +585,15 @@ class AttendanceScrim extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final double t = amount.clamp(0.0, 1.0);
-    final double sigma =
-        (overCard ? kAttendanceBlurOverCard : kAttendanceBlur) * t;
+    final double sigma = overCard ? kAttendanceBlurOverCard : kAttendanceBlur;
     final Color wash = overCard ? kAttendanceScrimOverCard : kAttendanceScrim;
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: ClipRect(
-        child: BackdropFilter(
-          filter: ui.ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
+        child: AppBackdropBlur(
+          sigma: sigma,
+          amount: t,
           child: ColoredBox(color: wash.withValues(alpha: wash.a * t)),
         ),
       ),

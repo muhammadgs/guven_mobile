@@ -2,6 +2,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
+import '../../../../shared/glass/app_glass.dart';
 import '../../../../shared/layout.dart';
 
 /// Apple-style "liquid glass" page dots.
@@ -35,9 +36,7 @@ class GlassPageIndicator extends StatelessWidget {
             padding: EdgeInsets.symmetric(
               horizontal: scaled(context, _spacing) / 2,
             ),
-            child: _Dot(
-              selected: (1 - (page - i).abs()).clamp(0.0, 1.0),
-            ),
+            child: _Dot(selected: (1 - (page - i).abs()).clamp(0.0, 1.0)),
           ),
       ],
     );
@@ -64,8 +63,8 @@ class _Dot extends StatelessWidget {
     final double borderAlpha = lerpDouble(0.45, 1.0, selected)!;
 
     return ClipOval(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
+      child: AppBackdropBlur(
+        sigma: 6,
         child: Container(
           width: size,
           height: size,

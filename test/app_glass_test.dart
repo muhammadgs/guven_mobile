@@ -56,7 +56,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('a glass surface is a blur under a tint, with no rim', (
+  testWidgets('a glass surface is a tint with no rim, and no live blur', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(
@@ -70,7 +70,8 @@ void main() {
       ),
     );
 
-    expect(find.byType(BackdropFilter), findsOneWidget);
+    // The default build blurs once, ahead of time: no live backdrop read.
+    expect(find.byType(BackdropFilter), findsNothing);
     final DecoratedBox box = tester.widget<DecoratedBox>(
       find.descendant(
         of: find.byType(AppGlassSurface),

@@ -1,8 +1,8 @@
-import 'dart:ui' as ui show ImageFilter;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+import '../../../../shared/glass/app_glass.dart';
 import '../settings_metrics.dart';
 
 /// One row on `Tənzimləmələr`: a glyph and a label on a fully round pill.
@@ -125,11 +125,9 @@ class _SettingsPillState extends State<SettingsPill> {
     );
 
     if (p > 0) {
-      body = BackdropFilter(
-        filter: ui.ImageFilter.blur(
-          sigmaX: kSettingsPillBlurSigma * p,
-          sigmaY: kSettingsPillBlurSigma * p,
-        ),
+      body = AppBackdropBlur(
+        sigma: kSettingsPillBlurSigma,
+        amount: p,
         child: body,
       );
     }

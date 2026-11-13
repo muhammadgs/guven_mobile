@@ -3,6 +3,8 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
 
+import '../glass/app_glass.dart';
+
 /// Full-screen looping video backdrop shared by every pre-login screen.
 ///
 /// Blurs the video directly with [ImageFiltered] (avoids the known Flutter
@@ -65,7 +67,8 @@ class _AuthBackgroundState extends State<AuthBackground> {
                 child: ValueListenableBuilder<bool>(
                   valueListenable: _video.ready,
                   builder: (BuildContext context, bool ready, _) => ready
-                      ? ImageFiltered(
+                      ? AppImageFiltered(
+                          always: true,
                           imageFilter: ImageFilter.blur(
                             sigmaX: widget.blurSigma,
                             sigmaY: widget.blurSigma,

@@ -1,7 +1,7 @@
-import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
+import '../../../../shared/glass/app_glass.dart';
 import '../../../../shared/layout.dart';
 
 /// Liquid-glass "swipe right" hint shown only beneath the first page.
@@ -57,10 +57,13 @@ class _GlassSwipeArrowState extends State<GlassSwipeArrow>
     return AnimatedBuilder(
       animation: Listenable.merge(<Listenable>[_entrance, _nudge]),
       builder: (context, _) {
-        final double enter = Curves.easeOutBack.transform(_entrance.value)
+        final double enter = Curves.easeOutBack
+            .transform(_entrance.value)
             .clamp(0.0, 1.0);
-        final double opacity = (widget.visibility * _entrance.value)
-            .clamp(0.0, 1.0);
+        final double opacity = (widget.visibility * _entrance.value).clamp(
+          0.0,
+          1.0,
+        );
         final double nudge =
             Curves.easeInOut.transform(_nudge.value) * 5; // 0..5 px
 
@@ -106,8 +109,8 @@ class _GlassButton extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       child: ClipRRect(
         borderRadius: BorderRadius.circular(radius),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+        child: AppBackdropBlur(
+          sigma: 14,
           child: Container(
             width: scaled(context, 64),
             height: scaled(context, 42),

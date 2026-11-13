@@ -24,6 +24,8 @@ import 'dart:ui' show lerpDouble;
 
 import 'package:flutter/material.dart';
 
+import '../glass/glass_backdrop.dart';
+
 /// How long the surface takes to bloom from the source into the destination.
 const Duration kGlassMorphDuration = Duration(milliseconds: 780);
 
@@ -74,6 +76,10 @@ class GlassMorph extends InheritedWidget {
 /// glass genuinely empty: the barrier is what a tap outside lands on, and a
 /// full-bleed hit target in the route's own child would swallow it, leaving
 /// nothing to dismiss with.
+///
+/// Such a see-through route also photographs the screen it opens over, once,
+/// and hands its glass that photograph blurred ([FrozenGlassBackdrop]) — so
+/// the glass shows the screen softly behind it without blurring live.
 class GlassMorphRoute<T> extends PageRouteBuilder<T> {
   GlassMorphRoute({
     required Rect sourceRect,
@@ -88,8 +94,9 @@ class GlassMorphRoute<T> extends PageRouteBuilder<T> {
   }) : super(
          transitionDuration: duration,
          reverseTransitionDuration: reverseDuration,
-         pageBuilder: (context, animation, secondaryAnimation) =>
-             builder(context),
+         pageBuilder: (context, animation, secondaryAnimation) => opaque
+             ? builder(context)
+             : FrozenGlassBackdrop(child: builder(context)),
          transitionsBuilder: (context, animation, secondaryAnimation, child) {
            // Rebuilt every frame, but `updateShouldNotify` is false for the
            // whole flight (the rect and the Animation object are the same

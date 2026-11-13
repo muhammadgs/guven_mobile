@@ -562,7 +562,7 @@ class _Reveal extends StatelessWidget {
       child: IgnorePointer(
         child: Opacity(
           opacity: t,
-          child: ImageFiltered(
+          child: AppImageFiltered(
             imageFilter: ImageFilter.blur(
               sigmaX: 10 * (1 - t),
               sigmaY: 10 * (1 - t),
@@ -622,7 +622,7 @@ class _Subtitle extends StatelessWidget {
                   final double v = animation.value;
                   return Opacity(
                     opacity: v,
-                    child: ImageFiltered(
+                    child: AppImageFiltered(
                       imageFilter: ImageFilter.blur(
                         sigmaX: 6 * (1 - v),
                         sigmaY: 6 * (1 - v),

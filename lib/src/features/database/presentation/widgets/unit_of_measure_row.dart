@@ -1,8 +1,8 @@
-import 'dart:ui' as ui show ImageFilter;
 
 import 'package:flutter/material.dart';
 
 import '../../domain/database_filter.dart' show tidySpaces;
+import '../../../../shared/glass/app_glass.dart';
 import '../../domain/unit_of_measure.dart';
 import 'database_card.dart';
 import 'database_glass.dart';
@@ -222,11 +222,9 @@ class _Slice extends StatelessWidget {
   Widget build(BuildContext context) {
     final Widget slice = ClipRect(
       clipBehavior: Clip.hardEdge,
-      child: BackdropFilter.grouped(
-        filter: ui.ImageFilter.blur(
-          sigmaX: kDatabaseRowBlurSigma,
-          sigmaY: kDatabaseRowBlurSigma,
-        ),
+      child: AppBackdropBlur(
+        sigma: kDatabaseRowBlurSigma,
+        grouped: true,
         child: CustomPaint(painter: const _Tint(), child: child),
       ),
     );

@@ -61,12 +61,37 @@ const AppGlassStyle kActivityRowGlass = AppGlassStyle(
   blur: 0,
 );
 
-/// The bottom bar's capsule.
+/// The bottom bar's capsule: see-through glass with the activity rows' tint.
+/// Until 2026-11-13 it was 56% white, which read as a solid white bar.
 const AppGlassStyle kNavBarGlass = AppGlassStyle(
   cornerRadius: 34,
-  glassColor: Color(0x90FFFFFF),
+  glassColor: Color(0x42FFFFFF),
   blur: 1.5,
 );
+
+/// The lens a touch turns the selection marker into: clear glass — nothing
+/// frosts it — that magnifies the bar under it and bends it at its rim, the
+/// colours splitting there. It shows a photograph of the bar taken as the
+/// touch lands, so no frame reads the live screen.
+///
+/// After `liquid_glass_renderer`'s iOS 27 loupe tab bar (refraction 15, clear,
+/// dispersion −0.3, contour 0.3), magnified like iOS 26's. Bent 18 with the
+/// full −0.3 on the emulator, the rim folded the names into rainbow blots;
+/// 11 and −0.2 keep the fold and the fringe, thin.
+const LiquidGlassOptics kNavLensOptics = LiquidGlassOptics(
+  refractionHeight: 15,
+  refractionAmount: 11,
+  fitsShape: false,
+  dispersion: -0.2,
+  highlight: 1,
+  contourStrength: 0.3,
+  bevelShadowStrength: 0,
+  rimSharpness: 0,
+  magnification: 1.18,
+);
+
+/// Barely there: the lens is clear.
+const Color kNavLensTint = Color(0x0AFFFFFF);
 
 /// What marks the selected cell when nothing is being touched.
 ///

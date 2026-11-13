@@ -1,9 +1,9 @@
 import 'dart:math' as math;
-import 'dart:ui' as ui show ImageFilter;
 import 'dart:ui' show lerpDouble;
 
 import 'package:flutter/material.dart';
 
+import '../../../../shared/glass/app_glass.dart';
 import '../../../../shared/layout.dart';
 import '../../application/task_voice_player.dart';
 import '../../domain/task_attachment.dart';
@@ -144,11 +144,9 @@ class _TaskCardState extends State<TaskCard>
         ),
         child: ClipRSuperellipse(
           borderRadius: BorderRadius.circular(radius),
-          child: BackdropFilter.grouped(
-            filter: ui.ImageFilter.blur(
-              sigmaX: kTaskCardBlurSigma,
-              sigmaY: kTaskCardBlurSigma,
-            ),
+          child: AppBackdropBlur(
+            sigma: kTaskCardBlurSigma,
+            grouped: true,
             child: ColoredBox(
               color: kTaskCardFill,
               child: Padding(

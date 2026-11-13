@@ -4,11 +4,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'src/app/guven_app.dart';
+import 'src/shared/glass/liquid_glass.dart';
 import 'src/shared/layout.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await _lockOrientation();
+  // Loaded before the first frame, so no glass ever draws frosted and then
+  // switches to liquid. A failure leaves every surface frosted.
+  await Future.wait(<Future<void>>[
+    _lockOrientation(),
+    LiquidGlassShader.load(),
+  ]);
   runApp(const GuvenApp());
 }
 

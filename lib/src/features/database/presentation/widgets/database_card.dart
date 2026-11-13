@@ -7,10 +7,10 @@
 /// so this is the part they share rather than two copies that could drift.
 library;
 
-import 'dart:ui' as ui show ImageFilter;
 
 import 'package:flutter/material.dart';
 
+import '../../../../shared/glass/app_glass.dart';
 import 'database_glass.dart';
 
 /// What a field says when the bridge does not say it.
@@ -37,11 +37,9 @@ class DatabaseCardSurface extends StatelessWidget {
     final double s = databaseScale(context);
     return ClipRRect(
       borderRadius: BorderRadius.circular(kDatabaseCardRadius * s),
-      child: BackdropFilter.grouped(
-        filter: ui.ImageFilter.blur(
-          sigmaX: kDatabaseRowBlurSigma,
-          sigmaY: kDatabaseRowBlurSigma,
-        ),
+      child: AppBackdropBlur(
+        sigma: kDatabaseRowBlurSigma,
+        grouped: true,
         child: ColoredBox(
           color: kDatabaseCardFill,
           child: Padding(padding: padding, child: child),

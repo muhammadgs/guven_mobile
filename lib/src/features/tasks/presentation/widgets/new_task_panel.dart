@@ -17,12 +17,12 @@
 /// back into the `+` button without a seam anywhere.
 library;
 
-import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../../shared/effects.dart';
+import '../../../../shared/glass/app_glass.dart';
 import '../../../../shared/motion/glass_morph.dart';
 import '../../../auth/application/session_controller.dart';
 import '../../application/new_task_controller.dart';
@@ -637,11 +637,9 @@ class _Scrim extends StatelessWidget {
 
         return Positioned.fill(
           child: IgnorePointer(
-            child: BackdropFilter(
-              filter: ImageFilter.blur(
-                sigmaX: kNewTaskSheetBlur * t,
-                sigmaY: kNewTaskSheetBlur * t,
-              ),
+            child: AppBackdropBlur(
+              sigma: kNewTaskSheetBlur,
+              amount: t,
               child: ColoredBox(
                 color: kNewTaskSheetScrim.withValues(
                   alpha: kNewTaskSheetScrim.a * t,

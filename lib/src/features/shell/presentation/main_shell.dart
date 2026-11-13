@@ -5,6 +5,7 @@ import 'dart:ui' show lerpDouble;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../../shared/glass/glass_backdrop.dart';
 import '../../../shared/layout.dart';
 import '../../../shared/widgets/app_background.dart';
 import '../../database/presentation/database_screen.dart';
@@ -308,17 +309,23 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
               fit: StackFit.expand,
               children: <Widget>[
                 _pages(reserve),
-                MoreMenu(
-                  metrics: metrics,
-                  open: _menu,
-                  items: shown.more,
-                  lifted: drag == null || (drag.landing && drag.landsInBar)
-                      ? null
-                      : drag.item,
-                  interactive: _menuOpen,
-                  onChoose: _choose,
-                  onLift: _liftFromMenu,
-                  onDismiss: _closeMenu,
+                // The fan opens over the page it was called from, so it
+                // photographs that page as it opens and its glass shows it
+                // blurred, once, rather than blurring live.
+                FrozenGlassBackdrop(
+                  animation: _menu,
+                  child: MoreMenu(
+                    metrics: metrics,
+                    open: _menu,
+                    items: shown.more,
+                    lifted: drag == null || (drag.landing && drag.landsInBar)
+                        ? null
+                        : drag.item,
+                    interactive: _menuOpen,
+                    onChoose: _choose,
+                    onLift: _liftFromMenu,
+                    onDismiss: _closeMenu,
+                  ),
                 ),
                 Positioned.fromRect(
                   rect: bar,

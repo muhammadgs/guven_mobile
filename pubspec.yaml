@@ -141,6 +141,7 @@ flutter:
 
   shaders:
     - shaders/aurora.frag
+    - shaders/liquid_glass.frag
 
   # To add assets to your application, add an assets section, like this:
   # assets:

@@ -12,12 +12,12 @@
 /// no longer the subject.
 library;
 
-import 'dart:ui' show ImageFilter;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
 import '../../../../shared/effects.dart';
+import '../../../../shared/glass/app_glass.dart';
 import '../../../../shared/motion/glass_morph.dart';
 import '../../domain/database_metric.dart' show kDatabaseIconDir;
 import '../../domain/database_section.dart';
@@ -266,11 +266,9 @@ class DatabaseScrim extends StatelessWidget {
     if (t <= 0.01) return const SizedBox.shrink();
     return Positioned.fill(
       child: IgnorePointer(
-        child: BackdropFilter(
-          filter: ImageFilter.blur(
-            sigmaX: kDatabaseMenuBlur * t,
-            sigmaY: kDatabaseMenuBlur * t,
-          ),
+        child: AppBackdropBlur(
+          sigma: kDatabaseMenuBlur,
+          amount: t,
           child: ColoredBox(
             color: kDatabaseMenuScrim.withValues(
               alpha: kDatabaseMenuScrim.a * t,

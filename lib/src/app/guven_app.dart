@@ -6,6 +6,7 @@ import '../features/auth/presentation/auth_flow_shell.dart';
 import '../features/passcode/application/passcode_controller.dart';
 import '../features/passcode/presentation/app_lock_gate.dart';
 import '../features/shell/presentation/main_shell.dart';
+import '../shared/glass/glass_backdrop.dart';
 import 'app_theme.dart';
 
 class GuvenApp extends StatefulWidget {
@@ -70,7 +71,13 @@ class _GuvenAppState extends State<GuvenApp> {
           // app can ever be drawn over it.
           builder: (BuildContext context, Widget? child) => _clampTextScale(
             context,
-            AppLockGate(child: child ?? const SizedBox.shrink()),
+            AppLockGate(
+              // What a panel, menu or prompt photographs as it opens, so its
+              // glass can show the screen it opened over, blurred once.
+              child: GlassScreenBoundary(
+                child: child ?? const SizedBox.shrink(),
+              ),
+            ),
           ),
           home: const _RootFlow(),
         ),

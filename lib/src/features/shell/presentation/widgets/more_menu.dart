@@ -1,9 +1,10 @@
 import 'dart:math' as math;
-import 'dart:ui' show ImageFilter, lerpDouble;
+import 'dart:ui' show lerpDouble;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 
+import '../../../../shared/glass/app_glass.dart';
 import '../../../home/presentation/widgets/home_glass.dart';
 import '../../domain/shell_destination.dart';
 import '../more_menu_metrics.dart';
@@ -99,11 +100,9 @@ class MoreMenu extends StatelessWidget {
                 // colour themselves. An `Opacity` above a `BackdropFilter`
                 // would hand it an empty layer to sample, and it would blur
                 // nothing.
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(
-                    sigmaX: kMoreMenuBlur * scrim,
-                    sigmaY: kMoreMenuBlur * scrim,
-                  ),
+                child: AppBackdropBlur(
+                  sigma: kMoreMenuBlur,
+                  amount: scrim,
                   child: ColoredBox(
                     color: kMoreMenuScrim.withValues(
                       alpha: kMoreMenuScrim.a * scrim,
@@ -211,9 +210,7 @@ class _MoreBubble extends StatelessWidget {
             child: child,
           );
         },
-        child: empty
-            ? _placeholder(disc)
-            : _button(context, disc, discCenter),
+        child: empty ? _placeholder(disc) : _button(context, disc, discCenter),
       ),
     );
   }

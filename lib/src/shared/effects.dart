@@ -2,6 +2,8 @@ import 'dart:ui';
 
 import 'package:flutter/widgets.dart';
 
+import 'glass/app_glass.dart';
+
 /// Wraps [child] in a gaussian blur of the given [sigma].
 ///
 /// Sigmas at or below ~0.2 are treated as "no blur" and the child is returned
@@ -9,7 +11,7 @@ import 'package:flutter/widgets.dart';
 /// artefacts `ImageFilter.blur` produces at a sigma of exactly 0.
 Widget blurred(double sigma, Widget child) {
   if (sigma <= 0.2) return child;
-  return ImageFiltered(
+  return AppImageFiltered(
     imageFilter: ImageFilter.blur(sigmaX: sigma, sigmaY: sigma),
     child: child,
   );
