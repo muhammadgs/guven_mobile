@@ -27,6 +27,45 @@ workflows:
       - build/ios/iphoneos/*.app
       - flutter_drive.log
 
+  # ── iOS sideload build ────────────────────────────────────────────────────
+  # Produces an unsigned .ipa for Sideloadly on Windows, which signs it with a
+  # free Apple ID and installs it on a USB-connected iPhone (the signature
+  # lasts 7 days). Started by hand from the Codemagic UI: there is no push
+  # trigger, so the 500 free macOS minutes a month go only to builds someone
+  # asked for. Analyze and test are left to ios-smoke to keep each run short.
+  # Flutter is pinned to the version used on the Windows machine, so the phone
+  # runs the same engine the Android builds were checked on.
+  ios-sideload:
+    name: iOS .ipa for Sideloadly (unsigned)
+    max_build_duration: 45
+    instance_type: mac_mini_m2
+    environment:
+      flutter: 3.44.3
+      xcode: latest
+    scripts:
+      - name: Use a test bundle id
+        # A free Apple ID registers whatever bundle id it signs under the
+        # user's personal team. Signing a throwaway id keeps
+        # az.guvenfinans.mobile free for the company's App Store account.
+        # Only this cloud checkout changes; the repo keeps the real id. The
+        # grep fails the build if the replacement ever stops matching.
+        script: |
+          sed -i '' 's/PRODUCT_BUNDLE_IDENTIFIER = az\.guvenfinans\.mobile;/PRODUCT_BUNDLE_IDENTIFIER = az.guvenfinans.mobile.sideload;/' ios/Runner.xcodeproj/project.pbxproj
+          grep -c 'PRODUCT_BUNDLE_IDENTIFIER = az.guvenfinans.mobile.sideload;' ios/Runner.xcodeproj/project.pbxproj
+      - name: Resolve dependencies
+        script: flutter pub get
+      - name: Build unsigned iOS app
+        script: flutter build ios --release --no-codesign
+      - name: Package .ipa
+        # An .ipa is just Runner.app inside a Payload folder, zipped.
+        script: |
+          rm -rf Payload
+          mkdir Payload
+          cp -R build/ios/iphoneos/Runner.app Payload/
+          zip -qry guven_finans_sideload.ipa Payload
+    artifacts:
+      - guven_finans_sideload.ipa
+
   # ── Android release ───────────────────────────────────────────────────────
   # Runs on Linux (cheaper, faster). Produces an unsigned AAB — wire up a real
   # keystore before shipping to Play.
