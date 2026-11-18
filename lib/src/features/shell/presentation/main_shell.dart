@@ -18,6 +18,7 @@ import 'more_menu_metrics.dart';
 import 'widgets/coming_soon_tab.dart';
 import 'widgets/guven_glass_bottom_bar.dart';
 import 'widgets/more_menu.dart';
+import 'widgets/native_ios_tab_bar.dart';
 
 /// The signed-in app: one background, every page, and the glass bar over them.
 ///
@@ -34,7 +35,13 @@ class MainShell extends StatefulWidget {
     this.store,
     this.pageBuilder,
     this.active = true,
+    this.nativeTabBar,
   });
+
+  /// Apple's own tab bar instead of ours; null asks the phone
+  /// ([useNativeIosTabBar]: an iPhone on iOS 26 or later).
+  @visibleForTesting
+  final bool? nativeTabBar;
 
   /// False while the passcode lock is over the shell — built and loading
   /// underneath, but not to start anything that greets the user (the
@@ -131,6 +138,9 @@ class _NavDrag {
 class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
   late final NavLayoutStore _store = widget.store ?? FileNavLayoutStore();
   ShellNavLayout _layout = ShellNavLayout.defaults;
+
+  /// Decided once: the phone does not change OS under a running app.
+  late final bool _nativeBar = widget.nativeTabBar ?? useNativeIosTabBar();
 
   /// Set by the first rearrangement, so a saved layout that arrives late
   /// does not overwrite one the user has just made.
@@ -327,32 +337,52 @@ class _MainShellState extends State<MainShell> with TickerProviderStateMixin {
                     onDismiss: _closeMenu,
                   ),
                 ),
-                Positioned.fromRect(
-                  rect: bar,
-                  child: GuvenGlassBottomBar(
-                    labels: labels,
-                    icons: icons,
-                    selectedIndex: selected,
-                    onSelected: _onBarSelected,
-                    height: bar.height,
-                    iconSize: scaled(context, _barIconSize),
-                    textStyle: TextStyle(
-                      fontFamily: 'Poppins',
-                      fontWeight: FontWeight.w500,
-                      fontSize: scaled(context, _barLabelSize),
-                      height: 1.1,
-                      // Set here rather than left to the theme, whose body
-                      // style tracks out by 0.25 — two or three points on a
-                      // long name, which this bar does not have to spare.
-                      letterSpacing: 0,
+                if (_nativeBar)
+                  // Apple's bar sizes itself, so only its bottom is set: on
+                  // the line ours ends on, 10pt above the safe area. iOS
+                  // centres its capsule in the width it is given. The fan
+                  // and every page still measure from [bar].
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: MediaQuery.sizeOf(context).height - bar.bottom,
+                    child: NativeIosTabBar(
+                      labels: labels,
+                      icons: icons,
+                      selectedIndex: selected,
+                      onSelected: _onBarSelected,
+                      menuIndex: ShellNavLayout.menuCell,
+                      menuOpenIcon: kMenuOpenIcon,
+                      menuOpen: _menuOpen,
                     ),
-                    menuIndex: ShellNavLayout.menuCell,
-                    menuOpenIcon: kMenuOpenIcon,
-                    menuOpen: _menuGlyph,
-                    liftedIndex: liftedCell,
-                    onLiftStart: _liftFromBar,
+                  )
+                else
+                  Positioned.fromRect(
+                    rect: bar,
+                    child: GuvenGlassBottomBar(
+                      labels: labels,
+                      icons: icons,
+                      selectedIndex: selected,
+                      onSelected: _onBarSelected,
+                      height: bar.height,
+                      iconSize: scaled(context, _barIconSize),
+                      textStyle: TextStyle(
+                        fontFamily: 'Poppins',
+                        fontWeight: FontWeight.w500,
+                        fontSize: scaled(context, _barLabelSize),
+                        height: 1.1,
+                        // Set here rather than left to the theme, whose body
+                        // style tracks out by 0.25 — two or three points on a
+                        // long name, which this bar does not have to spare.
+                        letterSpacing: 0,
+                      ),
+                      menuIndex: ShellNavLayout.menuCell,
+                      menuOpenIcon: kMenuOpenIcon,
+                      menuOpen: _menuGlyph,
+                      liftedIndex: liftedCell,
+                      onLiftStart: _liftFromBar,
+                    ),
                   ),
-                ),
                 if (drag != null) _carriedDisc(drag, metrics),
               ],
             ),
