@@ -7,7 +7,11 @@ import 'glass_backdrop.dart';
 import 'liquid_glass.dart';
 
 export 'glass_backdrop.dart'
-    show FrozenGlassBackdrop, GlassBackdropScope, GlassScreenBoundary;
+    show
+        FrozenGlassBackdrop,
+        GlassBackdropScope,
+        GlassScreenBoundary,
+        GlassVeil;
 export 'liquid_glass.dart'
     show AppGlassLook, LiquidGlassOptics, LiquidGlassShader, kGlassLook;
 
@@ -212,12 +216,22 @@ class AppGlassSurface extends StatelessWidget {
     );
     final Color tint = style.glassColor;
 
+    // Glass inside this glass stands on this pane, not on the bare picture:
+    // it sees the picture through this tint ([GlassVeil]). Only a baked
+    // build paints pictures; a live blur reads the screen with this pane
+    // already on it. Always wrapped in a baked build, so the tree keeps its
+    // shape while the fade comes and goes.
+    final Widget child = kBlurMode == AppBlurMode.baked
+        ? GlassVeil(
+            tint: tint.withValues(alpha: tint.a * fade),
+            child: this.child,
+          )
+        : this.child;
+
     // Liquid: the shader draws the bent backdrop, the tint and the rim in one
     // pass, and paints its contour hairline just outside the edge — so it
     // stands outside the clip, and only the child is clipped.
-    if (fade > 0 &&
-        kBlurMode == AppBlurMode.baked &&
-        LiquidGlassShader.ready) {
+    if (fade > 0 && kBlurMode == AppBlurMode.baked && LiquidGlassShader.ready) {
       return GlassBackdropPaint(
         liquid: LiquidGlassSpec(
           cornerRadius: cornerRadius ?? style.cornerRadius,

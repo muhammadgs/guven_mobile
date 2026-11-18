@@ -66,6 +66,9 @@ dependencies:
 
   # PBKDF2 over the passcode: only a salted hash is kept, never the digits.
   crypto: ^3.0.8
+  flutter_local_notifications: ^22.3.3
+  workmanager: ^0.10.10
+  app_badge_plus: ^1.4.0
 
 dev_dependencies:
   flutter_test:

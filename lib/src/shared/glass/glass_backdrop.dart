@@ -79,25 +79,77 @@ class GlassBackdropImage {
 /// Hands a backdrop picture to every glass surface below it.
 ///
 /// The nearest scope wins, so a menu's photograph of the screen shadows the
-/// background's picture for the glass inside the menu.
+/// background's picture for the glass inside the menu — and a new picture
+/// starts with no [veil], because a photograph already holds everything that
+/// was on screen.
 class GlassBackdropScope extends InheritedWidget {
   const GlassBackdropScope({
     super.key,
     required this.backdrop,
+    this.veil = const Color(0x00000000),
     required super.child,
   });
 
   /// Null until the picture is ready; glass draws its tint alone until then.
   final ValueListenable<GlassBackdropImage?> backdrop;
 
+  /// What lies between the picture and the glass below this scope: the tint
+  /// of the glass it stands on ([GlassVeil]). Transparent for glass that
+  /// stands on the picture itself.
+  final Color veil;
+
   static ValueListenable<GlassBackdropImage?>? maybeOf(BuildContext context) =>
       context
           .dependOnInheritedWidgetOfExactType<GlassBackdropScope>()
           ?.backdrop;
 
+  /// The [veil] glass at [context] sees its picture through.
+  static Color veilOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<GlassBackdropScope>()?.veil ??
+      const Color(0x00000000);
+
   @override
   bool updateShouldNotify(GlassBackdropScope oldWidget) =>
-      oldWidget.backdrop != backdrop;
+      oldWidget.backdrop != backdrop || oldWidget.veil != veil;
+}
+
+/// Glass below this stands on a glass tinted [tint], not on the bare
+/// picture.
+///
+/// A baked glass paints its own piece of the picture — opaque — and its tint
+/// over that. Inside another glass, that piece is what lies behind *both*
+/// panes, so the inner one would cut a window through the outer one's tint
+/// and show the screen behind the panel: a field box on the `Yeni tapşırıq`
+/// sheet showing the task list instead of the sheet. A live blur never had
+/// this problem, because it read the screen with the outer pane already on
+/// it. This puts the outer pane back: the inner glass draws its picture
+/// through [tint] first, then its own tint, exactly as the two would have
+/// stacked on screen. Still one draw, still no backdrop read.
+///
+/// The tint is uniform, so it changes nothing an inner liquid lens bends:
+/// bending the picture and then veiling it is the same as bending the veiled
+/// picture. [AppGlassSurface] puts its own tint here for whatever is inside
+/// it; a glass that lies over another without being its child (a panel that
+/// opens over a sheet) wraps itself in one.
+class GlassVeil extends StatelessWidget {
+  const GlassVeil({super.key, required this.tint, required this.child});
+
+  final Color tint;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final GlassBackdropScope? scope = context
+        .dependOnInheritedWidgetOfExactType<GlassBackdropScope>();
+    // No picture, nothing to veil: glass here draws its tint over the real
+    // screen, and the pane under it is already on that screen.
+    if (scope == null) return child;
+    return GlassBackdropScope(
+      backdrop: scope.backdrop,
+      veil: Color.alphaBlend(tint, scope.veil),
+      child: child,
+    );
+  }
 }
 
 /// Draws [source] into a new [width]×[height] image, blurred by [sigma]
@@ -453,6 +505,7 @@ class GlassBackdropPaint extends StatelessWidget {
       amount: amount.clamp(0.0, 1.0),
       repaint: Listenable.merge(repaint),
       liquid: liquid,
+      veil: GlassBackdropScope.veilOf(context),
       devicePixelRatio: liquid == null
           ? 1
           : MediaQuery.maybeDevicePixelRatioOf(context) ?? 1,
@@ -467,6 +520,7 @@ class _BackdropPaint extends SingleChildRenderObjectWidget {
     required this.amount,
     required this.repaint,
     required this.liquid,
+    required this.veil,
     required this.devicePixelRatio,
     super.child,
   });
@@ -475,6 +529,7 @@ class _BackdropPaint extends SingleChildRenderObjectWidget {
   final double amount;
   final Listenable repaint;
   final LiquidGlassSpec? liquid;
+  final Color veil;
   final double devicePixelRatio;
 
   @override
@@ -484,6 +539,7 @@ class _BackdropPaint extends SingleChildRenderObjectWidget {
         amount: amount,
         repaint: repaint,
         liquid: liquid,
+        veil: veil,
         devicePixelRatio: devicePixelRatio,
       );
 
@@ -497,6 +553,7 @@ class _BackdropPaint extends SingleChildRenderObjectWidget {
       ..amount = amount
       ..repaint = repaint
       ..liquid = liquid
+      ..veil = veil
       ..devicePixelRatio = devicePixelRatio;
   }
 }
@@ -508,6 +565,7 @@ class RenderGlassBackdrop extends RenderProxyBox {
     required this._amount,
     required this._repaint,
     required this._liquid,
+    required this._veil,
     required this._devicePixelRatio,
   });
 
@@ -521,6 +579,20 @@ class RenderGlassBackdrop extends RenderProxyBox {
   /// Whether this draws liquid glass rather than the plain picture.
   @visibleForTesting
   bool get debugIsLiquid => _liquid != null;
+
+  /// The tint of the glass this stands on ([GlassVeil]), laid over the
+  /// picture whenever the picture is drawn. Without a picture this draws
+  /// over the real screen, where that glass already is, and it is left out.
+  Color _veil;
+  set veil(Color value) {
+    if (value == _veil) return;
+    _veil = value;
+    markNeedsPaint();
+  }
+
+  /// The veil this draws its picture through.
+  @visibleForTesting
+  Color get debugVeil => _veil;
 
   double _devicePixelRatio;
   set devicePixelRatio(double value) {
@@ -627,6 +699,13 @@ class RenderGlassBackdrop extends RenderProxyBox {
             ..filterQuality = FilterQuality.low
             ..color = Color.fromRGBO(0, 0, 0, _amount),
         );
+        final Color veil = _veil;
+        if (veil.a > 0) {
+          context.canvas.drawRect(
+            offset & size,
+            Paint()..color = veil.withValues(alpha: veil.a * _amount),
+          );
+        }
       }
     }
     super.paint(context, offset);
@@ -644,13 +723,25 @@ class RenderGlassBackdrop extends RenderProxyBox {
     if (bends) _painted = mine;
     // A surface scaled on its way in covers fewer pixels per unit.
     final double scale = bends ? mine.width / size.width : 1;
+    // The pane this stands on goes under this one's own tint: the shader
+    // lays its tint over the bent picture, and one tint over another is a
+    // single tint.
+    final Color veil = _veil;
+    final LiquidGlassSpec spec = bends && veil.a > 0
+        ? LiquidGlassSpec(
+            cornerRadius: liquid.cornerRadius,
+            tint: Color.alphaBlend(liquid.tint, veil),
+            fade: liquid.fade,
+            optics: liquid.optics,
+          )
+        : liquid;
     LiquidGlassShader.paint(
       canvas,
       shader,
       offset: offset,
       size: size,
       pxPerUnit: _devicePixelRatio * scale,
-      spec: liquid,
+      spec: spec,
       picture: bends ? backdrop!.image : null,
       sharp: bends ? backdrop!.sharp : null,
       pictureSize: bends ? backdrop!.size : null,

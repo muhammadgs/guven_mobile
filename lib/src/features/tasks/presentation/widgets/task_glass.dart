@@ -137,6 +137,11 @@ const double kNewTaskSheetBlur = 14;
 /// A small piece of glass sitting on a big one, so it carries only a faint
 /// tint; its rim is what says "this is a box you can press" on a surface with
 /// no fill of its own.
+///
+/// It shows the sheet it sits on, not the screen behind the sheet: the
+/// sheet's tint goes under this one ([GlassVeil], 2026-11-18). Without that
+/// the box painted the bare photograph with only this faint tint over it and
+/// read as a hole through the sheet onto the task list.
 const AppGlassStyle kNewTaskFieldGlass = AppGlassStyle(
   cornerRadius: 23,
   glassColor: Color(0x14101826),

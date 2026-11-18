@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../../shared/effects.dart';
+import '../../../../shared/glass/app_glass.dart' show GlassVeil;
 import '../../../../shared/motion/glass_morph.dart';
 import '../../../database/domain/database_filter.dart' show filterSearchKey;
 import '../../application/new_task_controller.dart';
@@ -613,6 +614,11 @@ class _WheelState extends State<_Wheel> {
 /// Nothing here wraps the glass in an `Opacity` or an `ImageFiltered`: either
 /// opens a `saveLayer` over a surface that samples its own backdrop, and the
 /// lens renders black. Only what sits *inside* it fades.
+///
+/// It lies on the sheet without being the sheet's child, so it does not
+/// inherit the sheet's pane the way the field boxes do; it puts that pane
+/// under itself ([GlassVeil]). Otherwise it would start its flight as a
+/// window through the sheet where the box it grows from was not one.
 class DarkPanelSurface extends StatelessWidget {
   const DarkPanelSurface({
     super.key,
@@ -643,24 +649,29 @@ class DarkPanelSurface extends StatelessWidget {
             frame.blend,
           ),
         ),
-        child: AppGlassSurface(
-          style: lerpAppGlassStyle(
-            kNewTaskFieldGlass,
-            kNewTaskPickerGlass,
-            frame.blend,
+        child: GlassVeil(
+          // The sheet's own glass, as it is once it has landed — the only
+          // time a field can be opened.
+          tint: kTaskFilterGlass.glassColor,
+          child: AppGlassSurface(
+            style: lerpAppGlassStyle(
+              kNewTaskFieldGlass,
+              kNewTaskPickerGlass,
+              frame.blend,
+              cornerRadius: frame.radius,
+            ),
             cornerRadius: frame.radius,
-          ),
-          cornerRadius: frame.radius,
-          child: IgnorePointer(
-            ignoring: !frame.isSettled,
-            child: OverflowBox(
-              minWidth: restingSize.width,
-              maxWidth: restingSize.width,
-              minHeight: restingSize.height,
-              maxHeight: restingSize.height,
-              child: Opacity(
-                opacity: frame.targetOpacity,
-                child: blurred(8 * (1 - frame.targetOpacity), child),
+            child: IgnorePointer(
+              ignoring: !frame.isSettled,
+              child: OverflowBox(
+                minWidth: restingSize.width,
+                maxWidth: restingSize.width,
+                minHeight: restingSize.height,
+                maxHeight: restingSize.height,
+                child: Opacity(
+                  opacity: frame.targetOpacity,
+                  child: blurred(8 * (1 - frame.targetOpacity), child),
+                ),
               ),
             ),
           ),

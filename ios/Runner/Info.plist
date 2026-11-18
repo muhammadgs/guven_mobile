@@ -55,6 +55,19 @@
 	     it verbatim in the permission sheet, so it is in the app's language. -->
 	<key>NSFaceIDUsageDescription</key>
 	<string>Güvən Finans-a giriş kodu yazmadan, Face ID ilə daxil olmaq üçün.</string>
+	<!-- The background notification check (lib/src/features/notifications/
+	     application/notification_background.dart). The backend has no push,
+	     so iOS is asked to wake the app now and then to look for news; this
+	     is the BGAppRefreshTask it runs under, registered in AppDelegate.swift.
+	     The identifier must match kNotificationTask in Dart. -->
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>az.guvenfinans.mobile.notifications</string>
+	</array>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+	</array>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

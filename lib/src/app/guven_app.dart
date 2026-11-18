@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../features/auth/application/session_controller.dart';
 import '../features/auth/domain/auth_user.dart';
 import '../features/auth/presentation/auth_flow_shell.dart';
+import '../features/notifications/application/notification_controller.dart';
 import '../features/passcode/application/passcode_controller.dart';
 import '../features/passcode/presentation/app_lock_gate.dart';
 import '../features/shell/presentation/main_shell.dart';
@@ -25,12 +28,19 @@ class _GuvenAppState extends State<GuvenApp> {
   /// session, so the lock can be up before `/auth/me` has even answered.
   late final PasscodeController _passcode = PasscodeController()..load();
 
+  /// Notifications on the phone — banners, the shade, the number on the
+  /// icon — for the account the session holds.
+  late final NotificationController _notifications = NotificationController(
+    session: _session,
+  );
+
   SessionStatus? _status;
 
   @override
   void initState() {
     super.initState();
     _session.addListener(_onSession);
+    unawaited(_notifications.start());
   }
 
   /// Keeps the lock in step with the session: a session that ends takes its
@@ -52,6 +62,7 @@ class _GuvenAppState extends State<GuvenApp> {
   @override
   void dispose() {
     _session.removeListener(_onSession);
+    _notifications.dispose();
     _session.dispose();
     _passcode.dispose();
     super.dispose();
@@ -79,7 +90,7 @@ class _GuvenAppState extends State<GuvenApp> {
               ),
             ),
           ),
-          home: const _RootFlow(),
+          home: _RootFlow(notifications: _notifications),
         ),
       ),
     );
@@ -130,7 +141,11 @@ Widget _clampTextScale(BuildContext context, Widget? child) {
 /// A scrim painted as a sibling *above* the tree tints the same pixels without
 /// ever wrapping them.
 class _RootFlow extends StatefulWidget {
-  const _RootFlow();
+  const _RootFlow({required this.notifications});
+
+  /// Told when the signed-in shell is on screen and unlocked — which is when
+  /// what has been notified counts as seen.
+  final NotificationController notifications;
 
   @override
   State<_RootFlow> createState() => _RootFlowState();
@@ -171,6 +186,9 @@ class _RootFlowState extends State<_RootFlow>
     }
     _shown = world;
     _wasCovered = lock.covered || lock.holdAuth;
+    widget.notifications.setShellActive(
+      world == _World.shell && lock.shellActive,
+    );
   }
 
   @override

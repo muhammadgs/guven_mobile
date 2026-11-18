@@ -170,6 +170,107 @@ void main() {
     expect(_glass(tester).debugPaintedRect?.left, 90);
   });
 
+  testWidgets('glass on glass sees the pane it stands on, not past it', (
+    WidgetTester tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetDevicePixelRatio);
+    const Color sheet = Color(0xC9FFFFFF);
+    const Color box = Color(0x14101826);
+    await tester.pumpWidget(
+      const _Host(
+        child: RepaintBoundary(
+          child: Stack(
+            children: <Widget>[
+              Positioned(
+                left: 20,
+                top: 20,
+                width: 200,
+                height: 200,
+                child: AppGlassSurface(
+                  style: AppGlassStyle(cornerRadius: 10, glassColor: sheet),
+                  child: Padding(
+                    padding: EdgeInsets.all(50),
+                    child: AppGlassSurface(
+                      style: AppGlassStyle(cornerRadius: 10, glassColor: box),
+                      child: SizedBox.expand(),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(_glass(tester).debugVeil, const Color(0x00000000));
+    expect(_glass(tester, 1).debugVeil, sheet);
+
+    final RenderRepaintBoundary boundary = tester.renderObject(
+      find.byType(RepaintBoundary).first,
+    );
+    final ByteData bytes = (await tester.runAsync<ByteData?>(() async {
+      final ui.Image image = await boundary.toImage();
+      try {
+        return await image.toByteData();
+      } finally {
+        image.dispose();
+      }
+    }))!;
+    Color at(int x, int y) {
+      final int i = (y * 300 + x) * 4;
+      return Color.fromARGB(
+        bytes.getUint8(i + 3),
+        bytes.getUint8(i),
+        bytes.getUint8(i + 1),
+        bytes.getUint8(i + 2),
+      );
+    }
+
+    void near(Color actual, Color expected) {
+      for (final (double a, double e) in <(double, double)>[
+        (actual.r, expected.r),
+        (actual.g, expected.g),
+        (actual.b, expected.b),
+      ]) {
+        expect(a, closeTo(e, 3 / 255), reason: '$actual vs $expected');
+      }
+    }
+
+    const Color picture = Color(0xFF3366CC);
+    final Color onSheet = Color.alphaBlend(sheet, picture);
+    near(at(40, 40), onSheet);
+    // The box is the sheet with the box's own tint over it — not the bare
+    // picture with only that faint tint, a hole through the sheet.
+    near(at(120, 120), Color.alphaBlend(box, onSheet));
+  });
+
+  testWidgets('a new picture inside a glass starts with no veil', (
+    WidgetTester tester,
+  ) async {
+    final ValueNotifier<GlassBackdropImage?> other =
+        ValueNotifier<GlassBackdropImage?>(null);
+    addTearDown(other.dispose);
+    await tester.pumpWidget(
+      _Host(
+        child: AppGlassSurface(
+          style: const AppGlassStyle(
+            cornerRadius: 10,
+            glassColor: Color(0xC9FFFFFF),
+          ),
+          child: GlassBackdropScope(
+            backdrop: other,
+            child: const GlassBackdropPaint(child: SizedBox.expand()),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(_glass(tester, 1).debugVeil, const Color(0x00000000));
+  });
+
   testWidgets('a scrim fades the picture in with its own progress', (
     WidgetTester tester,
   ) async {

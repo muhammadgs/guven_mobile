@@ -10,6 +10,10 @@ android {
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
+        // `flutter_local_notifications` uses `java.time`, which needs
+        // library desugaring below Android 8 — and the plugin requires it
+        // switched on whatever the app's own minimum is.
+        isCoreLibraryDesugaringEnabled = true
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
@@ -47,4 +51,7 @@ dependencies {
     // The AppCompat launch theme in `styles.xml` lives here; `local_auth`
     // needs it for the passcode screen's fingerprint prompt on older Android.
     implementation("androidx.appcompat:appcompat:1.7.1")
+
+    // See `isCoreLibraryDesugaringEnabled` above.
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }

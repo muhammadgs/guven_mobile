@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The notification glyph is named only from Dart ("ic_stat_guven"), never
+     from Java or XML, so release resource shrinking would otherwise see it as
+     unused and drop it — and a notification whose icon is missing is silently
+     never shown. -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/ic_stat_guven" />

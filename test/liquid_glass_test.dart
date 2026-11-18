@@ -239,6 +239,51 @@ void main() {
       expect(settled.b, lessThan(0.4), reason: '$settled');
     });
 
+    testWidgets('glass on a glass shows that glass, not what is behind it', (
+      WidgetTester tester,
+    ) async {
+      await tester.runAsync(LiquidGlassShader.load);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetDevicePixelRatio);
+      // A white sheet over the blue half (x 130…390), and a clear box in its
+      // middle (x 190…330, y 100…200), the way a field sits on `Yeni
+      // tapşırıq`.
+      const Widget sheet = Positioned(
+        left: 130,
+        top: 20,
+        width: 260,
+        height: 260,
+        child: AppGlassSurface(
+          style: AppGlassStyle(cornerRadius: 20, glassColor: Color(0xC9FFFFFF)),
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(60, 80, 60, 80),
+            child: AppGlassSurface(
+              style: AppGlassStyle(cornerRadius: 20),
+              child: SizedBox.expand(),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpWidget(
+        const _Host(child: Stack(children: <Widget>[sheet])),
+      );
+      await tester.pump();
+      final Color Function(int, int) at = await _snapshot(tester);
+
+      final Color onSheet = at(160, 150);
+      final Color inBox = at(260, 150);
+      expect(onSheet.b, greaterThan(0.9), reason: '$onSheet');
+      expect(onSheet.r, greaterThan(0.7), reason: 'white over blue: $onSheet');
+      // The box's middle is the sheet, not the bare blue behind it.
+      for (final (double a, double e) in <(double, double)>[
+        (inBox.r, onSheet.r),
+        (inBox.g, onSheet.g),
+        (inBox.b, onSheet.b),
+      ]) {
+        expect(a, closeTo(e, 3 / 255), reason: '$inBox vs $onSheet');
+      }
+    });
+
     testWidgets('a lens magnifies what is under it about its middle', (
       WidgetTester tester,
     ) async {
